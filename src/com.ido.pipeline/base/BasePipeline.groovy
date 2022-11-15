@@ -146,11 +146,11 @@ abstract class BasePipeline implements Pipeline, Serializable {
     def configGit() {
         if (steps.isUnix()) {
             steps.sh """
-                git config --global core.abbrev 8
-                git config --global http.connecttimeout 120
-                git config --global core.longpaths true
-                git config --global core.autocrlf false
-                git config --global --unset credential.helper || :
+                git config --local core.abbrev 8
+                git config --local http.connecttimeout 120
+                git config --local core.longpaths true
+                git config --local core.autocrlf true
+                git config --local --unset credential.helper || :
                 find .git -type f -name "*.lock" -delete > /dev/null 2>&1 || :
                 rm -fr .git/rebase-apply > /dev/null 2>&1 || :
                 rm -fr .git/rebase-merge > /dev/null 2>&1 || :
@@ -158,11 +158,11 @@ abstract class BasePipeline implements Pipeline, Serializable {
         } else {
             steps.powershell """
                 \$ErrorActionPreference = 'Stop'
-                git config --global core.abbrev 8
-                git config --global http.connecttimeout 120
-                git config --global core.longpaths true
-                git config --global core.autocrlf false
-                git config --global --unset credential.helper
+                git config --local core.abbrev 8
+                git config --local http.connecttimeout 120
+                git config --local core.longpaths true
+                git config --local core.autocrlf true
+                git config --local --unset credential.helper
                 Get-ChildItem -Path '.git/*.lock' -Recurse -Force -ErrorAction Ignore | Remove-item -Force
                 Remove-Item -Recurse -Force -ErrorAction Ignore .git/rebase-apply
                 Remove-Item -Recurse -Force -ErrorAction Ignore .git/rebase-merge
