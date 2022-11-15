@@ -1,12 +1,16 @@
+@NonCPS
 Map call(Map config) {
     def pipeline = null
 
     def clsLoader = this.getClass().classLoader
-    clsLoader.addClasspath("../src/com.ido.pipeline/")
-    pipeline = clsLoader.loadClass(config.pipelineType, true, false)?.newInstance()
+    String scriptDir = new File(getClass().protectionDomain.codeSource.location.path).parent
+    echo scriptDir
+    clsLoader.addClasspath(scriptDir + "/../src/com/ido/pipeline/")
+    pipeline = clsLoader.loadClass(config.pipelineType, true, false)?.newInstance(this)
 
     if (pipeline != null) {
         echo "########## Start Pipeline ##########"
-        return pipeline.runPipeline(Utils.setDefault(config, this))
+        // return pipeline.runPipeline(Utils.setDefault(config, this))
+        return pipeline.runPipeline(config)
     }
 }
