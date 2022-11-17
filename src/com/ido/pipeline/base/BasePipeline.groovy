@@ -6,6 +6,7 @@ import java.util.TimeZone.*
 import java.util.Date.*
 import hudson.scm.*
 import hudson.model.*
+import com.ido.pipeline.Utils
 
 /**
  * @author xinnj
@@ -20,6 +21,8 @@ abstract class BasePipeline implements Pipeline, Serializable {
 
     Map runPipeline(Map config) {
         def result = [:]
+
+        config = Utils.setDefault(config, steps)
 
         if (config.stopAllRunningBuild) {
             // Stop all running build of the same job
