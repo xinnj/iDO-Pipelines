@@ -7,6 +7,7 @@ import java.util.Date.*
 import hudson.scm.*
 import hudson.model.*
 import com.ido.pipeline.Utils
+import com.ido.pipeline.base.Version
 
 /**
  * @author xinnj
@@ -55,7 +56,27 @@ abstract class BasePipeline implements Pipeline, Serializable {
         return result
     }
 
-    def abstract customStages(Map config)
+    def customStages(Map config) {
+        steps.stage('Prepare') {
+            steps.echo "########## Stage: Prepare ##########"
+            this.prepare(config)
+        }
+
+        steps.stage('SCM') {
+            steps.echo "########## Stage: SCM ##########"
+            this.scm(config)
+        }
+
+        steps.stage('Versioning') {
+            steps.echo "########## Stage: Versioning ##########"
+            this.versioning(config)
+        }
+
+        steps.stage('Build') {
+            steps.echo "########## Stage: Build ##########"
+            this.build(config)
+        }
+    }
 
     def prepare(Map config) {}
 
@@ -171,6 +192,14 @@ abstract class BasePipeline implements Pipeline, Serializable {
                 exit 0
             """
         }
+    }
+
+    def versioning(Map config) {
+        Version verObj = new Version()
+        String ver = verObj.getVersion(steps, config)
+        steps.echo "version: " + ver
+        config.version = ver
+        steps.currentBuild.displayName = ver
     }
 
     def build(Map config) {}

@@ -1,1 +1,6 @@
 stopAllRunningBuild: true
+
+# "GIT_DESCRIBE", "GIT_FILE", "JENKINS_BUILD_NUMBER"
+versionMethod: "GIT_DESCRIBE"
+# The file contains version data if versionMethod="GIT_FILE"
+versionFile: "_version.txt"
