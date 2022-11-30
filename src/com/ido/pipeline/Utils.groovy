@@ -26,15 +26,10 @@ public class Utils {
 
     static String getBranchName(steps) {
         steps.echo "BRANCH_NAME: " + steps.env.BRANCH_NAME
-        steps.echo "TAG_NAME: " + steps.env.TAG_NAME
 
         if (steps.env.BRANCH_NAME != null) {
             return steps.env.BRANCH_NAME.split("/")[0]
         }
-
-//        if (steps.scm != null) {
-//            return steps.scm.getBranches().get(0).getName()
-//        }
 
         return 'null'
     }
