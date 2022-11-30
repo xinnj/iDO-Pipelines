@@ -78,7 +78,30 @@ abstract class BasePipeline implements Pipeline, Serializable {
         }
     }
 
-    def prepare(Map config) {}
+    def prepare(Map config) {
+        String upstreamProjects = ""
+        String branch = Utils.getBranchName(steps)
+
+        for (Map job in config.dependOn) {
+            if (job.branch == null || job.branch == "") {
+                if (upstreamProjects == "") {
+                    upstreamProjects = job + '/' + branch
+                } else {
+                    upstreamProjects += ',' + job + '/' + branch
+                }
+            } else {
+                if (upstreamProjects == "") {
+                    upstreamProjects = job + '/' + job.branch
+                } else {
+                    upstreamProjects += ',' + job + '/' + job.branch
+                }
+            }
+        }
+
+        steps.properties([
+                steps.upstream(upstreamProjects: upstreamProjects, threshold: hudson.model.Result.SUCCESS)
+        ])
+    }
 
     def scm(Map config) {
         this.configGit()
