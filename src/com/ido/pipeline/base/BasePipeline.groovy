@@ -98,9 +98,11 @@ abstract class BasePipeline implements Pipeline, Serializable {
             }
         }
 
-        steps.properties([
-                steps.upstream(upstreamProjects: upstreamProjects, threshold: hudson.model.Result.SUCCESS)
-        ])
+        if (upstreamProjects != "") {
+            steps.properties([
+                    steps.pipelineTriggers([steps.upstream(upstreamProjects: upstreamProjects, threshold: hudson.model.Result.SUCCESS)])
+            ])
+        }
     }
 
     def scm(Map config) {
