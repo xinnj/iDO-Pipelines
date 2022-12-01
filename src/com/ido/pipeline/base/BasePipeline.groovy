@@ -98,6 +98,7 @@ abstract class BasePipeline implements Pipeline, Serializable {
             }
         }
 
+        steps.echo "upstreamProjects: " + upstreamProjects
         if (upstreamProjects != "") {
             steps.properties([
                     steps.pipelineTriggers([steps.upstream(upstreamProjects: upstreamProjects, threshold: hudson.model.Result.SUCCESS)])
