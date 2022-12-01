@@ -85,15 +85,15 @@ abstract class BasePipeline implements Pipeline, Serializable {
         for (Map job in config.dependOn) {
             if (job.branch == null || job.branch == "") {
                 if (upstreamProjects == "") {
-                    upstreamProjects = job + '/' + branch
+                    upstreamProjects = job.name + '/' + branch
                 } else {
-                    upstreamProjects += ',' + job + '/' + branch
+                    upstreamProjects += ',' + job.name + '/' + branch
                 }
             } else {
                 if (upstreamProjects == "") {
-                    upstreamProjects = job + '/' + job.branch
+                    upstreamProjects = job.name + '/' + job.branch
                 } else {
-                    upstreamProjects += ',' + job + '/' + job.branch
+                    upstreamProjects += ',' + job.name + '/' + job.branch
                 }
             }
         }
