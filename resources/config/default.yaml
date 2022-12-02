@@ -4,3 +4,24 @@ stopAllRunningBuild: true
 versionMethod: "GIT_DESCRIBE"
 # The file contains version data if versionMethod="GIT_FILE"
 versionFile: "_version.txt"
+
+# Notification common config
+notifications: []
+notificationFailureOnly: false
+notificationSendFailureToStd: true
+# Email config
+notificationEmailStdReceiverVar: "IDO_NOTIFICATION_EMAIL"
+notificationEmailFailureReceiverVar: "IDO_NOTIFICATION_FAILURE_EMAIL"
+notificationEmailStdReceiver: ""
+notificationEmailFailureReceiver: ""
+# Slack config
+notificationSlackStdReceiverVar: "IDO_NOTIFICATION_SLACK"
+notificationSlackFailureReceiverVar: "IDO_NOTIFICATION_FAILURE_SLACK"
+notificationSlackStdReceiver: ""
+notificationSlackFailureReceiver: ""
+# Dingtalk config
+notificationDingtalkStdReceiverVar: "IDO_NOTIFICATION_DINGTALK"
+notificationDingtalkFailureReceiverVar: "IDO_NOTIFICATION_FAILURE_DINGTALK"
+notificationDingtalkStdReceiver: ""
+notificationDingtalkFailureReceiver: ""
+

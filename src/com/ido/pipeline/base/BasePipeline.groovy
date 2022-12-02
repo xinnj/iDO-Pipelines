@@ -106,6 +106,7 @@ abstract class BasePipeline implements Pipeline, Serializable {
         }
     }
 
+    // todo: why need repoName
     def scm(Map config) {
         this.configGit()
 
@@ -230,7 +231,14 @@ abstract class BasePipeline implements Pipeline, Serializable {
 
     def build(Map config) {}
 
-    def notify(Map config) {}
+    def notify(Map config) {
+        if (steps.fileExists('_finalVersion')) {
+            steps.currentBuild.displayName = steps.readFile(file: '_finalVersion', encoding: "UTF-8").trim()
+        }
+
+        Notification notification = new Notification(steps, config)
+        notification.send()
+    }
 
     def stopCurrentJob() {
         steps.echo "Stop all running build of the same job..."

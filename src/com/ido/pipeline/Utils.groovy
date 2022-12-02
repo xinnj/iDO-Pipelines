@@ -34,26 +34,6 @@ public class Utils {
         return 'null'
     }
 
-    @NonCPS
-    static String getChangeString(steps) {
-        String changeString = ""
-        def MAX_MSG_LEN = 20
-        def changeLogSets = steps.currentBuild.changeSets
-        for (int i = 0; i < changeLogSets.size(); i++) {
-            def entries = changeLogSets[i].items
-            for (int j = 0; j < entries.length; j++) {
-                def entry = entries[j]
-                String truncatedMsg = entry.msg.take(MAX_MSG_LEN)
-                String commitTime = new Date(entry.timestamp).format("yyyy-MM-dd HH:mm:ss", TimeZone.getTimeZone("Asia/Shanghai"))
-                changeString += " - ${truncatedMsg} [${entry.author} ${commitTime}]\n"
-            }
-        }
-        if (!changeString) {
-            changeString = " - No new changes"
-        }
-        return (changeString)
-    }
-
     static String getGitCommitVersion(steps) {
         if (steps.isUnix()) {
             steps.sh """
