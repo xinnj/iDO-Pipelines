@@ -1,6 +1,7 @@
 package com.ido.pipeline.base
 
 class Version {
+    // todo: config git rpeo root
     String getVersion(Object steps, Map config) {
         switch (config.versionMethod) {
             case "GIT_DESCRIBE":
