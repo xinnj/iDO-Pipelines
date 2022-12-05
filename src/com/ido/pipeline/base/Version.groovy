@@ -1,15 +1,16 @@
 package com.ido.pipeline.base
 
 class Version {
-    // todo: config git rpeo root
     String getVersion(Object steps, Map config) {
         switch (config.versionMethod) {
             case "GIT_DESCRIBE":
                 String versionFull
-                if (steps.isUnix()) {
-                    versionFull = steps.sh(returnStdout: true, script: "git describe --always --long")
-                } else {
-                    versionFull = steps.powershell(returnStdout: true, script: "git describe --always --long")
+                steps.dir(config.versionRootPath) {
+                    if (steps.isUnix()) {
+                        versionFull = steps.sh(returnStdout: true, script: "git describe --always --long")
+                    } else {
+                        versionFull = steps.powershell(returnStdout: true, script: "git describe --always --long")
+                    }
                 }
                 steps.echo "versionFull: " +  versionFull
                 String[] verArray = versionFull.trim().split('-')
