@@ -106,7 +106,6 @@ abstract class BasePipeline implements Pipeline, Serializable {
         }
     }
 
-    // todo: why need repoName
     def scm(Map config) {
         this.configGit()
 
@@ -117,7 +116,7 @@ abstract class BasePipeline implements Pipeline, Serializable {
             try {
                 steps.checkout([$class           : 'GitSCM',
                                 branches         : [[name: config.scm.branch]],
-                                userRemoteConfigs: [[name: config.scm.repoName, url: config.scm.repoUrl, credentialsId: scmCredentialsId]],
+                                userRemoteConfigs: [[name: "origin", url: config.scm.repoUrl, credentialsId: scmCredentialsId]],
                                 extensions       : [[$class: 'CloneOption', noTags: false, shallow: false, timeout: 120],
                                                     [$class: 'CheckoutOption', timeout: 120],
                                                     [$class: 'CleanBeforeCheckout', deleteUntrackedNestedRepositories: false],
@@ -126,7 +125,7 @@ abstract class BasePipeline implements Pipeline, Serializable {
             } catch (Exception ignored) {
                 steps.checkout([$class           : 'GitSCM',
                                 branches         : [[name: config.scm.branch]],
-                                userRemoteConfigs: [[name: config.scm.repoName, url: config.scm.repoUrl, credentialsId: scmCredentialsId]],
+                                userRemoteConfigs: [[name: "origin", url: config.scm.repoUrl, credentialsId: scmCredentialsId]],
                                 extensions       : [[$class: 'CloneOption', noTags: false, shallow: false, timeout: 120],
                                                     [$class: 'CheckoutOption', timeout: 120],
                                                     [$class: 'CleanBeforeCheckout', deleteUntrackedNestedRepositories: false],
@@ -164,9 +163,14 @@ abstract class BasePipeline implements Pipeline, Serializable {
                 steps.dir(it.repoName) {
                     this.configGit()
 
-                    if (it.branch == null) {
+                    if (!it.branch) {
                         it.branch = Utils.getBranchName(steps)
                     }
+
+                    if (!it.credentialsId) {
+                        scmCredentialsId = it.credentialsId
+                    }
+
                     try {
                         steps.checkout([$class           : 'GitSCM',
                                         branches         : [[name: it.branch]],
