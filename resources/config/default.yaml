@@ -28,3 +28,10 @@ notificationDingtalkFailureReceiverVar: "IDO_NOTIFICATION_FAILURE_DINGTALK"
 notificationDingtalkStdReceiver: ""
 notificationDingtalkFailureReceiver: ""
 
+# Source code root path. A relative path to workspace root folder
+srcRootPath: "."
+
+# Java common config
+# "maven", "gradle"
+buildTool: "maven"
+useWrapper: true
