@@ -226,11 +226,13 @@ abstract class BasePipeline implements Pipeline, Serializable {
     }
 
     def versioning(Map config) {
-        Version verObj = new Version()
-        String ver = verObj.getVersion(steps, config)
-        steps.echo "version: " + ver
-        config.version = ver
-        steps.currentBuild.displayName = ver
+        if (!config.version) {
+            Version verObj = new Version()
+            String ver = verObj.getVersion(steps, config)
+            steps.echo "version: " + ver
+            config.version = ver
+        }
+        steps.currentBuild.displayName = config.version
     }
 
     def build(Map config) {}
