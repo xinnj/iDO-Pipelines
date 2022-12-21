@@ -7,7 +7,6 @@ import java.util.Date.*
 import hudson.scm.*
 import hudson.model.*
 import com.ido.pipeline.Utils
-import com.ido.pipeline.base.Version
 
 /**
  * @author xinnj
@@ -30,28 +29,63 @@ abstract class BasePipeline implements Pipeline, Serializable {
             this.stopCurrentJob()
         }
 
-        steps.node(config.nodeName) {
-            try {
-                customStages(config)
-                steps.currentBuild.result = 'SUCCESS'
-            }
-            catch (FlowInterruptedException interruptEx) {
-                steps.echo 'Received FlowInterruptedException'
-                steps.currentBuild.result = 'ABORTED'
-            }
-            catch (Exception e) {
-                if (fastStop != "") {
-                    steps.currentBuild.result = fastStop
-                } else {
-                    steps.echo 'Exception occurred: ' + e.toString()
-                    steps.currentBuild.result = 'FAILURE'
+        switch (config.nodeType) {
+            case "standalone":
+                steps.node(config.nodeName) {
+                    try {
+                        customStages(config)
+                        steps.currentBuild.result = 'SUCCESS'
+                    }
+                    catch (FlowInterruptedException interruptEx) {
+                        steps.echo 'Received FlowInterruptedException'
+                        steps.currentBuild.result = 'ABORTED'
+                    }
+                    catch (Exception e) {
+                        if (fastStop != "") {
+                            steps.currentBuild.result = fastStop
+                        } else {
+                            steps.echo 'Exception occurred: ' + e.toString()
+                            steps.currentBuild.result = 'FAILURE'
+                        }
+                    }
+                    finally {
+                        steps.echo "########## Stage: Notify ##########"
+                        this.notify(config)
+                    }
                 }
-            }
-            finally {
-                steps.echo "########## Stage: Notify ##########"
-                this.notify(config)
-            }
+                break
+            case "k8s":
+                steps.podTemplate(yaml: config.podTemplate,
+                        podRetention: steps.never(),
+                        workspaceVolume: steps.hostPathWorkspaceVolume(config.workspaceVolumePath)) {
+                    steps.node(POD_LABEL) {
+                        try {
+                            customStages(config)
+                            steps.currentBuild.result = 'SUCCESS'
+                        }
+                        catch (FlowInterruptedException interruptEx) {
+                            steps.echo 'Received FlowInterruptedException'
+                            steps.currentBuild.result = 'ABORTED'
+                        }
+                        catch (Exception e) {
+                            if (fastStop != "") {
+                                steps.currentBuild.result = fastStop
+                            } else {
+                                steps.echo 'Exception occurred: ' + e.toString()
+                                steps.currentBuild.result = 'FAILURE'
+                            }
+                        }
+                        finally {
+                            steps.echo "########## Stage: Notify ##########"
+                            this.notify(config)
+                        }
+                    }
+                }
+                break
+            default:
+                steps.error "Node type: ${config.nodeType} is not supported!"
         }
+
 
         return result
     }
@@ -235,7 +269,7 @@ abstract class BasePipeline implements Pipeline, Serializable {
         steps.currentBuild.displayName = config.version
     }
 
-    def build(Map config) {}
+    def abstract build(Map config)
 
     def notify(Map config) {
         if (steps.fileExists('_finalVersion')) {
