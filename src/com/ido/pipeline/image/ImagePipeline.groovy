@@ -50,6 +50,15 @@ abstract class ImagePipeline extends BasePipeline {
         }
     }
 
+    @Override
+    def prepare(Map config) {
+        super.prepare(config)
+
+        if (!config.imageName) {
+            steps.error "imageName is empty!"
+        }
+    }
+
     def abstract ut(Map config)
 
     def abstract codeAnalysis(Map config)

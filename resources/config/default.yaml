@@ -6,6 +6,7 @@ nodeType: "standalone"
 nodeName: ""
 podTemplate: ""
 workspaceVolumePath: "/tmp/jenkins"
+activeDeadlineSeconds: 1800
 
 # "GIT_DESCRIBE", "GIT_FILE", "JENKINS_BUILD_NUMBER"
 versionMethod: "GIT_DESCRIBE"
@@ -40,5 +41,27 @@ srcRootPath: "."
 
 # Java common config
 # "maven", "gradle"
-buildTool: "maven"
-useWrapper: true
+javaBuildTool: "maven"
+# JDK version of build tool, can be "8", "11", "17", "19"
+jdkVersion: "8"
+mavenVersion: "3.8.6"
+gradleVersion: "7.6"
+javaModuleName: "."
+javaUpdateDependencies: true
+
+# Docker image config
+imageName: ""
+registryPull:
+  url: ""
+  credentialsId: ""
+registryPush:
+  url: "registry.cn-zhangjiakou.aliyuncs.com/bizconf_devops"
+  credentialsId: "registry"
+
+# SpringBoot config
+springBoot:
+  mainClass: ""
+  appRoot: "/app"
+  baseImage: "amazoncorretto:8"
+  jvmFlages: "-Duser.timezone=PRC -Dfile.encoding=UTF-8"
+  environment: "TZ='Asia/Shanghai'"
