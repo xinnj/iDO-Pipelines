@@ -12,8 +12,18 @@ Map call(Map config) {
 //    echo command
 //    echo command.execute().text
 
-    clsLoader.addClasspath(scriptDir + "/../src/com/ido/pipeline/")
-    pipeline = clsLoader.loadClass(config.pipelineType, true, false)?.newInstance(this)
+    def m = config.pipelineType =~ /(.*\/)(.*)/;
+    String classPath = ""
+    String className = ""
+    if (m) {
+        classPath = m[0][1]
+        className = m[0][2]
+    } else {
+        className = config.pipelineType
+    }
+
+    clsLoader.addClasspath(scriptDir + "/../src/com/ido/pipeline/" + classPath)
+    pipeline = clsLoader.loadClass(className, true, false)?.newInstance(this)
 
     if (pipeline != null) {
         echo "########## Start Pipeline ##########"
