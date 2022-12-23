@@ -11,17 +11,21 @@ public class Utils {
     @SuppressWarnings('GroovyAssignabilityCheck')
     static Map setDefault(Map config, steps) {
         Map defaults = steps.readYaml(text: steps.libraryResource('config/default.yaml'))
+        return deepMerge(defaults, config)
+    }
 
-        defaults.each { k, v ->
-            L:
-            {
-                if (config.get(k) == null) {
-                    config.put(k, v)
-                }
+    // Refer to: https://e.printstacktrace.blog/how-to-merge-two-maps-in-groovy/
+    static Map deepMerge(Map lhs, Map rhs) {
+        return rhs.inject(lhs.clone()) { map, entry ->
+            if (map[entry.key] instanceof Map && entry.value instanceof Map) {
+                map[entry.key] = deepMerge(map[entry.key], entry.value)
+            } else if (map[entry.key] instanceof Collection && entry.value instanceof Collection) {
+                map[entry.key] += entry.value
+            } else {
+                map[entry.key] = entry.value
             }
+            return map
         }
-
-        return config
     }
 
     static String getBranchName(steps) {
