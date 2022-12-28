@@ -55,8 +55,15 @@ abstract class BasePipeline implements Pipeline, Serializable {
                 }
                 break
             case "k8s":
+                def podRetentionType = { Boolean k ->
+                    if (k) {
+                        return steps.always()
+                    } else {
+                        return steps.never()
+                    }
+                }
                 steps.podTemplate(yaml: config.podTemplate,
-                        podRetention: steps.onFailure(),
+                        podRetention: podRetentionType(config.keepBuilderPod),
                         activeDeadlineSeconds: config.activeDeadlineSeconds,
                         workspaceVolume: steps.hostPathWorkspaceVolume(config.workspaceVolumePath)) {
                     steps.node(steps.POD_LABEL) {

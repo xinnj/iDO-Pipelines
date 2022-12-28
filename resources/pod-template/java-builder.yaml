@@ -6,21 +6,23 @@ spec:
       image: amazoncorretto:<jdk-version>
       imagePullPolicy: IfNotPresent
       command:
-      - sleep
+        - sleep
       args:
-      - 1d
+        - 4h
       volumeMounts:
-      - mountPath: /home/jenkins/agent
-        name: workspace-volume
+        - mountPath: /home/jenkins/agent
+          name: workspace-volume
       resources:
         requests:
           cpu: 100m
           memory: 256Mi
       env:
-      - name: "MAVEN_USER_HOME"
-        value: "/home/jenkins/agent/m2"
-      - name: "GRADLE_USER_HOME"
-        value: "/home/jenkins/agent/gradle"
+        - name: "XDG_CONFIG_HOME"
+          value: "/home/jenkins/agent/jib"
+        - name: "MAVEN_USER_HOME"
+          value: "/home/jenkins/agent/m2"
+        - name: "GRADLE_USER_HOME"
+          value: "/home/jenkins/agent/gradle"
     - name: jnlp
       image: "jenkins/inbound-agent:4.11-1-jdk11"
   securityContext:

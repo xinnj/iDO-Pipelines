@@ -172,7 +172,7 @@ class SpringBootImagePipeline extends ImagePipeline {
                             -Djib.container.appRoot=${config.springBoot.appRoot} \
                             -Djib.container.workingDirectory=${config.springBoot.appRoot} \
                             -Djib.container.creationTime=USE_CURRENT_TIMESTAMP \
-                            -Djib.baseImageCache=/home/jenkins/agent/jib-cache \
+                            -Djib.baseImageCache=/home/jenkins/agent/jib/cache \
                             ${main_class} \
                             ${jvm_flags} \
                             ${environment} \
@@ -182,32 +182,62 @@ class SpringBootImagePipeline extends ImagePipeline {
                     """
                     break
                 case "gradle":
+                    addPlugin('com.google.cloud.tools.jib', '3.3.1', "${config.srcRootPath}/build.gradle")
+
                     String updateDependenciesArgs = ""
                     if (config.javaUpdateDependencies) {
                         updateDependenciesArgs = "--refresh-dependencies"
                     }
                     steps.sh """
                         cd "${config.srcRootPath}"
+                        mv -f ./build.gradle ./build.gradle-original
+                        cp -f ./build.gradle-com.google.cloud.tools.jib ./build.gradle
+                        
                         sh ./gradlew clean jib \
+                            --no-daemon \
                             -x test \
                             ${updateDependenciesArgs} \
                             -I ./default-gradle-init.gradle \
                             -Dfile.encoding=UTF-8 \
-                            "-Dorg.gradle.jvmargs=-Xmx2048m -XX:MaxPermSize=512m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
+                            "-Dorg.gradle.jvmargs=-Xmx2048m -XX:MaxPermSize=512m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" \
                             -p ${config.javaModuleName} \
                             -Djib.container.appRoot=${config.springBoot.appRoot} \
                             -Djib.container.workingDirectory=${config.springBoot.appRoot} \
                             -Djib.container.creationTime=USE_CURRENT_TIMESTAMP \
-                            -Djib.baseImageCache=/home/jenkins/agent/jib-cache \
+                            -Djib.baseImageCache=/home/jenkins/agent/jib/cache \
                             ${main_class} \
                             ${jvm_flags} \
                             ${environment} \
                             -Djib.allowInsecureRegistries=true \
                             ${jib_from_auth} -Djib.from.image=${config.springBoot.baseImage} \
                             ${jib_to_auth} -Djib.to.image=${registryPush.url}/${config.imageName} -Djib.to.tags=${config.version}
+
+                        cp -f ./build.gradle-original ./build.gradle
                     """
                     break
             }
+        }
+    }
+
+    private addPlugin (String pluginId, String pluginVersion, String buildGradlePath) {
+        String buildGradle = steps.readFile(file: buildGradlePath, encoding: "UTF-8")
+        def m = buildGradle =~ /(?is)${pluginId}/;
+        if (!m) {
+            String plugins = ""
+            m = buildGradle =~ /(?is)(plugins\s*?\{.*?)\}/;
+            if (m) {
+                plugins = m[0][1] + "\tid \"${pluginId}\" version \"${pluginVersion}\"\n}"
+            } else {
+                plugins = """
+plugins {
+  id "${pluginId}" version "${pluginVersion}"
+}
+"""
+            }
+            m = null
+
+            buildGradle = buildGradle.replaceAll("(?is)plugins\\s*?\\{.*?\\}", plugins)
+            steps.writeFile(file: "${buildGradlePath}-${pluginId}", text: buildGradle, encoding: 'UTF-8')
         }
     }
 }

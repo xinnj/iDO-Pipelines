@@ -6,6 +6,7 @@ nodeType: "standalone"
 nodeName: ""
 podTemplate: ""
 workspaceVolumePath: "/tmp/jenkins"
+keepBuilderPod: false
 activeDeadlineSeconds: 1800
 
 # "GIT_DESCRIBE", "GIT_FILE", "JENKINS_BUILD_NUMBER"
