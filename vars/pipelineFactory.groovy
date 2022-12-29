@@ -1,4 +1,3 @@
-@NonCPS
 Map call(Map config) {
     def pipeline = null
 
@@ -21,12 +20,15 @@ Map call(Map config) {
     } else {
         className = config.pipelineType
     }
+    m = null
 
     clsLoader.addClasspath(scriptDir + "/../src/com/ido/pipeline/" + classPath)
     pipeline = clsLoader.loadClass(className, true, false)?.newInstance(this)
+    clsLoader = null
 
     if (pipeline != null) {
         echo "########## Start Pipeline ##########"
         return pipeline.runPipeline(config)
     }
+    pipeline = null
 }
