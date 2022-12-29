@@ -8,7 +8,7 @@ spec:
       command:
         - sleep
       args:
-        - 4h
+        - <keepBuilderPodMinutes>m
       volumeMounts:
         - mountPath: /home/jenkins/agent
           name: workspace-volume

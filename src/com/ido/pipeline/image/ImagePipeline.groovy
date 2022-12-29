@@ -12,6 +12,8 @@ abstract class ImagePipeline extends BasePipeline {
 
     @Override
     Map runPipeline(Map config) {
+        config.podTemplate = (config.podTemplate as String).replaceAll('<keepBuilderPodMinutes>', config.keepBuilderPodMinutes)
+
         def result = super.runPipeline(config)
         result.put("imageTag", config.version)
         return result

@@ -64,7 +64,6 @@ abstract class BasePipeline implements Pipeline, Serializable {
                 }
                 steps.podTemplate(yaml: config.podTemplate,
                         podRetention: podRetentionType(config.keepBuilderPod),
-                        activeDeadlineSeconds: config.activeDeadlineSeconds,
                         workspaceVolume: steps.hostPathWorkspaceVolume(config.workspaceVolumePath)) {
                     steps.node(steps.POD_LABEL) {
                         try {
