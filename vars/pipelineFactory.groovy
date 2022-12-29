@@ -1,3 +1,5 @@
+import com.ido.pipeline.Utils
+
 Map call(Map config) {
     def pipeline = null
 
@@ -28,7 +30,7 @@ Map call(Map config) {
 
     if (pipeline != null) {
         echo "########## Start Pipeline ##########"
-        return pipeline.runPipeline(config)
+        return pipeline.runPipeline(Utils.setDefault(config, this))
     }
     pipeline = null
 }

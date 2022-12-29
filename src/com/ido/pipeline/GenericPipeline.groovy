@@ -6,11 +6,11 @@ import com.ido.pipeline.base.BasePipeline
  * @author xinnj
  */
 class GenericPipeline extends BasePipeline {
-    GenericPipeline(steps) {
+    GenericPipeline(Object steps) {
         super(steps)
     }
 
-    def build(Map config) {
+    def build() {
         if (steps.isUnix()) {
             steps.sh '''
                 echo "hello world"

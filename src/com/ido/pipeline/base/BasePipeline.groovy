@@ -13,16 +13,16 @@ import com.ido.pipeline.Utils
  */
 abstract class BasePipeline implements Pipeline, Serializable {
     def steps
+    Map config
     String fastStop = ""
 
-    BasePipeline(steps) {
+    BasePipeline(Object steps) {
         this.steps = steps
     }
 
     Map runPipeline(Map config) {
+        this.config = config
         def result = [:]
-
-        config = Utils.setDefault(config, steps)
 
         if (config.stopAllRunningBuild) {
             // Stop all running build of the same job
@@ -33,7 +33,7 @@ abstract class BasePipeline implements Pipeline, Serializable {
             case "standalone":
                 steps.node(config.nodeName) {
                     try {
-                        customStages(config)
+                        customStages()
                         steps.currentBuild.result = 'SUCCESS'
                     }
                     catch (FlowInterruptedException interruptEx) {
@@ -50,7 +50,7 @@ abstract class BasePipeline implements Pipeline, Serializable {
                     }
                     finally {
                         steps.echo "########## Stage: Notify ##########"
-                        this.notify(config)
+                        this.sendNotification()
                     }
                 }
                 break
@@ -68,7 +68,7 @@ abstract class BasePipeline implements Pipeline, Serializable {
                         workspaceVolume: steps.hostPathWorkspaceVolume(config.workspaceVolumePath)) {
                     steps.node(steps.POD_LABEL) {
                         try {
-                            customStages(config)
+                            customStages()
                             steps.currentBuild.result = 'SUCCESS'
                         }
                         catch (FlowInterruptedException interruptEx) {
@@ -85,7 +85,7 @@ abstract class BasePipeline implements Pipeline, Serializable {
                         }
                         finally {
                             steps.echo "########## Stage: Notify ##########"
-                            this.notify(config)
+                            this.sendNotification()
                         }
                     }
                 }
@@ -98,29 +98,29 @@ abstract class BasePipeline implements Pipeline, Serializable {
         return result
     }
 
-    def customStages(Map config) {
+    def customStages() {
         steps.stage('Prepare') {
             steps.echo "########## Stage: Prepare ##########"
-            this.prepare(config)
+            this.prepare()
         }
 
         steps.stage('SCM') {
             steps.echo "########## Stage: SCM ##########"
-            this.scm(config)
+            this.scm()
         }
 
         steps.stage('Versioning') {
             steps.echo "########## Stage: Versioning ##########"
-            this.versioning(config)
+            this.versioning()
         }
 
         steps.stage('Build') {
             steps.echo "########## Stage: Build ##########"
-            this.build(config)
+            this.build()
         }
     }
 
-    def prepare(Map config) {
+    def prepare() {
         String upstreamProjects = ""
         String branch = Utils.getBranchName(steps)
 
@@ -148,7 +148,7 @@ abstract class BasePipeline implements Pipeline, Serializable {
         }
     }
 
-    def scm(Map config) {
+    def scm() {
         this.configGit()
 
         String scmCredentialsId = ""
@@ -267,7 +267,7 @@ abstract class BasePipeline implements Pipeline, Serializable {
         }
     }
 
-    def versioning(Map config) {
+    def versioning() {
         if (!config.version) {
             Version verObj = new Version()
             String ver = verObj.getVersion(steps, config)
@@ -277,9 +277,9 @@ abstract class BasePipeline implements Pipeline, Serializable {
         steps.currentBuild.displayName = config.version
     }
 
-    def abstract build(Map config)
+    def abstract build()
 
-    def notify(Map config) {
+    def sendNotification() {
         if (steps.fileExists('_finalVersion')) {
             steps.currentBuild.displayName = steps.readFile(file: '_finalVersion', encoding: "UTF-8").trim()
         }

@@ -14,7 +14,6 @@ class SpringBootImagePipeline extends ImagePipeline {
 
     @Override
     Map runPipeline(Map config) {
-        config = Utils.setDefault(config, steps)
         config.nodeType = "k8s"
         String javaBuilder = steps.libraryResource(resource: 'pod-template/java-builder.yaml', encoding: 'UTF-8')
         javaBuilder = javaBuilder.replaceAll('<jdk-version>', config.jdkVersion)
@@ -25,8 +24,8 @@ class SpringBootImagePipeline extends ImagePipeline {
     }
 
     @Override
-    def prepare(Map config) {
-        super.prepare(config)
+    def prepare() {
+        super.prepare()
 
         if (!config.springBoot.baseImage) {
             steps.error "springBoot.baseImage is empty!"
@@ -34,8 +33,8 @@ class SpringBootImagePipeline extends ImagePipeline {
     }
 
     @Override
-    def scm(Map config) {
-        super.scm(config)
+    def scm() {
+        super.scm()
 
         switch (config.javaBuildTool) {
             case "maven":
@@ -84,7 +83,7 @@ class SpringBootImagePipeline extends ImagePipeline {
     }
 
     @Override
-    def ut(Map config) {
+    def ut() {
         // todo:
         return
         steps.container('builder') {
@@ -97,7 +96,7 @@ class SpringBootImagePipeline extends ImagePipeline {
     }
 
     @Override
-    def codeAnalysis(Map config) {
+    def codeAnalysis() {
         // todo:
         return
         steps.withSonarQubeEnv() {
@@ -115,7 +114,7 @@ class SpringBootImagePipeline extends ImagePipeline {
     }
 
     @Override
-    def build(Map config) {
+    def build() {
         def registryPull = config.registryPull as Map
         def jib_from_auth = ""
         if (registryPull != null) {

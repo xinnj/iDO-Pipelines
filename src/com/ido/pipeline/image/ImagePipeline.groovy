@@ -6,7 +6,7 @@ import com.ido.pipeline.base.BasePipeline
  * @author xinnj
  */
 abstract class ImagePipeline extends BasePipeline {
-    ImagePipeline(steps) {
+    ImagePipeline(Object steps) {
         super(steps)
     }
 
@@ -18,54 +18,54 @@ abstract class ImagePipeline extends BasePipeline {
     }
 
     @Override
-    def customStages(Map config) {
+    def customStages() {
         steps.stage('Prepare') {
             steps.echo "########## Stage: Prepare ##########"
-            this.prepare(config)
+            this.prepare()
         }
 
         steps.stage('SCM') {
             steps.echo "########## Stage: SCM ##########"
-            this.scm(config)
+            this.scm()
         }
 
         steps.stage('Versioning') {
             steps.echo "########## Stage: Versioning ##########"
-            this.versioning(config)
+            this.versioning()
         }
 
         steps.stage('UT') {
             steps.echo "########## Stage: UT ##########"
-            this.ut(config)
+            this.ut()
         }
 
         steps.stage('Code Analysis') {
             steps.echo "########## Stage: Code Analysis ##########"
-            this.codeAnalysis(config)
+            this.codeAnalysis()
         }
 
         steps.stage('Build') {
             steps.echo "########## Stage: Build ##########"
-            this.build(config)
+            this.build()
         }
     }
 
     @Override
-    def prepare(Map config) {
-        super.prepare(config)
+    def prepare() {
+        super.prepare()
 
         if (!config.imageName) {
             steps.error "imageName is empty!"
         }
     }
 
-    def abstract ut(Map config)
+    def abstract ut()
 
-    def abstract codeAnalysis(Map config)
+    def abstract codeAnalysis()
 
     @Override
-    def versioning(Map config) {
-        super.versioning(config)
+    def versioning() {
+        super.versioning()
 
         if (!config.chartVersion) {
             String[] strArr = config.version.split('\\.')
