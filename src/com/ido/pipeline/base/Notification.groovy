@@ -130,9 +130,9 @@ class Notification {
                                     }
 
                                     if (config.notificationSendFailureToStd
-                                            && failureReceiver
-                                            && failureReceiver != stdReceiver) {
-                                        this.sendDingtalk(failureReceiver, 'Failure')
+                                            && stdReceiver
+                                            && stdReceiver != failureReceiver) {
+                                        this.sendDingtalk(stdReceiver, 'Failure')
                                     }
                                     break;
                             }
