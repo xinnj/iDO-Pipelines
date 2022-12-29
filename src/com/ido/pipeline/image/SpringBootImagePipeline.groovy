@@ -6,8 +6,6 @@ import com.ido.pipeline.Utils
  * @author xinnj
  */
 class SpringBootImagePipeline extends ImagePipeline {
-    String buildTool
-
     SpringBootImagePipeline(Object steps) {
         super(steps)
     }

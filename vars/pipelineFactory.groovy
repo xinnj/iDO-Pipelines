@@ -1,6 +1,7 @@
 import com.ido.pipeline.Utils
 
-Map call(Map config) {
+Map call(String configYaml) {
+    Map config = readYaml(text: configYaml)
     def pipeline = null
 
     def clsLoader = this.getClass().classLoader
