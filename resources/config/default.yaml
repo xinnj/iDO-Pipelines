@@ -16,6 +16,8 @@ versionMethod: "GIT_DESCRIBE"
 versionRootPath: "."
 # The file contains version data if versionMethod="GIT_FILE"
 versionFile: "_version.txt"
+# Specify the version of the build
+version: ""
 
 # Notification common config
 notifications: []
@@ -58,6 +60,14 @@ registryPull:
 registryPush:
   url: "registry.cn-zhangjiakou.aliyuncs.com/bizconf_devops"
   credentialsId: "registry"
+
+# Helm chart config
+helm:
+  buildChart: true
+  chartPath: "helm"
+  repo: "https://devops.bizconf.cn/nexus/repository/helm-hosted/"
+  uploadCredentialId: "uploader"
+  chartVersion: ""
 
 # SpringBoot config
 springBoot:
