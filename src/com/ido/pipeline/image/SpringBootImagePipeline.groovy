@@ -1,6 +1,6 @@
 package com.ido.pipeline.image
 
-import com.ido.pipeline.Utils
+import com.ido.pipeline.base.HelmChart
 
 /**
  * @author xinnj
@@ -212,10 +212,25 @@ class SpringBootImagePipeline extends ImagePipeline {
                     """
                     break
             }
+
+            if (config.helm.buildChart && config.helm.chartPath) {
+                Map values = steps.readYaml(file: "${config.helm.chartPath)}/values.yaml")
+                values.image.tag = config.version
+                steps.writeYaml(file: "${config.helm.chartPath)}/values.yaml", data: values, charset: "UTF-8", overwrite: true)
+
+                steps.container('helm') {
+                    steps.sh """
+                        helm package --version ${config.helm.chartVersion} --app-version ${config.version} ${config.helm.chartPath}
+                    """
+                }
+
+                HelmChart helmChart = new HelmChart()
+                helmChart.upload(steps, config)
+            }
         }
     }
 
-    private addPlugin (String pluginId, String pluginVersion, String buildGradlePath) {
+    private addPlugin(String pluginId, String pluginVersion, String buildGradlePath) {
         String buildGradle = steps.readFile(file: buildGradlePath, encoding: "UTF-8")
         def m = buildGradle =~ /(?is)${pluginId}/;
         if (!m) {

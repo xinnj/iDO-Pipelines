@@ -77,6 +77,9 @@ abstract class ImagePipeline extends BasePipeline {
                 chartVersion = strArr[0] + '.' + strArr[1] + '.' + strArr[2]
             } else {
                 chartVersion = strArr.join('.')
+                for (int i = 1; i <= (3 - strArr.size()); i++) {
+                    chartVersion = chartVersion + '.0'
+                }
             }
             config.put("chartVersion", chartVersion)
         }
