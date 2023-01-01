@@ -1,6 +1,7 @@
 package com.ido.pipeline.image
 
 import com.ido.pipeline.base.BasePipeline
+import com.ido.pipeline.base.HelmChart
 
 /**
  * @author xinnj
@@ -46,9 +47,14 @@ abstract class ImagePipeline extends BasePipeline {
             this.codeAnalysis()
         }
 
-        steps.stage('Build') {
-            steps.echo "########## Stage: Build ##########"
+        steps.stage('Build Image') {
+            steps.echo "########## Stage: Build Image ##########"
             this.build()
+        }
+
+        steps.stage('Build Helm Chart') {
+            steps.echo "########## Stage: Build Helm Chart ##########"
+            this.buildHelmChart()
         }
     }
 
@@ -82,6 +88,23 @@ abstract class ImagePipeline extends BasePipeline {
                 }
             }
             config.helm.put("chartVersion", chartVersion)
+        }
+    }
+
+    def buildHelmChart() {
+        if (config.helm.buildChart && config.helm.chartPath) {
+            Map values = steps.readYaml(file: "${config.helm.chartPath}/values.yaml")
+            values.image.tag = config.version
+            steps.writeYaml(file: "${config.helm.chartPath}/values.yaml", data: values, charset: "UTF-8", overwrite: true)
+
+            steps.container('helm') {
+                steps.sh """#!/bin/sh
+                        helm package --version ${config.helm.chartVersion} --app-version ${config.version} ${config.helm.chartPath}
+                    """
+            }
+
+            HelmChart helmChart = new HelmChart()
+            helmChart.upload(steps, config)
         }
     }
 }
