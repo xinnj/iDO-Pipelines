@@ -69,7 +69,7 @@ abstract class ImagePipeline extends BasePipeline {
     def versioning() {
         super.versioning()
 
-        if (!config.chartVersion) {
+        if (!config.helm.chartVersion) {
             String[] strArr = config.version.split('\\.')
 
             String chartVersion
@@ -81,7 +81,7 @@ abstract class ImagePipeline extends BasePipeline {
                     chartVersion = chartVersion + '.0'
                 }
             }
-            config.put("chartVersion", chartVersion)
+            config.helm.put("chartVersion", chartVersion)
         }
     }
 }
