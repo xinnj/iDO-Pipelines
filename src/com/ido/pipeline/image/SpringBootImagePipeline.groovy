@@ -48,7 +48,7 @@ class SpringBootImagePipeline extends ImagePipeline {
                 steps.writeFile(file: "${config.srcRootPath}/default-maven-settings.xml", text: settings, encoding: "UTF-8")
 
                 steps.container('builder') {
-                    steps.sh """
+                    steps.sh """#!/bin/sh
                         cd "${config.srcRootPath}"
                         sh ./mvnw -v
                     """
@@ -68,7 +68,7 @@ class SpringBootImagePipeline extends ImagePipeline {
                 steps.writeFile(file: "${config.srcRootPath}/default-gradle-init.gradle", text: initScript, encoding: "UTF-8")
 
                 steps.container('builder') {
-                    steps.sh """
+                    steps.sh """#!/bin/sh
                         cd "${config.srcRootPath}"
                         sh ./gradlew -v
                     """
@@ -155,7 +155,7 @@ class SpringBootImagePipeline extends ImagePipeline {
                         updateDependenciesArgs = "-U"
                     }
 
-                    steps.sh """
+                    steps.sh """#!/bin/sh
                         export MAVEN_OPTS="-Xmx2048m -XX:MaxPermSize=512m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
                         cd "${config.srcRootPath}"
                         sh ./mvnw clean compile com.google.cloud.tools:jib-maven-plugin:3.3.1:build \
@@ -184,7 +184,7 @@ class SpringBootImagePipeline extends ImagePipeline {
                     if (config.javaUpdateDependencies) {
                         updateDependenciesArgs = "--refresh-dependencies"
                     }
-                    steps.sh """
+                    steps.sh """#!/bin/sh
                         cd "${config.srcRootPath}"
                         mv -f ./build.gradle ./build.gradle-original
                         cp -f ./build.gradle-com.google.cloud.tools.jib ./build.gradle
@@ -219,7 +219,7 @@ class SpringBootImagePipeline extends ImagePipeline {
                 steps.writeYaml(file: "${config.helm.chartPath}/values.yaml", data: values, charset: "UTF-8", overwrite: true)
 
                 steps.container('helm') {
-                    steps.sh """
+                    steps.sh """#!/bin/sh
                         helm package --version ${config.helm.chartVersion} --app-version ${config.version} ${config.helm.chartPath}
                     """
                 }

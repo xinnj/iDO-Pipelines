@@ -23,6 +23,16 @@ spec:
           value: "/home/jenkins/agent/m2"
         - name: "GRADLE_USER_HOME"
           value: "/home/jenkins/agent/gradle"
+    - name: helm
+      image: "xinnj/helm"
+      imagePullPolicy: IfNotPresent
+      command:
+        - sleep
+      args:
+        - <keepBuilderPodMinutes>m
+      volumeMounts:
+        - mountPath: /home/jenkins/agent
+          name: workspace-volume
     - name: jnlp
       image: "jenkins/inbound-agent:4.11-1-jdk11"
   securityContext:
