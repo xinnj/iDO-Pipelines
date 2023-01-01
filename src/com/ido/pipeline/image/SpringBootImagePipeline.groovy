@@ -212,21 +212,6 @@ class SpringBootImagePipeline extends ImagePipeline {
                     """
                     break
             }
-
-            if (config.helm.buildChart && config.helm.chartPath) {
-                Map values = steps.readYaml(file: "${config.helm.chartPath}/values.yaml")
-                values.image.tag = config.version
-                steps.writeYaml(file: "${config.helm.chartPath}/values.yaml", data: values, charset: "UTF-8", overwrite: true)
-
-                steps.container('helm') {
-                    steps.sh """#!/bin/sh
-                        helm package --version ${config.helm.chartVersion} --app-version ${config.version} ${config.helm.chartPath}
-                    """
-                }
-
-                HelmChart helmChart = new HelmChart()
-                helmChart.upload(steps, config)
-            }
         }
     }
 
