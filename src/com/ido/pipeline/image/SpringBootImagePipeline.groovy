@@ -214,9 +214,9 @@ class SpringBootImagePipeline extends ImagePipeline {
             }
 
             if (config.helm.buildChart && config.helm.chartPath) {
-                Map values = steps.readYaml(file: "${config.helm.chartPath)}/values.yaml")
+                Map values = steps.readYaml(file: "${config.helm.chartPath}/values.yaml")
                 values.image.tag = config.version
-                steps.writeYaml(file: "${config.helm.chartPath)}/values.yaml", data: values, charset: "UTF-8", overwrite: true)
+                steps.writeYaml(file: "${config.helm.chartPath}/values.yaml", data: values, charset: "UTF-8", overwrite: true)
 
                 steps.container('helm') {
                     steps.sh """
