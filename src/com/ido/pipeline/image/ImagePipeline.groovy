@@ -38,13 +38,17 @@ abstract class ImagePipeline extends BasePipeline {
         }
 
         steps.stage('UT') {
-            steps.echo "########## Stage: UT ##########"
-            this.ut()
+            if (config.utEnabled) {
+                steps.echo "########## Stage: UT ##########"
+                this.ut()
+            }
         }
 
         steps.stage('Code Analysis') {
-            steps.echo "########## Stage: Code Analysis ##########"
-            this.codeAnalysis()
+            if (config.codeAnalysisEnabled) {
+                steps.echo "########## Stage: Code Analysis ##########"
+                this.codeAnalysis()
+            }
         }
 
         steps.stage('Build Image') {
@@ -53,8 +57,10 @@ abstract class ImagePipeline extends BasePipeline {
         }
 
         steps.stage('Build Helm Chart') {
-            steps.echo "########## Stage: Build Helm Chart ##########"
-            this.buildHelmChart()
+            if (config.helm.buildChart && config.helm.chartPath) {
+                steps.echo "########## Stage: Build Helm Chart ##########"
+                this.buildHelmChart()
+            }
         }
     }
 
@@ -92,19 +98,17 @@ abstract class ImagePipeline extends BasePipeline {
     }
 
     def buildHelmChart() {
-        if (config.helm.buildChart && config.helm.chartPath) {
-            Map values = steps.readYaml(file: "${config.helm.chartPath}/values.yaml")
-            values.image.tag = config.version
-            steps.writeYaml(file: "${config.helm.chartPath}/values.yaml", data: values, charset: "UTF-8", overwrite: true)
+        Map values = steps.readYaml(file: "${config.helm.chartPath}/values.yaml")
+        values.image.tag = config.version
+        steps.writeYaml(file: "${config.helm.chartPath}/values.yaml", data: values, charset: "UTF-8", overwrite: true)
 
-            steps.container('helm') {
-                steps.sh """#!/bin/sh
-                        helm package --version ${config.helm.chartVersion} --app-version ${config.version} ${config.helm.chartPath}
-                    """
-            }
-
-            HelmChart helmChart = new HelmChart()
-            helmChart.upload(steps, config)
+        steps.container('helm') {
+            steps.sh """#!/bin/sh
+                helm package --version ${config.helm.chartVersion} --app-version ${config.version} ${config.helm.chartPath}
+            """
         }
+
+        HelmChart helmChart = new HelmChart()
+        helmChart.upload(steps, config)
     }
 }
