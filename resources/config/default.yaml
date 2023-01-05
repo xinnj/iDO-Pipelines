@@ -1,6 +1,14 @@
+## Common process config
+# All running and queued builds of the triggered job will be aborted if enabled
 stopAllRunningBuild: true
+# Source code root path. A relative path to workspace root folder
+srcRootPath: "."
+# Execute UT
+utEnabled: false
+# execute code analysis
+codeAnalysisEnabled: false
 
-# Node config
+## Node config
 # "standalone", "k8s"
 nodeType: "standalone"
 nodeName: ""
@@ -9,6 +17,7 @@ workspaceVolumePath: "/tmp/jenkins"
 keepBuilderPod: false
 keepBuilderPodMinutes: 240
 
+## Version config
 # "GIT_DESCRIBE", "GIT_FILE", "JENKINS_BUILD_NUMBER"
 versionMethod: "GIT_DESCRIBE"
 # The git root path if versionMethod="GIT_DESCRIBE"
@@ -19,7 +28,7 @@ versionFile: "_version.txt"
 # Specify the version of the build
 version: ""
 
-# Notification common config
+## Notification common config
 notifications: []
 notificationFailureOnly: false
 notificationSendFailureToStd: true
@@ -39,10 +48,7 @@ notificationDingtalkFailureReceiverVar: "IDO_NOTIFICATION_FAILURE_DINGTALK"
 notificationDingtalkStdReceiver: ""
 notificationDingtalkFailureReceiver: ""
 
-# Source code root path. A relative path to workspace root folder
-srcRootPath: "."
-
-# Java common config
+## Java common config
 # "maven", "gradle"
 javaBuildTool: "maven"
 # JDK version of build tool, can be "8", "11", "17", "19"
@@ -51,8 +57,9 @@ mavenVersion: "3.8.6"
 gradleVersion: "7.6"
 javaModuleName: "."
 javaUpdateDependencies: true
+jacocoLineCoverageThreshold: "0"
 
-# Docker image config
+## Docker image config
 imageName: ""
 registryPull:
   url: ""
@@ -69,7 +76,7 @@ helm:
   uploadCredentialId: "uploader"
   chartVersion: ""
 
-# SpringBoot config
+## SpringBoot config
 springBoot:
   mainClass: ""
   appRoot: "/app"

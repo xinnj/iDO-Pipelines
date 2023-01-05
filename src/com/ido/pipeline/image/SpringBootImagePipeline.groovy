@@ -81,14 +81,56 @@ class SpringBootImagePipeline extends ImagePipeline {
 
     @Override
     def ut() {
-        // todo:
-        return
         steps.container('builder') {
-            steps.sh """
-                mvn clean org.jacoco:jacoco-maven-plugin:0.8.8:prepare-agent install org.jacoco:jacoco-maven-plugin:0.8.8:report \
-                    -U -Dmaven.test.skip=false
-            """
-            steps.jacoco()
+            switch (config.javaBuildTool) {
+                case "maven":
+                    String updateDependenciesArgs = ""
+                    if (config.javaUpdateDependencies) {
+                        updateDependenciesArgs = "-U"
+                    }
+
+                    steps.sh """#!/bin/sh
+                        export MAVEN_OPTS="-Xmx2048m -XX:MaxPermSize=512m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
+                        cd "${config.srcRootPath}"
+                        sh ./mvnw org.jacoco:jacoco-maven-plugin:0.8.8:prepare-agent clean verify org.jacoco:jacoco-maven-plugin:0.8.8:report \
+                            -s ./default-maven-settings.xml \
+                            "-Dmaven.repo.local=\${MAVEN_USER_HOME}/repository" \
+                            ${updateDependenciesArgs} \
+                            -Dfile.encoding=UTF-8 \
+                            -pl ${config.javaModuleName} -am
+                    """
+                    break
+                case "gradle":
+                    addPlugin('jacoco', null, "${config.srcRootPath}/build.gradle")
+
+                    String updateDependenciesArgs = ""
+                    if (config.javaUpdateDependencies) {
+                        updateDependenciesArgs = "--refresh-dependencies"
+                    }
+
+                    steps.sh """#!/bin/sh
+                        cd "${config.srcRootPath}"
+                        mv -f ./build.gradle ./build.gradle-original
+                        cp -f ./build.gradle-jacoco ./build.gradle
+                        
+                        sh ./gradlew clean test \
+                            --no-daemon \
+                            ${updateDependenciesArgs} \
+                            -I ./default-gradle-init.gradle \
+                            -Dfile.encoding=UTF-8 \
+                            "-Dorg.gradle.jvmargs=-Xmx2048m -XX:MaxPermSize=512m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" \
+                            -p ${config.javaModuleName}
+
+                        cp -f ./build.gradle-original ./build.gradle
+                    """
+                    break
+            }
+
+            steps.jacoco(changeBuildStatus: true, minimumLineCoverage: "${config.jacocoLineCoverageThreshold}",
+                    maximumLineCoverage: "${config.jacocoLineCoverageThreshold}")
+            if (steps.currentBuild.result == 'FAILURE') {
+                steps.error "UT coverage is missed!"
+            }
         }
     }
 
@@ -222,13 +264,25 @@ class SpringBootImagePipeline extends ImagePipeline {
             String plugins = ""
             m = buildGradle =~ /(?is)(plugins\s*?\{.*?)\}/;
             if (m) {
-                plugins = m[0][1] + "\tid \"${pluginId}\" version \"${pluginVersion}\"\n}"
+                if (pluginVersion) {
+                    plugins = m[0][1] + "\tid \"${pluginId}\" version \"${pluginVersion}\"\n}"
+                } else {
+                    plugins = m[0][1] + "\tid \"${pluginId}\"\n}"
+                }
             } else {
-                plugins = """
+                if (pluginVersion) {
+                    plugins = """
 plugins {
   id "${pluginId}" version "${pluginVersion}"
 }
 """
+                } else {
+                    plugins = """
+plugins {
+  id "${pluginId}"
+}
+"""
+                }
             }
             m = null
 
