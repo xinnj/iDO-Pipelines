@@ -1,0 +1,2 @@
+# The type of volume to use for the workspace of builder pod
+workspaceVolume: "hostPathWorkspaceVolume('/tmp/jenkins')"

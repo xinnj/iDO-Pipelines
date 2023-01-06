@@ -62,9 +62,13 @@ abstract class BasePipeline implements Pipeline, Serializable {
                         return steps.never()
                     }
                 }
+
+                // def workspaceVolume = (Closure) new GroovyShell().evaluate("return steps." + config._system.workspaceVolume)
+                def workspaceVolume = steps.hostPathWorkspaceVolume('/tmp/jenkins')
+
                 steps.podTemplate(yaml: config.podTemplate,
                         podRetention: podRetentionType(config.keepBuilderPod),
-                        workspaceVolume: steps.hostPathWorkspaceVolume(config.workspaceVolumePath)) {
+                        workspaceVolume: workspaceVolume) {
                     steps.node(steps.POD_LABEL) {
                         try {
                             customStages()
