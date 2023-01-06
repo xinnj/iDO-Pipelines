@@ -15,7 +15,6 @@ sonarqubeTimeoutMinutes: 10
 nodeType: "standalone"
 nodeName: ""
 podTemplate: ""
-workspaceVolumePath: "/tmp/jenkins"
 keepBuilderPod: false
 keepBuilderPodMinutes: 240
 
