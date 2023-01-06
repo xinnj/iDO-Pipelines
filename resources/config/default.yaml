@@ -7,6 +7,8 @@ srcRootPath: "."
 utEnabled: false
 # execute code analysis
 codeAnalysisEnabled: false
+qualityGateEnabled: false
+sonarqubeTimeoutMinutes: 10
 
 ## Node config
 # "standalone", "k8s"
@@ -56,7 +58,7 @@ jdkVersion: "8"
 mavenVersion: "3.8.6"
 gradleVersion: "7.6"
 javaModuleName: "."
-javaUpdateDependencies: true
+javaUpdateDependencies: false
 jacocoLineCoverageThreshold: "0"
 
 ## Docker image config

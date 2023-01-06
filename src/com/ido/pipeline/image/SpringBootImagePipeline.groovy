@@ -90,9 +90,9 @@ class SpringBootImagePipeline extends ImagePipeline {
                     }
 
                     steps.sh """#!/bin/sh
-                        export MAVEN_OPTS="-Xmx2048m -XX:MaxPermSize=512m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
+                        export MAVEN_OPTS="-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
                         cd "${config.srcRootPath}"
-                        sh ./mvnw org.jacoco:jacoco-maven-plugin:0.8.8:prepare-agent clean verify org.jacoco:jacoco-maven-plugin:0.8.8:report \
+                        sh ./mvnw org.jacoco:jacoco-maven-plugin:0.8.8:prepare-agent verify org.jacoco:jacoco-maven-plugin:0.8.8:report \
                             -s ./default-maven-settings.xml \
                             "-Dmaven.repo.local=\${MAVEN_USER_HOME}/repository" \
                             ${updateDependenciesArgs} \
@@ -113,12 +113,12 @@ class SpringBootImagePipeline extends ImagePipeline {
                         mv -f ./build.gradle ./build.gradle-original
                         cp -f ./build.gradle-jacoco ./build.gradle
                         
-                        sh ./gradlew clean test \
+                        sh ./gradlew test \
                             --no-daemon \
                             ${updateDependenciesArgs} \
                             -I ./default-gradle-init.gradle \
                             -Dfile.encoding=UTF-8 \
-                            "-Dorg.gradle.jvmargs=-Xmx2048m -XX:MaxPermSize=512m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" \
+                            "-Dorg.gradle.jvmargs=-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" \
                             -p ${config.javaModuleName}
 
                         cp -f ./build.gradle-original ./build.gradle
@@ -129,24 +129,68 @@ class SpringBootImagePipeline extends ImagePipeline {
             steps.jacoco(changeBuildStatus: true, minimumLineCoverage: "${config.jacocoLineCoverageThreshold}",
                     maximumLineCoverage: "${config.jacocoLineCoverageThreshold}")
             if (steps.currentBuild.result == 'FAILURE') {
-                steps.error "UT coverage is missed!"
+                steps.error "UT coverage failure!"
             }
         }
     }
 
     @Override
     def codeAnalysis() {
-        // todo:
-        return
-        steps.withSonarQubeEnv() {
-            steps.sh 'mvn org.sonarsource.scanner.maven:sonar-maven-plugin:3.7.0.1746:sonar'
-        }
+        steps.container('builder') {
+            switch (config.javaBuildTool) {
+                case "maven":
+                    String updateDependenciesArgs = ""
+                    if (config.javaUpdateDependencies) {
+                        updateDependenciesArgs = "-U"
+                    }
 
-        if (config.enableSonarQualityGate as Boolean) {
-            steps.timeout(time: 10, unit: 'MINUTES') {
-                def qg = steps.waitForQualityGate()
-                if (qg.status != 'OK') {
-                    steps.error "Pipeline aborted due to quality gate failure: ${qg.status}"
+                    steps.withSonarQubeEnv() {
+                        steps.sh """#!/bin/sh
+                            export MAVEN_OPTS="-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
+                            cd "${config.srcRootPath}"
+                            sh ./mvnw compile org.sonarsource.scanner.maven:sonar-maven-plugin:3.9.1.2184:sonar \
+                                -s ./default-maven-settings.xml \
+                                "-Dmaven.repo.local=\${MAVEN_USER_HOME}/repository" \
+                                ${updateDependenciesArgs} \
+                                -Dfile.encoding=UTF-8 \
+                                -pl ${config.javaModuleName} -am
+                        """
+                    }
+                    break
+                case "gradle":
+                    addPlugin('org.sonarqube', "3.5.0.2730", "${config.srcRootPath}/build.gradle")
+
+                    String updateDependenciesArgs = ""
+                    if (config.javaUpdateDependencies) {
+                        updateDependenciesArgs = "--refresh-dependencies"
+                    }
+
+                    steps.withSonarQubeEnv() {
+                        steps.sh """#!/bin/sh
+                            cd "${config.srcRootPath}"
+                            mv -f ./build.gradle ./build.gradle-original
+                            cp -f ./build.gradle-org.sonarqube ./build.gradle
+                            
+                            sh ./gradlew sonar \
+                                --no-daemon \
+                                ${updateDependenciesArgs} \
+                                -I ./default-gradle-init.gradle \
+                                -Dfile.encoding=UTF-8 \
+                                "-Dorg.gradle.jvmargs=-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" \
+                                -p ${config.javaModuleName}
+    
+                            cp -f ./build.gradle-original ./build.gradle
+                        """
+                    }
+                    break
+            }
+
+            if (config.qualityGateEnabled) {
+                steps.timeout(time: config.sonarqubeTimeoutMinutes, unit: 'MINUTES') {
+                    def qg = steps.waitForQualityGate()
+                    if (qg.status != 'OK') {
+                        steps.error "Quality gate failure: ${qg.status}"
+                    }
                 }
             }
         }
@@ -198,9 +242,9 @@ class SpringBootImagePipeline extends ImagePipeline {
                     }
 
                     steps.sh """#!/bin/sh
-                        export MAVEN_OPTS="-Xmx2048m -XX:MaxPermSize=512m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
+                        export MAVEN_OPTS="-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
                         cd "${config.srcRootPath}"
-                        sh ./mvnw clean compile com.google.cloud.tools:jib-maven-plugin:3.3.1:build \
+                        sh ./mvnw compile com.google.cloud.tools:jib-maven-plugin:3.3.1:build \
                             -Dmaven.test.skip=true \
                             ${updateDependenciesArgs} \
                             -s ./default-maven-settings.xml \
@@ -231,13 +275,13 @@ class SpringBootImagePipeline extends ImagePipeline {
                         mv -f ./build.gradle ./build.gradle-original
                         cp -f ./build.gradle-com.google.cloud.tools.jib ./build.gradle
                         
-                        sh ./gradlew clean jib \
+                        sh ./gradlew jib \
                             --no-daemon \
                             -x test \
                             ${updateDependenciesArgs} \
                             -I ./default-gradle-init.gradle \
                             -Dfile.encoding=UTF-8 \
-                            "-Dorg.gradle.jvmargs=-Xmx2048m -XX:MaxPermSize=512m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" \
+                            "-Dorg.gradle.jvmargs=-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" \
                             -p ${config.javaModuleName} \
                             -Djib.container.appRoot=${config.springBoot.appRoot} \
                             -Djib.container.workingDirectory=${config.springBoot.appRoot} \

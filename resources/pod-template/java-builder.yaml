@@ -23,6 +23,8 @@ spec:
           value: "/home/jenkins/agent/m2"
         - name: "GRADLE_USER_HOME"
           value: "/home/jenkins/agent/gradle"
+        - name: "SONAR_USER_HOME"
+          value: "/home/jenkins/agent/sonar"
     - name: helm
       image: "xinnj/helm"
       imagePullPolicy: IfNotPresent
