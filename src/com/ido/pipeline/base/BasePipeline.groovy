@@ -57,18 +57,33 @@ abstract class BasePipeline implements Pipeline, Serializable {
             case "k8s":
                 def podRetentionType = { Boolean k ->
                     if (k) {
-                        return steps.always()
+                        steps.always()
                     } else {
-                        return steps.never()
+                        steps.never()
                     }
                 }
 
-                // def workspaceVolume = (Closure) new GroovyShell().evaluate("return steps." + config._system.workspaceVolume)
-                def workspaceVolume = steps.hostPathWorkspaceVolume('/tmp/jenkins')
+                def workspaceVolumeType = { String type ->
+                    switch (type) {
+                        case "hostPath":
+                            return steps.hostPathWorkspaceVolume(hostPath: config._system.workspaceVolume.hostPath)
+                            break
+                        case "nfs":
+                            return steps.nfsWorkspaceVolume(serverAddress: config._system.workspaceVolume.nfsServerAddress,
+                                    serverPath: config._system.workspaceVolume.nfsServerPath)
+                            break
+                        case "pvc":
+                            return steps.persistentVolumeClaimWorkspaceVolume(claimName: config._system.workspaceVolume.pvcName)
+                            break
+                        default:
+                            steps.error "Wrong workspaceVolumeType: ${type}"
+                    }
+                }
 
                 steps.podTemplate(yaml: config.podTemplate,
                         podRetention: podRetentionType(config.keepBuilderPod),
-                        workspaceVolume: workspaceVolume) {
+                        workspaceVolume: workspaceVolumeType(config._system.workspaceVolume.type)
+                ) {
                     steps.node(steps.POD_LABEL) {
                         try {
                             customStages()
@@ -92,12 +107,12 @@ abstract class BasePipeline implements Pipeline, Serializable {
                         }
                     }
                 }
+                podRetentionType = null
+                workspaceVolumeType = null
                 break
             default:
                 steps.error "Node type: ${config.nodeType} is not supported!"
         }
-
-
         return result
     }
 
