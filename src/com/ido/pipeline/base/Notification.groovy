@@ -15,73 +15,66 @@ class Notification {
         steps.withFolderProperties {
             String result = (steps.currentBuild.result as String).toUpperCase()
             try {
-                (config.notifications as List).each {
+                (config.notification.type as List).each {
                     switch (it) {
                         case "email":
-                            String stdReceiver, failureReceiver
-                            if (steps.env[config.notificationEmailStdReceiverVar] != null) {
-                                stdReceiver = steps.env[config.notificationEmailStdReceiverVar]
+                            String successReceiver, failureReceiver
+                            if (steps.env[config.notification.email.successReceiverFolderProperty]) {
+                                successReceiver = steps.env[config.notification.email.successReceiverFolderProperty]
                             } else {
-                                stdReceiver = config.notificationEmailStdReceiver
+                                successReceiver = config.notification.email.successReceiver
                             }
-                            if (steps.env[config.notificationEmailFailureReceiverVar] != null) {
-                                failureReceiver = steps.env[config.notificationEmailFailureReceiverVar]
+                            if (steps.env[config.notification.email.failureReceiverFolderProperty]) {
+                                failureReceiver = steps.env[config.notification.email.failureReceiverFolderProperty]
                             } else {
-                                failureReceiver = config.notificationEmailFailureReceiver
+                                failureReceiver = config.notification.email.failureReceiver
                             }
-                            steps.echo "email-stdReceiver: " + stdReceiver
+                            steps.echo "email-successReceiver: " + successReceiver
                             steps.echo "email-failureReceiver: " + failureReceiver
 
                             switch (result) {
                                 case "SUCCESS":
-                                    if (stdReceiver) {
-                                        if (!config.notificationFailureOnly) {
-                                            steps.emailext body: '''${SCRIPT, template="groovy-html.template"}''',
-                                                    to: "${stdReceiver}",
-                                                    subject: "${steps.currentBuild.result}: ${steps.env.JOB_NAME} [${steps.env.BUILD_DISPLAY_NAME}]",
-                                                    recipientProviders: [steps.developers(), steps.requestor(), steps.culprits()]
-                                        }
+                                    if (!config.notification.failureOnly) {
+                                        steps.emailext body: '''${SCRIPT, template="groovy-html.template"}''',
+                                                to: "${successReceiver}",
+                                                subject: "${steps.currentBuild.result}: ${steps.env.JOB_NAME} [${steps.env.BUILD_DISPLAY_NAME}]",
+                                                recipientProviders: [steps.developers(), steps.requestor(), steps.culprits()]
                                     }
                                     break;
                                 case "FAILURE":
-                                    if (failureReceiver) {
-                                        steps.emailext body: '''${SCRIPT, template="groovy-html.template"}''',
-                                                to: "${failureReceiver}",
-                                                subject: "${steps.currentBuild.result}: ${steps.env.JOB_NAME} [${steps.env.BUILD_DISPLAY_NAME}]",
-                                                recipientProviders: [steps.developers(), steps.requestor(), steps.culprits()]
+                                    if (config.notification.sendFailureToSuccess
+                                            && successReceiver
+                                            && successReceiver != failureReceiver) {
+                                        failureReceiver = failureReceiver + ', ' + successReceiver
                                     }
 
-                                    if (config.notificationSendFailureToStd
-                                            && stdReceiver
-                                            && stdReceiver != failureReceiver) {
-                                        steps.emailext body: '''${SCRIPT, template="groovy-html.template"}''',
-                                                to: "${stdReceiver}",
-                                                subject: "${steps.currentBuild.result}: ${steps.env.JOB_NAME} [${steps.env.BUILD_DISPLAY_NAME}]",
-                                                recipientProviders: [steps.developers(), steps.requestor(), steps.culprits()]
-                                    }
+                                    steps.emailext body: '''${SCRIPT, template="groovy-html.template"}''',
+                                            to: "${failureReceiver}",
+                                            subject: "${steps.currentBuild.result}: ${steps.env.JOB_NAME} [${steps.env.BUILD_DISPLAY_NAME}]",
+                                            recipientProviders: [steps.developers(), steps.requestor(), steps.culprits()]
                                     break;
                             }
                             break;
                         case "slack":
-                            String stdReceiver, failureReceiver
-                            if (steps.env[config.notificationSlackStdReceiverVar] != null) {
-                                stdReceiver = steps.env[config.notificationSlackStdReceiverVar]
+                            String successReceiver, failureReceiver
+                            if (steps.env[config.notification.slack.successReceiverFolderProperty]) {
+                                successReceiver = steps.env[config.notification.slack.successReceiverFolderProperty]
                             } else {
-                                stdReceiver = config.notificationSlackStdReceiver
+                                successReceiver = config.notification.slack.successReceiver
                             }
-                            if (steps.env[config.notificationSlackFailureReceiverVar] != null) {
-                                failureReceiver = steps.env[config.notificationSlackFailureReceiverVar]
+                            if (steps.env[config.notification.slack.failureReceiverFolderProperty]) {
+                                failureReceiver = steps.env[config.notification.slack.failureReceiverFolderProperty]
                             } else {
-                                failureReceiver = config.notificationSlackFailureReceiver
+                                failureReceiver = config.notification.slack.failureReceiver
                             }
-                            steps.echo "slack-stdReceiver: " + stdReceiver
+                            steps.echo "slack-successReceiver: " + successReceiver
                             steps.echo "slack-failureReceiver: " + failureReceiver
 
                             switch (result) {
                                 case "SUCCESS":
-                                    if (stdReceiver) {
-                                        if (!config.notificationFailureOnly) {
-                                            steps.slackSend channel: stdReceiver, color: "good",
+                                    if (successReceiver) {
+                                        if (!config.notification.failureOnly) {
+                                            steps.slackSend channel: successReceiver, color: "good",
                                                     message: "${result}: ${steps.env.JOB_NAME} [${steps.env.BUILD_DISPLAY_NAME}]: (<${steps.env.BUILD_URL}console|Open>)"
                                         }
                                     }
@@ -92,35 +85,35 @@ class Notification {
                                                 message: "${result}: ${steps.env.JOB_NAME} [${steps.env.BUILD_DISPLAY_NAME}]: (<${steps.env.BUILD_URL}console|Open>)"
                                     }
 
-                                    if (config.notificationSendFailureToStd
-                                            && stdReceiver
-                                            && stdReceiver != failureReceiver) {
-                                        steps.slackSend channel: stdReceiver, color: "danger",
+                                    if (config.notification.sendFailureToSuccess
+                                            && successReceiver
+                                            && successReceiver != failureReceiver) {
+                                        steps.slackSend channel: successReceiver, color: "danger",
                                                 message: "${result}: ${steps.env.JOB_NAME} [${steps.env.BUILD_DISPLAY_NAME}]: (<${steps.env.BUILD_URL}console|Open>)"
                                     }
                                     break;
                             }
                             break;
                         case "dingtalk":
-                            String stdReceiver, failureReceiver
-                            if (steps.env[config.notificationDingtalkStdReceiverVar] != null) {
-                                stdReceiver = steps.env[config.notificationDingtalkStdReceiverVar]
+                            String successReceiver, failureReceiver
+                            if (steps.env[config.notification.dingtalk.successReceiverFolderProperty]) {
+                                successReceiver = steps.env[config.notification.dingtalk.successReceiverFolderProperty]
                             } else {
-                                stdReceiver = config.notificationDingtalkStdReceiver
+                                successReceiver = config.notification.dingtalk.successReceiver
                             }
-                            if (steps.env[config.notificationDingtalkFailureReceiverVar] != null) {
-                                failureReceiver = steps.env[config.notificationDingtalkFailureReceiverVar]
+                            if (steps.env[config.notification.dingtalk.failureReceiverFolderProperty]) {
+                                failureReceiver = steps.env[config.notification.dingtalk.failureReceiverFolderProperty]
                             } else {
-                                failureReceiver = config.notificationDingtalkFailureReceiver
+                                failureReceiver = config.notification.dingtalk.failureReceiver
                             }
-                            steps.echo "dingtalk-stdReceiver: " + stdReceiver
+                            steps.echo "dingtalk-successReceiver: " + successReceiver
                             steps.echo "dingtalk-failureReceiver: " + failureReceiver
 
                             switch (result) {
                                 case "SUCCESS":
-                                    if (stdReceiver) {
-                                        if (!config.notificationFailureOnly) {
-                                            this.sendDingtalk(stdReceiver, 'Success')
+                                    if (successReceiver) {
+                                        if (!config.notification.failureOnly) {
+                                            this.sendDingtalk(successReceiver, 'Success')
                                         }
                                     }
                                     break;
@@ -129,10 +122,10 @@ class Notification {
                                         this.sendDingtalk(failureReceiver, 'Failure')
                                     }
 
-                                    if (config.notificationSendFailureToStd
-                                            && stdReceiver
-                                            && stdReceiver != failureReceiver) {
-                                        this.sendDingtalk(stdReceiver, 'Failure')
+                                    if (config.notification.sendFailureToSuccess
+                                            && successReceiver
+                                            && successReceiver != failureReceiver) {
+                                        this.sendDingtalk(successReceiver, 'Failure')
                                     }
                                     break;
                             }
