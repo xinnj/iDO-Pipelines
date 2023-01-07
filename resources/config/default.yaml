@@ -29,25 +29,34 @@ versionFile: "_version.txt"
 # Specify the version of the build
 version: ""
 
-## Notification common config
-notifications: []
-notificationFailureOnly: false
-notificationSendFailureToStd: true
-# Email config
-notificationEmailStdReceiverVar: "IDO_NOTIFICATION_EMAIL"
-notificationEmailFailureReceiverVar: "IDO_NOTIFICATION_FAILURE_EMAIL"
-notificationEmailStdReceiver: ""
-notificationEmailFailureReceiver: ""
-# Slack config
-notificationSlackStdReceiverVar: "IDO_NOTIFICATION_SLACK"
-notificationSlackFailureReceiverVar: "IDO_NOTIFICATION_FAILURE_SLACK"
-notificationSlackStdReceiver: ""
-notificationSlackFailureReceiver: ""
-# Dingtalk config
-notificationDingtalkStdReceiverVar: "IDO_NOTIFICATION_DINGTALK"
-notificationDingtalkFailureReceiverVar: "IDO_NOTIFICATION_FAILURE_DINGTALK"
-notificationDingtalkStdReceiver: ""
-notificationDingtalkFailureReceiver: ""
+## Notification config
+notification:
+  # Notification type: "email", "slack", "dingtalk"
+  type: []
+  # Only notify failure result
+  failureOnly: false
+  # Send failure message to failure & success receivers
+  sendFailureToSuccess: true
+  # Email config
+  email:
+    # Folder property name, which value is a comma separated list of email recipients
+    successReceiverFolderProperty: "IDO_NOTIFICATION_EMAIL"
+    failureReceiverFolderProperty: "IDO_NOTIFICATION_FAILURE_EMAIL"
+    # comma separated list of email recipients
+    successReceiver: ""
+    failureReceiver: ""
+  # Slack config
+  slack:
+    successReceiverFolderProperty: "IDO_NOTIFICATION_SLACK"
+    failureReceiverFolderProperty: "IDO_NOTIFICATION_FAILURE_SLACK"
+    successReceiver: ""
+    failureReceiver: ""
+  # Dingtalk config
+  dingtalk:
+    successReceiverFolderProperty: "IDO_NOTIFICATION_DINGTALK"
+    failureReceiverFolderProperty: "IDO_NOTIFICATION_FAILURE_DINGTALK"
+    successReceiver: ""
+    failureReceiver: ""
 
 ## Java common config
 # "maven", "gradle"
