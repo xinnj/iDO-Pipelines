@@ -29,6 +29,8 @@ abstract class BasePipeline implements Pipeline, Serializable {
             this.stopCurrentJob()
         }
 
+        steps.node('master') {}
+
         switch (config.nodeType) {
             case "standalone":
                 steps.node(config.nodeName) {
