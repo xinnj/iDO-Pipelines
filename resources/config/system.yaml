@@ -1,8 +1,8 @@
 # The type of volume to use for the workspace of builder pod
 workspaceVolume:
   # hostPath, nfs, pvc
-  type: "hostPath"
-  hostPath: "/tmp/jenkins"
+  type: "pvc"
+  hostPath: ""
   nfsServerAddress: ""
   nfsServerPath: ""
-  pvcName: ""
+  pvcName: "jenkins-test-workspace-data"
