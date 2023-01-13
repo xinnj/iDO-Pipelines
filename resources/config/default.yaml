@@ -65,7 +65,9 @@ java:
   # JDK version of build tool, can be "8", "11", "17", "19"
   jdkVersion: "8"
   mavenVersion: "3.8.6"
+  useDefaultMavenSettings: true
   gradleVersion: "7.6"
+  useDefaultGradleInitScript: true
   moduleName: "."
   forceUpdateDependencies: false
   jacocoLineCoverageThreshold: "0"

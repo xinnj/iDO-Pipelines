@@ -44,8 +44,10 @@ class SpringBootImagePipeline extends ImagePipeline {
                     steps.writeFile(file: "${config.srcRootPath}/.mvn/wrapper/maven-wrapper.properties", text: wrapperProperties, encoding: "UTF-8")
                 }
 
-                String settings = steps.libraryResource(resource: 'builder/default-maven-settings.xml', encoding: 'UTF-8')
-                steps.writeFile(file: "${config.srcRootPath}/default-maven-settings.xml", text: settings, encoding: "UTF-8")
+                if (config.java.useDefaultMavenSettings) {
+                    String settings = steps.libraryResource(resource: 'builder/default-maven-settings.xml', encoding: 'UTF-8')
+                    steps.writeFile(file: "${config.srcRootPath}/default-maven-settings.xml", text: settings, encoding: "UTF-8")
+                }
 
                 steps.container('builder') {
                     steps.sh """#!/bin/sh
@@ -64,8 +66,10 @@ class SpringBootImagePipeline extends ImagePipeline {
                     steps.writeFile(file: "${config.srcRootPath}/gradle/wrapper/gradle-wrapper.properties", text: wrapperProperties, encoding: "UTF-8")
                 }
 
-                String initScript = steps.libraryResource(resource: 'builder/default-gradle-init.gradle', encoding: 'UTF-8')
-                steps.writeFile(file: "${config.srcRootPath}/default-gradle-init.gradle", text: initScript, encoding: "UTF-8")
+                if (config.java.useDefaultGradleInitScript) {
+                    String initScript = steps.libraryResource(resource: 'builder/default-gradle-init.gradle', encoding: 'UTF-8')
+                    steps.writeFile(file: "${config.srcRootPath}/default-gradle-init.gradle", text: initScript, encoding: "UTF-8")
+                }
 
                 steps.container('builder') {
                     steps.sh """#!/bin/sh
