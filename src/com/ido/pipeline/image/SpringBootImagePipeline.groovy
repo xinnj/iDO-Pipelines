@@ -52,6 +52,7 @@ class SpringBootImagePipeline extends ImagePipeline {
                 steps.container('builder') {
                     steps.sh """#!/bin/sh
                         cd "${config.srcRootPath}"
+                        rm -f ./mvnw.zip
                         sh ./mvnw -v
                     """
                 }
@@ -74,6 +75,7 @@ class SpringBootImagePipeline extends ImagePipeline {
                 steps.container('builder') {
                     steps.sh """#!/bin/sh
                         cd "${config.srcRootPath}"
+                        rm -f ./gradlew.zip
                         sh ./gradlew -v
                     """
                 }
