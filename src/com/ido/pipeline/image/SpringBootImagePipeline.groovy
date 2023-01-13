@@ -14,7 +14,7 @@ class SpringBootImagePipeline extends ImagePipeline {
     Map runPipeline(Map config) {
         config.nodeType = "k8s"
         String javaBuilder = steps.libraryResource(resource: 'pod-template/java-builder.yaml', encoding: 'UTF-8')
-        javaBuilder = javaBuilder.replaceAll('<jdk-version>', config.jdkVersion)
+        javaBuilder = javaBuilder.replaceAll('<jdk-version>', config.java.jdkVersion)
         config.podTemplate = javaBuilder
 
         return super.runPipeline(config)
@@ -33,14 +33,14 @@ class SpringBootImagePipeline extends ImagePipeline {
     def scm() {
         super.scm()
 
-        switch (config.javaBuildTool) {
+        switch (config.java.buildTool) {
             case "maven":
                 if (!steps.fileExists("${config.srcRootPath}/mvnw")) {
                     String wrapperFile = steps.libraryResource(resource: 'builder/mvnw.zip', encoding: 'Base64')
                     steps.writeFile(file: "${config.srcRootPath}/mvnw.zip", text: wrapperFile, encoding: 'Base64')
                     steps.unzip(zipFile: "${config.srcRootPath}/mvnw.zip", dir: "${config.srcRootPath}")
                     String wrapperProperties = steps.readFile(file: "${config.srcRootPath}/.mvn/wrapper/maven-wrapper.properties", encoding: "UTF-8")
-                    wrapperProperties = wrapperProperties.replaceAll('<maven-version>', config.mavenVersion)
+                    wrapperProperties = wrapperProperties.replaceAll('<maven-version>', config.java.mavenVersion)
                     steps.writeFile(file: "${config.srcRootPath}/.mvn/wrapper/maven-wrapper.properties", text: wrapperProperties, encoding: "UTF-8")
                 }
 
@@ -60,7 +60,7 @@ class SpringBootImagePipeline extends ImagePipeline {
                     steps.writeFile(file: "${config.srcRootPath}/gradlew.zip", text: wrapperFile, encoding: 'Base64')
                     steps.unzip(zipFile: "${config.srcRootPath}/gradlew.zip", dir: "${config.srcRootPath}")
                     String wrapperProperties = steps.readFile(file: "${config.srcRootPath}/gradle/wrapper/gradle-wrapper.properties", encoding: "UTF-8")
-                    wrapperProperties = wrapperProperties.replaceAll('<gradle-version>', config.gradleVersion)
+                    wrapperProperties = wrapperProperties.replaceAll('<gradle-version>', config.java.gradleVersion)
                     steps.writeFile(file: "${config.srcRootPath}/gradle/wrapper/gradle-wrapper.properties", text: wrapperProperties, encoding: "UTF-8")
                 }
 
@@ -75,17 +75,17 @@ class SpringBootImagePipeline extends ImagePipeline {
                 }
                 break
             default:
-                steps.error "javaBuildTool: ${config.javaBuildTool} is not supported!"
+                steps.error "java.buildTool: ${config.java.buildTool} is not supported!"
         }
     }
 
     @Override
     def ut() {
         steps.container('builder') {
-            switch (config.javaBuildTool) {
+            switch (config.java.buildTool) {
                 case "maven":
                     String updateDependenciesArgs = ""
-                    if (config.javaUpdateDependencies) {
+                    if (config.java.forceUpdateDependencies) {
                         updateDependenciesArgs = "-U"
                     }
 
@@ -97,14 +97,14 @@ class SpringBootImagePipeline extends ImagePipeline {
                             "-Dmaven.repo.local=\${MAVEN_USER_HOME}/repository" \
                             ${updateDependenciesArgs} \
                             -Dfile.encoding=UTF-8 \
-                            -pl ${config.javaModuleName} -am
+                            -pl ${config.java.moduleName} -am
                     """
                     break
                 case "gradle":
                     addPlugin('jacoco', null, "${config.srcRootPath}/build.gradle")
 
                     String updateDependenciesArgs = ""
-                    if (config.javaUpdateDependencies) {
+                    if (config.java.forceUpdateDependencies) {
                         updateDependenciesArgs = "--refresh-dependencies"
                     }
 
@@ -119,15 +119,15 @@ class SpringBootImagePipeline extends ImagePipeline {
                             -I ./default-gradle-init.gradle \
                             -Dfile.encoding=UTF-8 \
                             "-Dorg.gradle.jvmargs=-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" \
-                            -p ${config.javaModuleName}
+                            -p ${config.java.moduleName}
 
                         cp -f ./build.gradle-original ./build.gradle
                     """
                     break
             }
 
-            steps.jacoco(changeBuildStatus: true, minimumLineCoverage: "${config.jacocoLineCoverageThreshold}",
-                    maximumLineCoverage: "${config.jacocoLineCoverageThreshold}")
+            steps.jacoco(changeBuildStatus: true, minimumLineCoverage: "${config.java.jacocoLineCoverageThreshold}",
+                    maximumLineCoverage: "${config.java.jacocoLineCoverageThreshold}")
             if (steps.currentBuild.result == 'FAILURE') {
                 steps.error "UT coverage failure!"
             }
@@ -137,10 +137,10 @@ class SpringBootImagePipeline extends ImagePipeline {
     @Override
     def codeAnalysis() {
         steps.container('builder') {
-            switch (config.javaBuildTool) {
+            switch (config.java.buildTool) {
                 case "maven":
                     String updateDependenciesArgs = ""
-                    if (config.javaUpdateDependencies) {
+                    if (config.java.forceUpdateDependencies) {
                         updateDependenciesArgs = "-U"
                     }
 
@@ -153,7 +153,7 @@ class SpringBootImagePipeline extends ImagePipeline {
                                 "-Dmaven.repo.local=\${MAVEN_USER_HOME}/repository" \
                                 ${updateDependenciesArgs} \
                                 -Dfile.encoding=UTF-8 \
-                                -pl ${config.javaModuleName} -am
+                                -pl ${config.java.moduleName} -am
                         """
                     }
                     break
@@ -161,7 +161,7 @@ class SpringBootImagePipeline extends ImagePipeline {
                     addPlugin('org.sonarqube', "3.5.0.2730", "${config.srcRootPath}/build.gradle")
 
                     String updateDependenciesArgs = ""
-                    if (config.javaUpdateDependencies) {
+                    if (config.java.forceUpdateDependencies) {
                         updateDependenciesArgs = "--refresh-dependencies"
                     }
 
@@ -177,7 +177,7 @@ class SpringBootImagePipeline extends ImagePipeline {
                                 -I ./default-gradle-init.gradle \
                                 -Dfile.encoding=UTF-8 \
                                 "-Dorg.gradle.jvmargs=-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" \
-                                -p ${config.javaModuleName}
+                                -p ${config.java.moduleName}
     
                             cp -f ./build.gradle-original ./build.gradle
                         """
@@ -234,10 +234,10 @@ class SpringBootImagePipeline extends ImagePipeline {
         }
 
         steps.container('builder') {
-            switch (config.javaBuildTool) {
+            switch (config.java.buildTool) {
                 case "maven":
                     String updateDependenciesArgs = ""
-                    if (config.javaUpdateDependencies) {
+                    if (config.java.forceUpdateDependencies) {
                         updateDependenciesArgs = "-U"
                     }
 
@@ -250,7 +250,7 @@ class SpringBootImagePipeline extends ImagePipeline {
                             -s ./default-maven-settings.xml \
                             "-Dmaven.repo.local=\${MAVEN_USER_HOME}/repository" \
                             -Dfile.encoding=UTF-8 \
-                            -pl ${config.javaModuleName} -am \
+                            -pl ${config.java.moduleName} -am \
                             -Djib.container.appRoot=${config.springBoot.appRoot} \
                             -Djib.container.workingDirectory=${config.springBoot.appRoot} \
                             -Djib.container.creationTime=USE_CURRENT_TIMESTAMP \
@@ -267,7 +267,7 @@ class SpringBootImagePipeline extends ImagePipeline {
                     addPlugin('com.google.cloud.tools.jib', '3.3.1', "${config.srcRootPath}/build.gradle")
 
                     String updateDependenciesArgs = ""
-                    if (config.javaUpdateDependencies) {
+                    if (config.java.forceUpdateDependencies) {
                         updateDependenciesArgs = "--refresh-dependencies"
                     }
                     steps.sh """#!/bin/sh
@@ -282,7 +282,7 @@ class SpringBootImagePipeline extends ImagePipeline {
                             -I ./default-gradle-init.gradle \
                             -Dfile.encoding=UTF-8 \
                             "-Dorg.gradle.jvmargs=-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" \
-                            -p ${config.javaModuleName} \
+                            -p ${config.java.moduleName} \
                             -Djib.container.appRoot=${config.springBoot.appRoot} \
                             -Djib.container.workingDirectory=${config.springBoot.appRoot} \
                             -Djib.container.creationTime=USE_CURRENT_TIMESTAMP \

@@ -59,15 +59,16 @@ notification:
     failureReceiver: ""
 
 ## Java common config
-# "maven", "gradle"
-javaBuildTool: "maven"
-# JDK version of build tool, can be "8", "11", "17", "19"
-jdkVersion: "8"
-mavenVersion: "3.8.6"
-gradleVersion: "7.6"
-javaModuleName: "."
-javaUpdateDependencies: false
-jacocoLineCoverageThreshold: "0"
+java:
+  # "maven", "gradle"
+  buildTool: "maven"
+  # JDK version of build tool, can be "8", "11", "17", "19"
+  jdkVersion: "8"
+  mavenVersion: "3.8.6"
+  gradleVersion: "7.6"
+  moduleName: "."
+  forceUpdateDependencies: false
+  jacocoLineCoverageThreshold: "0"
 
 ## Docker image config
 imageName: ""
