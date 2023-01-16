@@ -14,7 +14,7 @@ class SpringBootImagePipeline extends ImagePipeline {
     Map runPipeline(Map config) {
         config.nodeType = "k8s"
         String javaBuilder = steps.libraryResource(resource: 'pod-template/java-builder.yaml', encoding: 'UTF-8')
-        javaBuilder = javaBuilder.replaceAll('<builder-image>', config.java.builderImage)
+        javaBuilder = javaBuilder.replaceAll('<builderImage>', config.java.builderImage)
         config.podTemplate = javaBuilder
 
         return super.runPipeline(config)
