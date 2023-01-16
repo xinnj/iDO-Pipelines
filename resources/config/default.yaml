@@ -108,3 +108,4 @@ springBoot:
 ## Node.js config
 nodejs:
   baseImage: "node:19.4.0-slim"
+  useDefaultNpmrc: true

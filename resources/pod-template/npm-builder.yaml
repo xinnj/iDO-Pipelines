@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+    - name: builder
+      image: <builderImage>
+      imagePullPolicy: IfNotPresent
+      command:
+        - sleep
+      args:
+        - <keepBuilderPodMinutes>m
+      volumeMounts:
+        - mountPath: /home/jenkins/agent
+          name: workspace-volume
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+      env:
+        - name: "npm_config_cache"
+          value: "/home/jenkins/agent/npm"
+    - name: helm
+      image: "xinnj/helm"
+      imagePullPolicy: IfNotPresent
+      command:
+        - sleep
+      args:
+        - <keepBuilderPodMinutes>m
+      volumeMounts:
+        - mountPath: /home/jenkins/agent
+          name: workspace-volume
+    - name: jnlp
+      image: "jenkins/inbound-agent:4.11-1-jdk11"
+  imagePullSecrets:
+    - name: <imagePullSecret>
+  securityContext:
+    runAsGroup: 1000
+    runAsUser: 1000
