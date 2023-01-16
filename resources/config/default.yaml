@@ -1,10 +1,18 @@
 ## Common process config
 # All running and queued builds of the triggered job will be aborted if enabled
 stopAllRunningBuild: true
+
 # Source code root path. A relative path to workspace root folder
 srcRootPath: "."
+
+# Trigger by upstream projects
+dependOn:
+- name: ""
+  branch: ""
+
 # Execute UT
 utEnabled: false
+
 # execute code analysis
 codeAnalysisEnabled: false
 qualityGateEnabled: false
@@ -32,7 +40,7 @@ version: ""
 ## Notification config
 notification:
   # Notification type: "email", "slack", "dingtalk"
-  type: []
+  type: [ ]
   # Only notify failure result
   failureOnly: false
   # Send failure message to failure & success receivers

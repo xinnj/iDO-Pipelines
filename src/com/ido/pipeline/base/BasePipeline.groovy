@@ -145,17 +145,19 @@ abstract class BasePipeline implements Pipeline, Serializable {
         String branch = Utils.getBranchName(steps)
 
         for (Map job in config.dependOn) {
-            if (job.branch == null || job.branch == "") {
-                if (upstreamProjects == "") {
-                    upstreamProjects = job.name + '/' + branch
+            if (job.name) {
+                if (job.branch) {
+                    if (upstreamProjects == "") {
+                        upstreamProjects = job.name + '/' + branch
+                    } else {
+                        upstreamProjects += ',' + job.name + '/' + branch
+                    }
                 } else {
-                    upstreamProjects += ',' + job.name + '/' + branch
-                }
-            } else {
-                if (upstreamProjects == "") {
-                    upstreamProjects = job.name + '/' + job.branch
-                } else {
-                    upstreamProjects += ',' + job.name + '/' + job.branch
+                    if (upstreamProjects == "") {
+                        upstreamProjects = job.name + '/' + job.branch
+                    } else {
+                        upstreamProjects += ',' + job.name + '/' + job.branch
+                    }
                 }
             }
         }
