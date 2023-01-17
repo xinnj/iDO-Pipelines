@@ -64,6 +64,7 @@ class NodejsImagePipeline extends ImagePipeline {
     def build() {
         steps.container('builder') {
             steps.sh """
+                export NODE_ENV=production
                 cd "${config.srcRootPath}"
     
                 if [ -s "./${config.buildScript}" ]; then

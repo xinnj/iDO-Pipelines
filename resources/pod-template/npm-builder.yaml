@@ -19,8 +19,6 @@ spec:
       env:
         - name: "npm_config_cache"
           value: "/home/jenkins/agent/npm"
-        - name: "NODE_ENV"
-          value: "production"
     - name: buildah
       image: "quay.io/buildah/stable"
       imagePullPolicy: IfNotPresent
