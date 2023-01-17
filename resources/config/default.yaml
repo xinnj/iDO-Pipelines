@@ -13,14 +13,6 @@ dependOn:
 # Build script file name
 buildScript: "build-ci.sh"
 
-# Execute UT
-utEnabled: false
-
-# execute code analysis
-codeAnalysisEnabled: false
-qualityGateEnabled: false
-sonarqubeTimeoutMinutes: 10
-
 ## Node config
 # "standalone", "k8s"
 nodeType: "standalone"
@@ -107,6 +99,13 @@ helm:
 
 ## SpringBoot config
 springBoot:
+  # Execute UT
+  utEnabled: false
+  # execute code analysis
+  codeAnalysisEnabled: false
+  qualityGateEnabled: false
+  sonarqubeTimeoutMinutes: 10
+
   mainClass: ""
   appRoot: "/app"
   baseImage: "amazoncorretto:8"
@@ -115,6 +114,13 @@ springBoot:
 
 ## Node.js config
 nodejs:
+  # Execute UT
+  utEnabled: false
+  # execute code analysis
+  codeAnalysisEnabled: false
+  qualityGateEnabled: false
+  sonarqubeTimeoutMinutes: 10
+
   baseImage: "node:19.4.0-slim"
   useDefaultNpmrc: true
   StartCmd: "npm start"

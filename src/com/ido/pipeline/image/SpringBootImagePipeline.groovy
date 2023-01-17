@@ -87,6 +87,10 @@ class SpringBootImagePipeline extends ImagePipeline {
 
     @Override
     def ut() {
+        if (!config.springBoot.utEnabled) {
+            return
+        }
+
         steps.container('builder') {
             switch (config.java.buildTool) {
                 case "maven":
@@ -142,6 +146,9 @@ class SpringBootImagePipeline extends ImagePipeline {
 
     @Override
     def codeAnalysis() {
+        if (!config.springBoot.codeAnalysisEnabled) {
+            return
+        }
         steps.container('builder') {
             switch (config.java.buildTool) {
                 case "maven":
@@ -191,8 +198,8 @@ class SpringBootImagePipeline extends ImagePipeline {
                     break
             }
 
-            if (config.qualityGateEnabled) {
-                steps.timeout(time: config.sonarqubeTimeoutMinutes, unit: 'MINUTES') {
+            if (config.springBoot.qualityGateEnabled) {
+                steps.timeout(time: config.springBoot.sonarqubeTimeoutMinutes, unit: 'MINUTES') {
                     def qg = steps.waitForQualityGate()
                     if (qg.status != 'OK') {
                         steps.error "Quality gate failure: ${qg.status}"
@@ -321,10 +328,10 @@ class SpringBootImagePipeline extends ImagePipeline {
 
     private addPlugin(String pluginId, String pluginVersion, String buildGradlePath) {
         String buildGradle = steps.readFile(file: buildGradlePath, encoding: "UTF-8")
-        def m = buildGradle =~ /(?is)${pluginId}/;
+        def m = buildGradle =~ /(?is)${pluginId}/
         if (!m) {
             String plugins = ""
-            m = buildGradle =~ /(?is)(plugins\s*?\{.*?)\}/;
+            m = buildGradle =~ /(?is)(plugins\s*?\{.*?)}/
             if (m) {
                 if (pluginVersion) {
                     plugins = m[0][1] + "\tid \"${pluginId}\" version \"${pluginVersion}\"\n}"
@@ -348,7 +355,7 @@ plugins {
             }
             m = null
 
-            buildGradle = buildGradle.replaceAll("(?is)plugins\\s*?\\{.*?\\}", plugins)
+            buildGradle = buildGradle.replaceAll("(?is)plugins\\s*?\\{.*?}", plugins)
             steps.writeFile(file: "${buildGradlePath}-${pluginId}", text: buildGradle, encoding: 'UTF-8')
         }
     }

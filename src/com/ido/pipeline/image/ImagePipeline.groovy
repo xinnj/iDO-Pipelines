@@ -40,17 +40,13 @@ abstract class ImagePipeline extends BasePipeline {
         }
 
         steps.stage('UT') {
-            if (config.utEnabled) {
-                steps.echo "########## Stage: UT ##########"
-                this.ut()
-            }
+            steps.echo "########## Stage: UT ##########"
+            this.ut()
         }
 
         steps.stage('Code Analysis') {
-            if (config.codeAnalysisEnabled) {
-                steps.echo "########## Stage: Code Analysis ##########"
-                this.codeAnalysis()
-            }
+            steps.echo "########## Stage: Code Analysis ##########"
+            this.codeAnalysis()
         }
 
         steps.stage('Build Image') {

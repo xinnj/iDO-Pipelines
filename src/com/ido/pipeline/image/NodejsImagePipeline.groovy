@@ -48,10 +48,16 @@ class NodejsImagePipeline extends ImagePipeline {
 
     @Override
     def ut() {
+        if (!config.nodejs.utEnabled) {
+            return
+        }
     }
 
     @Override
     def codeAnalysis() {
+        if (!config.springBoot.codeAnalysisEnabled) {
+            return
+        }
     }
 
     @Override
