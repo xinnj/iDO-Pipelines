@@ -19,6 +19,22 @@ spec:
       env:
         - name: "npm_config_cache"
           value: "/home/jenkins/agent/npm"
+        - name: "NODE_ENV"
+          value: "production"
+    - name: buildah
+      image: "quay.io/buildah/stable"
+      imagePullPolicy: IfNotPresent
+      command:
+        - sleep
+      args:
+        - <keepBuilderPodMinutes>m
+      volumeMounts:
+        - mountPath: /home/jenkins/agent
+          name: workspace-volume
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+        privileged: true
     - name: helm
       image: "xinnj/helm"
       imagePullPolicy: IfNotPresent

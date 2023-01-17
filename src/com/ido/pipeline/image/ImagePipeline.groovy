@@ -105,7 +105,7 @@ abstract class ImagePipeline extends BasePipeline {
         steps.writeYaml(file: "${config.helm.chartPath}/values.yaml", data: values, charset: "UTF-8", overwrite: true)
 
         steps.container('helm') {
-            steps.sh """#!/bin/sh
+            steps.sh """
                 helm package --version ${config.helm.chartVersion} --app-version ${config.version} ${config.helm.chartPath}
             """
         }

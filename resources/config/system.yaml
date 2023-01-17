@@ -2,6 +2,9 @@
 # kubectl create secret docker-registry builder-pull-secret --docker-server=<你的镜像仓库服务器> --docker-username=<你的用户名> --docker-password=<你的密码>
 imagePullSecret: "builder-pull-secret"
 
+# Image format: "oci", "docker"
+imageFormat: "docker"
+
 # The type of volume to use for the workspace of builder pod
 workspaceVolume:
   # hostPath, nfs, pvc

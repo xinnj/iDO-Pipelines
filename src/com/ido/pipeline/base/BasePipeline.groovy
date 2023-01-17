@@ -261,7 +261,7 @@ abstract class BasePipeline implements Pipeline, Serializable {
 
     def configGit() {
         if (steps.isUnix()) {
-            steps.sh """#!/bin/sh
+            steps.sh """
                 git config --global core.abbrev 8
                 git config --global http.connecttimeout 120
                 git config --global core.longpaths true

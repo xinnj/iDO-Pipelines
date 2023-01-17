@@ -50,7 +50,7 @@ class SpringBootImagePipeline extends ImagePipeline {
                 }
 
                 steps.container('builder') {
-                    steps.sh """#!/bin/sh
+                    steps.sh """
                         cd "${config.srcRootPath}"
                         rm -f ./mvnw.zip
                         sh ./mvnw -v
@@ -73,7 +73,7 @@ class SpringBootImagePipeline extends ImagePipeline {
                 }
 
                 steps.container('builder') {
-                    steps.sh """#!/bin/sh
+                    steps.sh """
                         cd "${config.srcRootPath}"
                         rm -f ./gradlew.zip
                         sh ./gradlew -v
@@ -95,7 +95,7 @@ class SpringBootImagePipeline extends ImagePipeline {
                         updateDependenciesArgs = "-U"
                     }
 
-                    steps.sh """#!/bin/sh
+                    steps.sh """
                         export MAVEN_OPTS="-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
                         cd "${config.srcRootPath}"
                         sh ./mvnw org.jacoco:jacoco-maven-plugin:0.8.8:prepare-agent verify org.jacoco:jacoco-maven-plugin:0.8.8:report \
@@ -114,7 +114,7 @@ class SpringBootImagePipeline extends ImagePipeline {
                         updateDependenciesArgs = "--refresh-dependencies"
                     }
 
-                    steps.sh """#!/bin/sh
+                    steps.sh """
                         cd "${config.srcRootPath}"
                         mv -f ./build.gradle ./build.gradle-original
                         cp -f ./build.gradle-jacoco ./build.gradle
@@ -151,7 +151,7 @@ class SpringBootImagePipeline extends ImagePipeline {
                     }
 
                     steps.withSonarQubeEnv() {
-                        steps.sh """#!/bin/sh
+                        steps.sh """
                             export MAVEN_OPTS="-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
                             cd "${config.srcRootPath}"
                             sh ./mvnw compile org.sonarsource.scanner.maven:sonar-maven-plugin:3.9.1.2184:sonar \
@@ -172,7 +172,7 @@ class SpringBootImagePipeline extends ImagePipeline {
                     }
 
                     steps.withSonarQubeEnv() {
-                        steps.sh """#!/bin/sh
+                        steps.sh """
                             cd "${config.srcRootPath}"
                             mv -f ./build.gradle ./build.gradle-original
                             cp -f ./build.gradle-org.sonarqube ./build.gradle
@@ -204,50 +204,63 @@ class SpringBootImagePipeline extends ImagePipeline {
 
     @Override
     def build() {
-        def registryPull = config.registryPull as Map
-        def jib_from_auth = ""
-        if (registryPull != null) {
-            if (registryPull.credentialsId) {
-                steps.withCredentials([steps.usernamePassword(credentialsId: registryPull.credentialsId, passwordVariable: 'passwordPull', usernameVariable: 'userNamePull')]) {
-                    jib_from_auth = "-Djib.from.auth.username=" + steps.env.userNamePull + " -Djib.from.auth.password=" + steps.env.passwordPull
+        steps.container('builder') {
+            if (config.registryPull && config.registryPull.credentialsId) {
+                steps.withCredentials([steps.usernamePassword(credentialsId: config.registryPull.credentialsId, passwordVariable: 'passwordPull', usernameVariable: 'userNamePull')]) {
+                    if (config.registryPush && config.registryPush.credentialsId) {
+                        steps.withCredentials([steps.usernamePassword(credentialsId: config.registryPush.credentialsId, passwordVariable: 'passwordPush', usernameVariable: 'userNamePush')]) {
+                            runScript()
+                        }
+                    } else {
+                        runScript()
+                    }
+                }
+            } else {
+                if (config.registryPush && config.registryPush.credentialsId) {
+                    steps.withCredentials([steps.usernamePassword(credentialsId: config.registryPush.credentialsId, passwordVariable: 'passwordPush', usernameVariable: 'userNamePush')]) {
+                        runScript()
+                    }
+                } else {
+                    runScript()
                 }
             }
         }
+    }
 
-        def registryPush = config.registryPush as Map
-        def jib_to_auth = ""
-        if (registryPush != null) {
-            if (registryPush.credentialsId) {
-                steps.withCredentials([steps.usernamePassword(credentialsId: registryPush.credentialsId, passwordVariable: 'passwordPush', usernameVariable: 'userNamePush')]) {
-                    jib_to_auth = "-Djib.to.auth.username=" + steps.env.userNamePush + " -Djib.to.auth.password=" + steps.env.passwordPush
-                }
-            }
+    private runScript() {
+        String jib_from_auth = ""
+        if (config.registryPull && config.registryPull.credentialsId) {
+            jib_from_auth = "-Djib.from.auth.username=\${userNamePull} -Djib.from.auth.password=\${passwordPull}"
         }
 
-        def main_class = ""
+        String jib_to_auth = ""
+        if (config.registryPush && config.registryPush.credentialsId) {
+            jib_to_auth = "-Djib.to.auth.username=\${userNamePush} -Djib.to.auth.password=\${passwordPush}"
+        }
+
+        String main_class = ""
         if (config.springBoot.mainClass) {
             main_class = "-Djib.container.mainClass=" + config.springBoot.mainClass
         }
 
-        def jvm_flags = ""
+        String jvm_flags = ""
         if (config.springBoot.jvmFlages) {
             jvm_flags = "\"-Djib.container.jvmFlags=" + config.springBoot.jvmFlages + "\""
         }
 
-        def environment = ""
+        String environment = ""
         if (config.springBoot.environment) {
             environment = "-Djib.container.environment=" + config.springBoot.environment
         }
 
-        steps.container('builder') {
-            switch (config.java.buildTool) {
-                case "maven":
-                    String updateDependenciesArgs = ""
-                    if (config.java.forceUpdateDependencies) {
-                        updateDependenciesArgs = "-U"
-                    }
+        switch (config.java.buildTool) {
+            case "maven":
+                String updateDependenciesArgs = ""
+                if (config.java.forceUpdateDependencies) {
+                    updateDependenciesArgs = "-U"
+                }
 
-                    steps.sh """#!/bin/sh
+                steps.sh """
                         export MAVEN_OPTS="-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
                         cd "${config.srcRootPath}"
                         sh ./mvnw compile com.google.cloud.tools:jib-maven-plugin:3.3.1:build \
@@ -266,17 +279,17 @@ class SpringBootImagePipeline extends ImagePipeline {
                             ${environment} \
                             -Djib.allowInsecureRegistries=true \
                             ${jib_from_auth} -Djib.from.image=${config.springBoot.baseImage} \
-                            ${jib_to_auth} -Djib.to.image=${registryPush.url}/${config.imageName} -Djib.to.tags=${config.version}
+                            ${jib_to_auth} -Djib.to.image=${config.registryPush.url}/${config.imageName} -Djib.to.tags=${config.version}
                     """
-                    break
-                case "gradle":
-                    addPlugin('com.google.cloud.tools.jib', '3.3.1', "${config.srcRootPath}/build.gradle")
+                break
+            case "gradle":
+                addPlugin('com.google.cloud.tools.jib', '3.3.1', "${config.srcRootPath}/build.gradle")
 
-                    String updateDependenciesArgs = ""
-                    if (config.java.forceUpdateDependencies) {
-                        updateDependenciesArgs = "--refresh-dependencies"
-                    }
-                    steps.sh """#!/bin/sh
+                String updateDependenciesArgs = ""
+                if (config.java.forceUpdateDependencies) {
+                    updateDependenciesArgs = "--refresh-dependencies"
+                }
+                steps.sh """
                         cd "${config.srcRootPath}"
                         mv -f ./build.gradle ./build.gradle-original
                         cp -f ./build.gradle-com.google.cloud.tools.jib ./build.gradle
@@ -298,12 +311,11 @@ class SpringBootImagePipeline extends ImagePipeline {
                             ${environment} \
                             -Djib.allowInsecureRegistries=true \
                             ${jib_from_auth} -Djib.from.image=${config.springBoot.baseImage} \
-                            ${jib_to_auth} -Djib.to.image=${registryPush.url}/${config.imageName} -Djib.to.tags=${config.version}
+                            ${jib_to_auth} -Djib.to.image=${config.registryPush.url}/${config.imageName} -Djib.to.tags=${config.version}
 
                         cp -f ./build.gradle-original ./build.gradle
                     """
-                    break
-            }
+                break
         }
     }
 

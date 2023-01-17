@@ -10,6 +10,9 @@ dependOn:
 - name: ""
   branch: ""
 
+# Build script file name
+buildScript: "build-ci.sh"
+
 # Execute UT
 utEnabled: false
 
@@ -81,10 +84,15 @@ java:
   jacocoLineCoverageThreshold: "0"
 
 ## Docker image config
+# Name of generated image
 imageName: ""
+# Dockerfile used to build image
+dockerFile: ""
+# Pull registry info
 registryPull:
   url: "docker.io"
   credentialsId: ""
+# Push registry info
 registryPush:
   url: "registry.cn-zhangjiakou.aliyuncs.com/bizconf_devops"
   credentialsId: "registry"
@@ -109,3 +117,4 @@ springBoot:
 nodejs:
   baseImage: "node:19.4.0-slim"
   useDefaultNpmrc: true
+  StartCmd: "npm start"
