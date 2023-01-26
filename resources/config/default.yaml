@@ -73,7 +73,6 @@ java:
   useDefaultGradleInitScript: true
   moduleName: "."
   forceUpdateDependencies: false
-  jacocoLineCoverageThreshold: "0"
 
 ## Docker image config
 # Name of generated image
@@ -99,30 +98,30 @@ helm:
 
 ## SpringBoot config
 springBoot:
-  # Execute UT
-  utEnabled: false
-  # execute code analysis
-  codeAnalysisEnabled: false
-  sonarqubeServerName: ""
-  qualityGateEnabled: false
-  sonarqubeTimeoutMinutes: 10
-
   mainClass: ""
   appRoot: "/app"
   baseImage: "amazoncorretto:8"
   jvmFlages: "-Duser.timezone=PRC -Dfile.encoding=UTF-8"
   environment: "TZ='Asia/Shanghai'"
-
-## Node.js config
-nodejs:
   # Execute UT
   utEnabled: false
+  lineCoverageThreshold: 0
   # execute code analysis
   codeAnalysisEnabled: false
   sonarqubeServerName: ""
   qualityGateEnabled: false
   sonarqubeTimeoutMinutes: 10
 
+## Node.js config
+nodejs:
   baseImage: "node:19.4.0-slim"
   useDefaultNpmrc: true
   StartCmd: "npm start"
+  # Execute UT (Jest only)
+  utEnabled: false
+  lineCoverageThreshold: 0
+  # execute code analysis
+  codeAnalysisEnabled: false
+  sonarqubeServerName: ""
+  qualityGateEnabled: false
+  sonarqubeTimeoutMinutes: 10

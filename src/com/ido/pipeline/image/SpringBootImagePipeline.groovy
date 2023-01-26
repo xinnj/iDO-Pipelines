@@ -136,8 +136,8 @@ class SpringBootImagePipeline extends ImagePipeline {
                     break
             }
 
-            steps.jacoco(changeBuildStatus: true, minimumLineCoverage: "${config.java.jacocoLineCoverageThreshold}",
-                    maximumLineCoverage: "${config.java.jacocoLineCoverageThreshold}")
+            steps.jacoco(changeBuildStatus: true, minimumLineCoverage: "${config.springboot.lineCoverageThreshold}",
+                    maximumLineCoverage: "${config.springboot.lineCoverageThreshold}")
             if (steps.currentBuild.result == 'FAILURE') {
                 steps.error "UT coverage failure!"
             }

@@ -51,6 +51,29 @@ class NodejsImagePipeline extends ImagePipeline {
         if (!config.nodejs.utEnabled) {
             return
         }
+
+        steps.container('builder') {
+            steps.sh """
+                cd "${config.srcRootPath}"
+                npm pkg set jest.coverageReporters[]=text
+                npm pkg set jest.coverageReporters[]=cobertura
+                # npm pkg set jest.coverageReporters[]=lcov
+                # npm pkg set jest.coverageThreshold.global.line=${config.nodejs.lineCoverageThreshold}
+                npm install-test
+            """
+
+            steps.cobertura(coberturaReportFile: "${config.srcRootPath}/coverage/cobertura-coverage.xml", enableNewApi: true,
+                    lineCoverageTargets: "${config.nodejs.lineCoverageThreshold}, ${config.nodejs.lineCoverageThreshold}, ${config.nodejs.lineCoverageThreshold}")
+
+//            steps.publishCoverage(adapters: [steps.istanbulCoberturaAdapter("${config.srcRootPath}/coverage/cobertura-coverage.xml")],
+//                    checksName: '', failNoReports: true, failUnhealthy: true, failUnstable: true,
+//                    globalThresholds: [[failUnhealthy: true, thresholdTarget: 'Line', unhealthyThreshold: config.nodejs.lineCoverageThreshold, unstableThreshold: config.nodejs.lineCoverageThreshold]],
+//                    sourceCodeEncoding: 'UTF-8', sourceFileResolver: steps.sourceFiles('NEVER_STORE'))
+
+//            steps.publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, escapeUnderscores: false, keepAll: false,
+//                               reportDir   : "${config.srcRootPath}/coverage/lcov-report", reportFiles: 'index.html',
+//                               reportName  : 'Coverage Report', reportTitles: ''])
+        }
     }
 
     @Override
@@ -84,6 +107,7 @@ class NodejsImagePipeline extends ImagePipeline {
             steps.sh """
                 export NODE_ENV=production
                 cd "${config.srcRootPath}"
+                rm -rf node_modules
     
                 if [ -s "./${config.buildScript}" ]; then
                     sh "./${config.buildScript}"
