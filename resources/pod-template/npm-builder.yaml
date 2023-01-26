@@ -2,6 +2,19 @@ apiVersion: v1
 kind: Pod
 spec:
   containers:
+    - name: sonar-scanner
+      image: "sonarsource/sonar-scanner-cli"
+      imagePullPolicy: IfNotPresent
+      command:
+        - sleep
+      args:
+        - <keepBuilderPodMinutes>m
+      volumeMounts:
+        - mountPath: /home/jenkins/agent
+          name: workspace-volume
+      env:
+        - name: SONAR_USER_HOME
+          value: /home/jenkins/agent/sonar
     - name: builder
       image: <builderImage>
       imagePullPolicy: IfNotPresent

@@ -55,8 +55,26 @@ class NodejsImagePipeline extends ImagePipeline {
 
     @Override
     def codeAnalysis() {
-        if (!config.springBoot.codeAnalysisEnabled) {
+        if (!config.nodejs.codeAnalysisEnabled) {
             return
+        }
+
+        steps.container('sonar-scanner') {
+            steps.withSonarQubeEnv(config.nodejs.sonarqubeServerName) {
+                steps.sh """
+                    cd "${config.srcRootPath}"
+                    sonar-scanner -Dsonar.projectKey=${config.imageName} -Dsonar.sourceEncoding=UTF-8
+                """
+            }
+        }
+
+        if (config.nodejs.qualityGateEnabled) {
+            steps.timeout(time: config.nodejs.sonarqubeTimeoutMinutes, unit: 'MINUTES') {
+                def qg = steps.waitForQualityGate()
+                if (qg.status != 'OK') {
+                    steps.error "Quality gate failure: ${qg.status}"
+                }
+            }
         }
     }
 
