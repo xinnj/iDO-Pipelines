@@ -103,6 +103,7 @@ springBoot:
   utEnabled: false
   # execute code analysis
   codeAnalysisEnabled: false
+  sonarqubeServerName: ""
   qualityGateEnabled: false
   sonarqubeTimeoutMinutes: 10
 
@@ -118,6 +119,7 @@ nodejs:
   utEnabled: false
   # execute code analysis
   codeAnalysisEnabled: false
+  sonarqubeServerName: ""
   qualityGateEnabled: false
   sonarqubeTimeoutMinutes: 10
 

@@ -157,7 +157,7 @@ class SpringBootImagePipeline extends ImagePipeline {
                         updateDependenciesArgs = "-U"
                     }
 
-                    steps.withSonarQubeEnv() {
+                    steps.withSonarQubeEnv(config.springBoot.sonarqubeServerName) {
                         steps.sh """
                             export MAVEN_OPTS="-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
                             cd "${config.srcRootPath}"
@@ -178,7 +178,7 @@ class SpringBootImagePipeline extends ImagePipeline {
                         updateDependenciesArgs = "--refresh-dependencies"
                     }
 
-                    steps.withSonarQubeEnv() {
+                    steps.withSonarQubeEnv(config.springBoot.sonarqubeServerName) {
                         steps.sh """
                             cd "${config.srcRootPath}"
                             mv -f ./build.gradle ./build.gradle-original
