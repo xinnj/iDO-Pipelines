@@ -2,17 +2,17 @@ package com.ido.pipeline.image
 /**
  * @author xinnj
  */
-class NodejsImagePipeline extends ImagePipeline {
-    NodejsImagePipeline(Object steps) {
+class VueImagePipeline extends ImagePipeline {
+    VueImagePipeline(Object steps) {
         super(steps)
     }
 
     @Override
     Map runPipeline(Map config) {
         config.nodeType = "k8s"
-        String nodejsBuilder = steps.libraryResource(resource: 'pod-template/npm-builder.yaml', encoding: 'UTF-8')
-        nodejsBuilder = nodejsBuilder.replaceAll('<builderImage>', config.nodejs.baseImage)
-        config.podTemplate = nodejsBuilder
+        String vueBuilder = steps.libraryResource(resource: 'pod-template/npm-builder.yaml', encoding: 'UTF-8')
+        vueBuilder = vueBuilder.replaceAll('<builderImage>', config.vue.builderBaseImage)
+        config.podTemplate = vueBuilder
 
         return super.runPipeline(config)
     }
@@ -21,8 +21,8 @@ class NodejsImagePipeline extends ImagePipeline {
     def prepare() {
         super.prepare()
 
-        if (!config.nodejs.baseImage) {
-            steps.error "nodejs.baseImage is empty!"
+        if (!config.vue.runtimeBaseImage) {
+            steps.error "vue.runtimeBaseImage is empty!"
         }
     }
 
@@ -30,7 +30,7 @@ class NodejsImagePipeline extends ImagePipeline {
     def scm() {
         super.scm()
 
-        if (config.nodejs.useDefaultNpmrc) {
+        if (config.vue.useDefaultNpmrc) {
             String npmrc = steps.libraryResource(resource: 'builder/default-npmrc', encoding: 'UTF-8')
             steps.writeFile(file: "${config.srcRootPath}/.npmrc", text: npmrc, encoding: "UTF-8")
         }
@@ -48,42 +48,46 @@ class NodejsImagePipeline extends ImagePipeline {
 
     @Override
     def ut() {
-        if (!config.nodejs.utEnabled) {
+        if (!config.vue.utEnabled) {
             return
         }
 
         steps.container('builder') {
+            /* Following config is needed in vite.config.js
+
+            test: {
+                coverage: {
+                    provider: 'istanbul',
+                    reporter: ['text', 'cobertura']
+                },
+            }
+
+            */
             steps.sh """
                 cd "${config.srcRootPath}"
-                npm pkg set jest.coverageReporters[]=text
-                npm pkg set jest.coverageReporters[]=cobertura
-                # npm pkg set jest.coverageReporters[]=lcov
-                # npm pkg set jest.coverageThreshold.global.line=${config.nodejs.lineCoverageThreshold}
+                npm i -D @vitest/coverage-istanbul
                 npm install-test
             """
 
-            steps.cobertura(coberturaReportFile: "${config.srcRootPath}/coverage/cobertura-coverage.xml", enableNewApi: true,
-                    lineCoverageTargets: "${config.nodejs.lineCoverageThreshold}, ${config.nodejs.lineCoverageThreshold}, ${config.nodejs.lineCoverageThreshold}")
-
-//            steps.publishCoverage(adapters: [steps.istanbulCoberturaAdapter("${config.srcRootPath}/coverage/cobertura-coverage.xml")],
-//                    checksName: '', failNoReports: true, failUnhealthy: true, failUnstable: true,
-//                    globalThresholds: [[failUnhealthy: true, thresholdTarget: 'Line', unhealthyThreshold: config.nodejs.lineCoverageThreshold, unstableThreshold: config.nodejs.lineCoverageThreshold]],
-//                    sourceCodeEncoding: 'UTF-8', sourceFileResolver: steps.sourceFiles('NEVER_STORE'))
-
-//            steps.publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, escapeUnderscores: false, keepAll: false,
-//                               reportDir   : "${config.srcRootPath}/coverage/lcov-report", reportFiles: 'index.html',
-//                               reportName  : 'Coverage Report', reportTitles: ''])
+            def files = steps.findFiles(glob: "${config.srcRootPath}/**/cobertura-coverage.xml")
+            if (files) {
+                steps.echo "Coverage report file: ${files[0].path}"
+                steps.cobertura(coberturaReportFile: files[0].path, enableNewApi: true,
+                        lineCoverageTargets: "${config.vue.lineCoverageThreshold}, ${config.vue.lineCoverageThreshold}, ${config.vue.lineCoverageThreshold}")
+            } else {
+                steps.error "Can't find coverage report file!"
+            }
         }
     }
 
     @Override
     def codeAnalysis() {
-        if (!config.nodejs.codeAnalysisEnabled) {
+        if (!config.vue.codeAnalysisEnabled) {
             return
         }
 
         steps.container('sonar-scanner') {
-            steps.withSonarQubeEnv(config.nodejs.sonarqubeServerName) {
+            steps.withSonarQubeEnv(config.vue.sonarqubeServerName) {
                 steps.sh """
                     cd "${config.srcRootPath}"
                     sonar-scanner -Dsonar.projectKey=${config.imageName} -Dsonar.sourceEncoding=UTF-8
@@ -91,8 +95,8 @@ class NodejsImagePipeline extends ImagePipeline {
             }
         }
 
-        if (config.nodejs.qualityGateEnabled) {
-            steps.timeout(time: config.nodejs.sonarqubeTimeoutMinutes, unit: 'MINUTES') {
+        if (config.vue.qualityGateEnabled) {
+            steps.timeout(time: config.vue.sonarqubeTimeoutMinutes, unit: 'MINUTES') {
                 def qg = steps.waitForQualityGate()
                 if (qg.status != 'OK') {
                     steps.error "Quality gate failure: ${qg.status}"
@@ -105,13 +109,13 @@ class NodejsImagePipeline extends ImagePipeline {
     def build() {
         steps.container('builder') {
             steps.sh """
-                export NODE_ENV=production
                 cd "${config.srcRootPath}"
     
                 if [ -s "./${config.buildScript}" ]; then
                     sh "./${config.buildScript}"
                 else
-                    npm ci --omit=dev
+                    npm install
+                    npm run build
                 fi
             """
         }
@@ -120,11 +124,18 @@ class NodejsImagePipeline extends ImagePipeline {
             String dockerignore = steps.libraryResource(resource: 'builder/default-dockerignore', encoding: 'UTF-8')
             steps.writeFile(file: "${config.srcRootPath}/.dockerignore", text: dockerignore, encoding: 'UTF-8')
         }
+
+        if (!config.vue.nginxConfigFile) {
+            String nginxConf = steps.libraryResource(resource: 'builder/default-nginx-config', encoding: 'UTF-8')
+            steps.writeFile(file: "${config.srcRootPath}/nginx.conf", text: nginxConf, encoding: 'UTF-8')
+            config.vue.nginxConfigFile = "nginx.conf"
+        }
+
         if (!config.dockerFile) {
-            String dockerfile = steps.libraryResource(resource: 'builder/default-nodejs-dockerfile', encoding: 'UTF-8')
+            String dockerfile = steps.libraryResource(resource: 'builder/default-vue-dockerfile', encoding: 'UTF-8')
             dockerfile = dockerfile
-                    .replaceAll('<baseImage>', config.nodejs.baseImage as String)
-                    .replaceAll('<startCmd>', config.nodejs.StartCmd as String)
+                    .replaceAll('<baseImage>', config.vue.runtimeBaseImage as String)
+                    .replaceAll('<nginxConfigFile>', config.vue.nginxConfigFile as String)
             steps.writeFile(file: "${config.srcRootPath}/Dockerfile", text: dockerfile, encoding: 'UTF-8')
             config.dockerFile = "Dockerfile"
         }

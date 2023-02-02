@@ -66,7 +66,7 @@ java:
   # "maven", "gradle"
   buildTool: "maven"
   # Builder image with JDK installed
-  builderImage: "amazoncorretto:8"
+  builderImage: "docker.io/amazoncorretto:8"
   mavenVersion: "3.8.6"
   useDefaultMavenSettings: true
   gradleVersion: "7.6"
@@ -100,7 +100,7 @@ helm:
 springBoot:
   mainClass: ""
   appRoot: "/app"
-  baseImage: "amazoncorretto:8"
+  baseImage: "docker.io/amazoncorretto:8"
   jvmFlages: "-Duser.timezone=PRC -Dfile.encoding=UTF-8"
   environment: "TZ='Asia/Shanghai'"
   # Execute UT
@@ -114,13 +114,31 @@ springBoot:
 
 ## Node.js config
 nodejs:
-  baseImage: "node:19.4.0-slim"
+  baseImage: "docker.io/node:18.13.0-slim"
   useDefaultNpmrc: true
   StartCmd: "npm start"
   # Execute UT (Jest only)
   utEnabled: false
   lineCoverageThreshold: 0
-  # execute code analysis
+  # Execute code analysis
+  codeAnalysisEnabled: false
+  sonarqubeServerName: ""
+  qualityGateEnabled: false
+  sonarqubeTimeoutMinutes: 10
+
+## Node.js config
+vue:
+  builderBaseImage: "docker.io/node:18.13.0-slim"
+  # Must be nginx
+  runtimeBaseImage: "docker.io/nginx:stable"
+  # Nginx config file to be copied to runtime container. A relative path to "srcRootPath" property.
+  # Empty to use default config
+  nginxConfigFile: ""
+  useDefaultNpmrc: true
+  # Execute UT (Vitest only)
+  utEnabled: false
+  lineCoverageThreshold: 0
+  # Execute code analysis
   codeAnalysisEnabled: false
   sonarqubeServerName: ""
   qualityGateEnabled: false

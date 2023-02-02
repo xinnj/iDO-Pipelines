@@ -1,0 +1,6 @@
+FROM <baseImage>
+
+COPY <nginxConfigFile> /etc/nginx/
+WORKDIR /usr/src/app
+COPY --chown=1000:1000 dist /usr/share/nginx/html
+RUN chown -R 1000:1000 /var/cache/nginx/
