@@ -39,27 +39,31 @@ abstract class ImagePipeline extends BasePipeline {
             this.versioning()
         }
 
-        steps.stage('UT') {
-            steps.echo "########## Stage: UT ##########"
-            this.ut()
-        }
-
-        steps.stage('Code Analysis') {
-            steps.echo "########## Stage: Code Analysis ##########"
-            this.codeAnalysis()
-        }
-
-        steps.stage('Build Image') {
-            steps.echo "########## Stage: Build Image ##########"
-            this.build()
-        }
-
-        steps.stage('Build Helm Chart') {
-            if (config.helm.buildChart && config.helm.chartPath) {
-                steps.echo "########## Stage: Build Helm Chart ##########"
-                this.buildHelmChart()
+        steps.parallel 'UT': {
+            steps.stage('UT') {
+                steps.echo "########## Stage: UT ##########"
+                this.ut()
             }
-        }
+        }, 'Code Analysis': {
+            steps.stage('Code Analysis') {
+                steps.echo "########## Stage: Code Analysis ##########"
+                this.codeAnalysis()
+            }
+        }, failFast: true
+
+        steps.parallel 'Build Image': {
+            steps.stage('Build Image') {
+                steps.echo "########## Stage: Build Image ##########"
+                this.build()
+            }
+        }, 'Build Helm Chart': {
+            steps.stage('Build Helm Chart') {
+                if (config.helm.buildChart && config.helm.chartPath) {
+                    steps.echo "########## Stage: Build Helm Chart ##########"
+                    this.buildHelmChart()
+                }
+            }
+        }, failFast: true
     }
 
     @Override
