@@ -266,6 +266,7 @@ abstract class BasePipeline implements Pipeline, Serializable {
                 git config --global http.connecttimeout 120
                 git config --global core.longpaths true
                 git config --global core.autocrlf false
+                git config --global pull.rebase true
                 git config --global --unset credential.helper || :
                 find .git -type f -name "*.lock" -delete > /dev/null 2>&1 || :
                 rm -fr .git/rebase-apply > /dev/null 2>&1 || :
@@ -280,6 +281,7 @@ abstract class BasePipeline implements Pipeline, Serializable {
                 git config --global http.connecttimeout 120
                 git config --global core.longpaths true
                 git config --global core.autocrlf false
+                git config --global pull.rebase true
                 git config --global --unset credential.helper
                 Get-ChildItem -Path '.git/*.lock' -Recurse -Force -ErrorAction Ignore | Remove-item -Force
                 Remove-Item -Recurse -Force -ErrorAction Ignore .git/rebase-apply
