@@ -82,6 +82,10 @@ abstract class BasePipeline implements Pipeline, Serializable {
                     }
                 }
 
+                if (config._system.imagePullMirror) {
+                    config.podTemplate = Utils.replaceImageMirror(config.podTemplate)
+                }
+
                 steps.podTemplate(yaml: config.podTemplate,
                         podRetention: podRetentionType(config.keepBuilderPod),
                         workspaceVolume: workspaceVolumeType(config._system.workspaceVolume.type)

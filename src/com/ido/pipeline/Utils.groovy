@@ -143,4 +143,29 @@ public class Utils {
             }
         }
     }
+
+    static String replaceImageMirror(String original) {
+        Map mirrors = [
+                "cr.l5d.io"              : "l5d.m.daocloud.io",
+                "docker.elastic.co"      : "elastic.m.daocloud.io",
+                "docker.io"              : "docker.m.daocloud.io",
+                "gcr.io"                 : "gcr.m.daocloud.io",
+                "ghcr.io"                : "ghcr.m.daocloud.io",
+                "k8s.gcr.io"             : "k8s-gcr.m.daocloud.io",
+                "registry.k8s.io"        : "k8s.m.daocloud.io",
+                "mcr.microsoft.com"      : "mcr.m.daocloud.io",
+                "nvcr.io"                : "nvcr.m.daocloud.io",
+                "quay.io"                : "quay.m.daocloud.io",
+                "registry.jujucharms.com": "jujucharms.m.daocloud.io",
+                "rocks.canonical.com"    : "rocks-canonical.m.daocloud.io"
+        ]
+
+        mirrors.each { k, v ->
+            L:
+            {
+                original = original.replaceAll(k, v)
+            }
+        }
+        return original
+    }
 }

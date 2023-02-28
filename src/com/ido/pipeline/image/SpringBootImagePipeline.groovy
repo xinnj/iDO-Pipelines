@@ -1,5 +1,6 @@
 package com.ido.pipeline.image
 
+import com.ido.pipeline.Utils
 import com.ido.pipeline.base.HelmChart
 
 /**
@@ -235,6 +236,10 @@ class SpringBootImagePipeline extends ImagePipeline {
     }
 
     private runScript() {
+        if (config._system.imagePullMirror) {
+            config.springBoot.baseImage = Utils.replaceImageMirror(config.springBoot.baseImage)
+        }
+
         String jib_from_auth = ""
         if (config.registryPull && config.registryPull.credentialsId) {
             jib_from_auth = "-Djib.from.auth.username=\${userNamePull} -Djib.from.auth.password=\${passwordPull}"

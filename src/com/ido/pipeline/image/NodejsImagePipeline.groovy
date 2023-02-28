@@ -1,4 +1,7 @@
 package com.ido.pipeline.image
+
+import com.ido.pipeline.Utils
+
 /**
  * @author xinnj
  */
@@ -125,6 +128,11 @@ class NodejsImagePipeline extends ImagePipeline {
             dockerfile = dockerfile
                     .replaceAll('<baseImage>', config.nodejs.baseImage as String)
                     .replaceAll('<startCmd>', config.nodejs.StartCmd as String)
+
+            if (config._system.imagePullMirror) {
+                dockerfile = Utils.replaceImageMirror(dockerfile)
+            }
+
             steps.writeFile(file: "${config.srcRootPath}/Dockerfile", text: dockerfile, encoding: 'UTF-8')
             config.dockerFile = "Dockerfile"
         }
