@@ -12,4 +12,4 @@ workspaceVolume:
   hostPath: ""
   nfsServerAddress: ""
   nfsServerPath: ""
-  pvcName: "jenkins-test-agent-data"
+  pvcName: "jenkins-agent-data"
