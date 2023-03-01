@@ -144,6 +144,98 @@ public class Utils {
         }
     }
 
+    static addGradlePlugin(Object steps, String pluginId, String pluginVersion, String projectPath) {
+        String subprojects = ""
+        if (steps.fileExists("${projectPath}/settings.gradle")) {
+            String settingsGradle = steps.readFile(file: projectPath + "/settings.gradle", encoding: "UTF-8")
+            def mInclude = settingsGradle =~ /(?s)include.+/
+            if (mInclude) {
+                // Is multi-project
+                subprojects = """
+subprojects {
+    apply plugin: '${pluginId}'
+}
+"""
+            }
+        }
+
+        String buildGradle = steps.readFile(file: projectPath + "/build.gradle", encoding: "UTF-8")
+        def mPlugins = buildGradle =~ /(?s)\n(plugins\s*?\{.*?)}/
+        if (mPlugins) {
+            // There is a plugins block in the file
+            String plugins = mPlugins[0][1]
+            def mId = plugins =~ /(?s)${pluginId}/
+            if (!mId) {
+                // The plugin is not defined
+                if (pluginVersion) {
+                    plugins = plugins + "\n\tid \"${pluginId}\" version \"${pluginVersion}\"\n}"
+                } else {
+                    plugins = plugins + "\n\tid \"${pluginId}\"\n}"
+                }
+
+                buildGradle = buildGradle.replaceAll("(?s)plugins\\s*?\\{.*?}", plugins)
+            }
+            mId = null
+            mPlugins = null
+        } else {
+            // There is no plugins block in the file
+            mPlugins = null
+
+            String plugins
+            // Define the plugins block
+            if (pluginVersion) {
+                plugins = """
+plugins {
+  id "${pluginId}" version "${pluginVersion}"
+}
+"""
+            } else {
+                plugins = """
+plugins {
+  id "${pluginId}"
+}
+"""
+            }
+
+            // The plugins block can only be placed after buildscript block
+            def mBuildscript = buildGradle =~ /(?s)\n(buildscript\s*?\{.+)$/
+            if (mBuildscript) {
+                // buildscript block exists
+                String restStr = mBuildscript[0][1]
+                String beforeBuildscriptBlock = buildGradle.substring(0, mBuildscript.start())
+
+                char[] restChars = restStr.toCharArray()
+
+                int leftNum = 0
+                int rightNum = 0
+                String buildscriptBlock = ""
+                String afterBuildscriptBlock = ""
+                int n = restChars.length
+                for (int i = 0; i < n; i++) {
+                    if (restChars[i] == '{') {
+                        leftNum++
+                    }
+                    if (restChars[i] == '}') {
+                        rightNum++
+                    }
+
+                    if (leftNum != 0 && leftNum == rightNum) {
+                        buildscriptBlock = restStr.substring(0, i + 1)
+                        afterBuildscriptBlock = restStr.substring(i + 2, n)
+                        break
+                    }
+                }
+
+                buildGradle = beforeBuildscriptBlock + "\n" + buildscriptBlock + "\n" + plugins + "\n" + subprojects + "\n" + afterBuildscriptBlock
+            } else {
+                // Put the plugins block at the beginning
+                buildGradle = plugins + "\n" + buildGradle
+            }
+            mBuildscript = null
+        }
+        steps.writeFile(file: "${projectPath}/build.gradle-${pluginId}", text: buildGradle, encoding: 'UTF-8')
+    }
+
     static String replaceImageMirror(String original) {
         Map mirrors = [
                 "cr.l5d.io"              : "l5d.m.daocloud.io",

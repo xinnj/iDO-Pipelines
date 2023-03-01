@@ -39,17 +39,29 @@ abstract class ImagePipeline extends BasePipeline {
             this.versioning()
         }
 
-        steps.parallel 'UT': {
+        if (config.parallelUtAnalysis) {
+            steps.parallel 'UT': {
+                steps.stage('UT') {
+                    steps.echo "########## Stage: UT ##########"
+                    this.ut()
+                }
+            }, 'Code Analysis': {
+                steps.stage('Code Analysis') {
+                    steps.echo "########## Stage: Code Analysis ##########"
+                    this.codeAnalysis()
+                }
+            }, failFast: true
+        } else {
             steps.stage('UT') {
                 steps.echo "########## Stage: UT ##########"
                 this.ut()
             }
-        }, 'Code Analysis': {
+
             steps.stage('Code Analysis') {
                 steps.echo "########## Stage: Code Analysis ##########"
                 this.codeAnalysis()
             }
-        }, failFast: true
+        }
 
         steps.parallel 'Build Image': {
             steps.stage('Build Image') {
@@ -69,10 +81,6 @@ abstract class ImagePipeline extends BasePipeline {
     @Override
     def prepare() {
         super.prepare()
-
-        if (!config.imageName) {
-            steps.error "imageName is empty!"
-        }
     }
 
     def abstract ut()

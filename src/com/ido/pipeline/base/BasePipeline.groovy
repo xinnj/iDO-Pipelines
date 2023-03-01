@@ -87,6 +87,7 @@ abstract class BasePipeline implements Pipeline, Serializable {
                 }
 
                 steps.podTemplate(yaml: config.podTemplate,
+                        namespace: "jenkins",
                         podRetention: podRetentionType(config.keepBuilderPod),
                         workspaceVolume: workspaceVolumeType(config._system.workspaceVolume.type)
                 ) {
@@ -145,6 +146,10 @@ abstract class BasePipeline implements Pipeline, Serializable {
     }
 
     def prepare() {
+        if (!config.productName) {
+            steps.error "productName is empty!"
+        }
+
         String upstreamProjects = ""
         String branch = Utils.getBranchName(steps)
 

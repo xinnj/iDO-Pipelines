@@ -13,6 +13,8 @@ class NodejsImagePipeline extends ImagePipeline {
     @Override
     Map runPipeline(Map config) {
         config.nodeType = "k8s"
+        config.parallelUtAnalysis = true
+
         String nodejsBuilder = steps.libraryResource(resource: 'pod-template/npm-builder.yaml', encoding: 'UTF-8')
         nodejsBuilder = nodejsBuilder.replaceAll('<builderImage>', config.nodejs.baseImage)
         config.podTemplate = nodejsBuilder
@@ -89,7 +91,7 @@ class NodejsImagePipeline extends ImagePipeline {
             steps.withSonarQubeEnv(config.nodejs.sonarqubeServerName) {
                 steps.sh """
                     cd "${config.srcRootPath}"
-                    sonar-scanner -Dsonar.projectKey=${config.imageName} -Dsonar.sourceEncoding=UTF-8
+                    sonar-scanner -Dsonar.projectKey=${config.productName} -Dsonar.sourceEncoding=UTF-8
                 """
             }
         }
@@ -107,16 +109,20 @@ class NodejsImagePipeline extends ImagePipeline {
     @Override
     def build() {
         steps.container('builder') {
-            steps.sh """
-                export NODE_ENV=production
-                cd "${config.srcRootPath}"
-    
-                if [ -s "./${config.buildScript}" ]; then
-                    sh "./${config.buildScript}"
-                else
-                    npm ci --omit=dev
-                fi
-            """
+            steps.withEnv(["CI_PRODUCTNAME=$config.productName",
+                           "CI_VERSION=$config.version",
+                           "CI_BRANCH=" + Utils.getBranchName(steps)]) {
+                steps.sh """
+                    export NODE_ENV=production
+                    cd "${config.srcRootPath}"
+        
+                    if [ -s "./${config.buildScript}" ]; then
+                        sh "./${config.buildScript}"
+                    else
+                        npm ci --omit=dev
+                    fi
+                """
+            }
         }
 
         if (!steps.fileExists("${config.srcRootPath}/.dockerignore")) {
@@ -171,11 +177,11 @@ class NodejsImagePipeline extends ImagePipeline {
             registry_login_push = "buildah login -u \${userNamePush}  -p \${passwordPush} " + config.registryPush.url
         }
 
-        String pushImageFullName = "${config.registryPush.url}/${config.imageName}:${config.version}"
+        String pushImageFullName = "${config.registryPush.url}/${config.productName}:${config.version}"
         steps.sh """
             cd "${config.srcRootPath}"
             alias buildah="buildah --root /home/jenkins/agent/buildah --runroot /tmp/containers"
-            pushImageFullName=${config.registryPush.url}/${config.imageName}:${config.version}
+            pushImageFullName=${config.registryPush.url}/${config.productName}:${config.version}
             ${registry_login_pull}
             buildah build --format ${config._system.imageFormat} -f ${config.dockerFile} -t ${pushImageFullName} ./
             

@@ -1,7 +1,6 @@
 package com.ido.pipeline.image
 
 import com.ido.pipeline.Utils
-import com.ido.pipeline.base.HelmChart
 
 /**
  * @author xinnj
@@ -112,7 +111,7 @@ class SpringBootImagePipeline extends ImagePipeline {
                     """
                     break
                 case "gradle":
-                    addPlugin('jacoco', null, "${config.srcRootPath}/build.gradle")
+                    Utils.addGradlePlugin(steps, 'jacoco', null, "${config.srcRootPath}/${config.java.moduleName}")
 
                     String updateDependenciesArgs = ""
                     if (config.java.forceUpdateDependencies) {
@@ -121,18 +120,18 @@ class SpringBootImagePipeline extends ImagePipeline {
 
                     steps.sh """
                         cd "${config.srcRootPath}"
-                        mv -f ./build.gradle ./build.gradle-original
-                        cp -f ./build.gradle-jacoco ./build.gradle
+                        mv -f ${config.java.moduleName}/build.gradle ${config.java.moduleName}/build.gradle-original
+                        cp -f ${config.java.moduleName}/build.gradle-jacoco ${config.java.moduleName}/build.gradle
                         
                         sh ./gradlew test \
                             --no-daemon \
                             ${updateDependenciesArgs} \
-                            -I ./default-gradle-init.gradle \
+                            -I "${steps.env.WORKSPACE}/${config.srcRootPath}/default-gradle-init.gradle" \
                             -Dfile.encoding=UTF-8 \
                             "-Dorg.gradle.jvmargs=-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" \
                             -p ${config.java.moduleName}
 
-                        cp -f ./build.gradle-original ./build.gradle
+                        cp -f ${config.java.moduleName}/build.gradle-original ${config.java.moduleName}/build.gradle
                     """
                     break
             }
@@ -172,7 +171,7 @@ class SpringBootImagePipeline extends ImagePipeline {
                     }
                     break
                 case "gradle":
-                    addPlugin('org.sonarqube', "3.5.0.2730", "${config.srcRootPath}/build.gradle")
+                    Utils.addGradlePlugin(steps, 'org.sonarqube', "4.0.0.2929", "${config.srcRootPath}/${config.java.moduleName}")
 
                     String updateDependenciesArgs = ""
                     if (config.java.forceUpdateDependencies) {
@@ -182,18 +181,18 @@ class SpringBootImagePipeline extends ImagePipeline {
                     steps.withSonarQubeEnv(config.springBoot.sonarqubeServerName) {
                         steps.sh """
                             cd "${config.srcRootPath}"
-                            mv -f ./build.gradle ./build.gradle-original
-                            cp -f ./build.gradle-org.sonarqube ./build.gradle
+                            mv -f ${config.java.moduleName}/build.gradle ${config.java.moduleName}/build.gradle-original
+                            cp -f ${config.java.moduleName}/build.gradle-org.sonarqube ${config.java.moduleName}/build.gradle
                             
                             sh ./gradlew sonar \
                                 --no-daemon \
                                 ${updateDependenciesArgs} \
-                                -I ./default-gradle-init.gradle \
+                                -I "${steps.env.WORKSPACE}/${config.srcRootPath}/default-gradle-init.gradle" \
                                 -Dfile.encoding=UTF-8 \
                                 "-Dorg.gradle.jvmargs=-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" \
                                 -p ${config.java.moduleName}
     
-                            cp -f ./build.gradle-original ./build.gradle
+                            cp -f ${config.java.moduleName}/build.gradle-original ${config.java.moduleName}/build.gradle
                         """
                     }
                     break
@@ -291,11 +290,11 @@ class SpringBootImagePipeline extends ImagePipeline {
                             ${environment} \
                             -Djib.allowInsecureRegistries=true \
                             ${jib_from_auth} -Djib.from.image=${config.springBoot.baseImage} \
-                            ${jib_to_auth} -Djib.to.image=${config.registryPush.url}/${config.imageName} -Djib.to.tags=${config.version}
+                            ${jib_to_auth} -Djib.to.image=${config.registryPush.url}/${config.productName} -Djib.to.tags=${config.version}
                     """
                 break
             case "gradle":
-                addPlugin('com.google.cloud.tools.jib', '3.3.1', "${config.srcRootPath}/build.gradle")
+                Utils.addGradlePlugin(steps, 'com.google.cloud.tools.jib', '3.3.1', "${config.srcRootPath}/${config.java.moduleName}")
 
                 String updateDependenciesArgs = ""
                 if (config.java.forceUpdateDependencies) {
@@ -303,14 +302,14 @@ class SpringBootImagePipeline extends ImagePipeline {
                 }
                 steps.sh """
                         cd "${config.srcRootPath}"
-                        mv -f ./build.gradle ./build.gradle-original
-                        cp -f ./build.gradle-com.google.cloud.tools.jib ./build.gradle
+                        mv -f ${config.java.moduleName}/build.gradle ${config.java.moduleName}/build.gradle-original
+                        cp -f ${config.java.moduleName}/build.gradle-com.google.cloud.tools.jib ${config.java.moduleName}/build.gradle
                         
                         sh ./gradlew jib \
                             --no-daemon \
                             -x test \
                             ${updateDependenciesArgs} \
-                            -I ./default-gradle-init.gradle \
+                            -I "${steps.env.WORKSPACE}/${config.srcRootPath}/default-gradle-init.gradle" \
                             -Dfile.encoding=UTF-8 \
                             "-Dorg.gradle.jvmargs=-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" \
                             -p ${config.java.moduleName} \
@@ -323,45 +322,11 @@ class SpringBootImagePipeline extends ImagePipeline {
                             ${environment} \
                             -Djib.allowInsecureRegistries=true \
                             ${jib_from_auth} -Djib.from.image=${config.springBoot.baseImage} \
-                            ${jib_to_auth} -Djib.to.image=${config.registryPush.url}/${config.imageName} -Djib.to.tags=${config.version}
+                            ${jib_to_auth} -Djib.to.image=${config.registryPush.url}/${config.productName} -Djib.to.tags=${config.version}
 
-                        cp -f ./build.gradle-original ./build.gradle
+                        cp -f ${config.java.moduleName}/build.gradle-original ${config.java.moduleName}/build.gradle
                     """
                 break
-        }
-    }
-
-    private addPlugin(String pluginId, String pluginVersion, String buildGradlePath) {
-        String buildGradle = steps.readFile(file: buildGradlePath, encoding: "UTF-8")
-        def m = buildGradle =~ /(?is)${pluginId}/
-        if (!m) {
-            String plugins = ""
-            m = buildGradle =~ /(?is)(plugins\s*?\{.*?)}/
-            if (m) {
-                if (pluginVersion) {
-                    plugins = m[0][1] + "\tid \"${pluginId}\" version \"${pluginVersion}\"\n}"
-                } else {
-                    plugins = m[0][1] + "\tid \"${pluginId}\"\n}"
-                }
-            } else {
-                if (pluginVersion) {
-                    plugins = """
-plugins {
-  id "${pluginId}" version "${pluginVersion}"
-}
-"""
-                } else {
-                    plugins = """
-plugins {
-  id "${pluginId}"
-}
-"""
-                }
-            }
-            m = null
-
-            buildGradle = buildGradle.replaceAll("(?is)plugins\\s*?\\{.*?}", plugins)
-            steps.writeFile(file: "${buildGradlePath}-${pluginId}", text: buildGradle, encoding: 'UTF-8')
         }
     }
 }

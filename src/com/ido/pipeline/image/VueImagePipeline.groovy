@@ -13,6 +13,8 @@ class VueImagePipeline extends ImagePipeline {
     @Override
     Map runPipeline(Map config) {
         config.nodeType = "k8s"
+        config.parallelUtAnalysis = true
+
         String vueBuilder = steps.libraryResource(resource: 'pod-template/npm-builder.yaml', encoding: 'UTF-8')
         vueBuilder = vueBuilder.replaceAll('<builderImage>', config.vue.builderBaseImage)
         config.podTemplate = vueBuilder
@@ -93,7 +95,7 @@ class VueImagePipeline extends ImagePipeline {
             steps.withSonarQubeEnv(config.vue.sonarqubeServerName) {
                 steps.sh """
                     cd "${config.srcRootPath}"
-                    sonar-scanner -Dsonar.projectKey=${config.imageName} -Dsonar.sourceEncoding=UTF-8
+                    sonar-scanner -Dsonar.projectKey=${config.productName} -Dsonar.sourceEncoding=UTF-8
                 """
             }
         }
@@ -111,16 +113,20 @@ class VueImagePipeline extends ImagePipeline {
     @Override
     def build() {
         steps.container('builder') {
-            steps.sh """
-                cd "${config.srcRootPath}"
-    
-                if [ -s "./${config.buildScript}" ]; then
-                    sh "./${config.buildScript}"
-                else
-                    npm install
-                    npm run build
-                fi
-            """
+            steps.withEnv(["CI_PRODUCTNAME=$config.productName",
+                           "CI_VERSION=$config.version",
+                           "CI_BRANCH=" + Utils.getBranchName(steps)]) {
+                steps.sh """
+                    cd "${config.srcRootPath}"
+        
+                    if [ -s "./${config.buildScript}" ]; then
+                        sh "./${config.buildScript}"
+                    else
+                        npm install
+                        npm run build
+                    fi
+                """
+            }
         }
 
         if (!steps.fileExists("${config.srcRootPath}/.dockerignore")) {
@@ -182,11 +188,11 @@ class VueImagePipeline extends ImagePipeline {
             registry_login_push = "buildah login -u \${userNamePush}  -p \${passwordPush} " + config.registryPush.url
         }
 
-        String pushImageFullName = "${config.registryPush.url}/${config.imageName}:${config.version}"
+        String pushImageFullName = "${config.registryPush.url}/${config.productName}:${config.version}"
         steps.sh """
             cd "${config.srcRootPath}"
             alias buildah="buildah --root /home/jenkins/agent/buildah --runroot /tmp/containers"
-            pushImageFullName=${config.registryPush.url}/${config.imageName}:${config.version}
+            pushImageFullName=${config.registryPush.url}/${config.productName}:${config.version}
             ${registry_login_pull}
             buildah build --format ${config._system.imageFormat} -f ${config.dockerFile} -t ${pushImageFullName} ./
             

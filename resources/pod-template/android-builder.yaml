@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: Pod
+spec:
+  initContainers:
+    - name: install-sdkmanager
+      image: docker.io/alpine
+      command:
+        - /bin/sh
+        - -c
+        - |
+          if ! [ -f "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" ]; then
+              wget <androidCmdLineToolsUrl> -O /tmp/commandlinetools-linux-latest.zip
+              unzip /tmp/commandlinetools-linux-latest.zip -d /tmp/
+              mkdir -p ${ANDROID_HOME}/cmdline-tools/latest
+              mv /tmp/cmdline-tools/* ${ANDROID_HOME}/cmdline-tools/latest/
+          fi
+
+      env:
+        - name: "ANDROID_HOME"
+          value: "/home/jenkins/agent/android"
+      volumeMounts:
+        - mountPath: /home/jenkins/agent
+          name: workspace-volume
+  containers:
+    - name: builder
+      image: <builderImage>
+      imagePullPolicy: IfNotPresent
+      command:
+        - sleep
+      args:
+        - <keepBuilderPodMinutes>m
+      volumeMounts:
+        - mountPath: /home/jenkins/agent
+          name: workspace-volume
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+      env:
+        - name: "ANDROID_HOME"
+          value: "/home/jenkins/agent/android"
+        - name: "MAVEN_USER_HOME"
+          value: "/home/jenkins/agent/m2"
+        - name: "GRADLE_USER_HOME"
+          value: "/home/jenkins/agent/gradle"
+        - name: "SONAR_USER_HOME"
+          value: "/home/jenkins/agent/sonar"
+        - name: "ANDROID_PREFS_ROOT"
+          value: "/tmp"
+    - name: jnlp
+      image: "docker.io/jenkins/inbound-agent:4.11-1-jdk11"
+  imagePullSecrets:
+    - name: <imagePullSecret>
+  securityContext:
+    runAsGroup: 1000
+    runAsUser: 1000

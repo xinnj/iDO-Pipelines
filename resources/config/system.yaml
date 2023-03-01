@@ -16,3 +16,6 @@ workspaceVolume:
   nfsServerAddress: ""
   nfsServerPath: ""
   pvcName: "jenkins-agent-data"
+
+# Android command line tools download url
+androidCmdLineToolsUrl: "https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip"
