@@ -39,7 +39,7 @@ version: ""
 
 ## Notification config
 notification:
-  # Notification type: "email", "slack", "dingtalk"
+  # Notification type: "email", "slack", "dingtalk", "wecom"
   type: [ ]
   # Only notify failure result
   failureOnly: false
@@ -63,6 +63,12 @@ notification:
   dingtalk:
     successReceiverFolderProperty: "IDO_NOTIFICATION_DINGTALK"
     failureReceiverFolderProperty: "IDO_NOTIFICATION_FAILURE_DINGTALK"
+    successReceiver: ""
+    failureReceiver: ""
+  # Wecom config
+  wecom:
+    successReceiverFolderProperty: "IDO_NOTIFICATION_WECOM"
+    failureReceiverFolderProperty: "IDO_NOTIFICATION_FAILURE_WECOM"
     successReceiver: ""
     failureReceiver: ""
 

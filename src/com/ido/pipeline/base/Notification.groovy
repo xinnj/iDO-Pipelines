@@ -1,7 +1,5 @@
 package com.ido.pipeline.base
 
-import com.ido.pipeline.Utils
-
 class Notification {
     Object steps
     Map config
@@ -130,6 +128,41 @@ class Notification {
                                     break;
                             }
                             break;
+                        case "wecom":
+                            String successReceiver, failureReceiver
+                            if (steps.env[config.notification.wecom.successReceiverFolderProperty]) {
+                                successReceiver = steps.env[config.notification.wecom.successReceiverFolderProperty]
+                            } else {
+                                successReceiver = config.notification.wecom.successReceiver
+                            }
+                            if (steps.env[config.notification.wecom.failureReceiverFolderProperty]) {
+                                failureReceiver = steps.env[config.notification.wecom.failureReceiverFolderProperty]
+                            } else {
+                                failureReceiver = config.notification.wecom.failureReceiver
+                            }
+                            steps.echo "wecom-successReceiver: " + successReceiver
+                            steps.echo "wecom-failureReceiver: " + failureReceiver
+
+                            switch (result) {
+                                case "SUCCESS":
+                                    if (successReceiver) {
+                                        if (!config.notification.failureOnly) {
+                                            this.sendWecom(successReceiver, 'Success')
+                                        }
+                                    }
+                                    break;
+                                case "FAILURE":
+                                    if (failureReceiver) {
+                                        this.sendWecom(failureReceiver, 'Failure')
+                                    }
+
+                                    if (config.notification.sendFailureToSuccess
+                                            && successReceiver
+                                            && successReceiver != failureReceiver) {
+                                        this.sendWecom(successReceiver, 'Failure')
+                                    }
+                                    break;
+                            }
                     }
                 }
             } catch (Exception e) {
@@ -147,14 +180,52 @@ class Notification {
                 title: "${resultDesc}: ${steps.env.JOB_NAME}",
                 text: [
                         "### ${resultDesc}",
-                        ">- Job Name: **${steps.env.JOB_NAME}**",
-                        ">- Build Version: **${steps.env.BUILD_DISPLAY_NAME}**",
-                        ">- Start Time: **${startTime}**",
-                        ">- Build Duration: **${duration}**",
-                        ">- Build Log: [Click to open](${steps.env.BUILD_URL}console)",
+                        "> Job Name: **${steps.env.JOB_NAME}**",
+                        "> Build Version: **${steps.env.BUILD_DISPLAY_NAME}**",
+                        "> Start Time: **${startTime}**",
+                        "> Build Duration: **${duration}**",
+                        "> Build Log: [Click to open](${steps.env.BUILD_URL}console)",
                         "#### Changes:",
                         "${this.getChangeString()}"
                 ]
+        )
+    }
+
+    private sendWecom(String webhookCredentialId, String resultDesc) {
+        String startTime = new Date(steps.currentBuild.startTimeInMillis).format("yyyy-MM-dd HH:mm:ss")
+        String duration = (steps.currentBuild.durationString as String).split(' and')[0]
+
+        String title
+        if (resultDesc == 'Success') {
+            title = "${resultDesc}"
+        } else {
+            title = "<font color=\\\"warning\\\">${resultDesc}</font>"
+        }
+
+        String webHook = steps.credentials(webhookCredentialId)
+        steps.httpRequest(
+                contentType: 'APPLICATION_JSON',
+                httpMode: 'POST',
+                quiet: true,
+                requestBody: """{
+                    "msgtype": "markdown",
+                    "markdown": {
+                        "content": "
+                            ### ${title}\\n
+                            > Job Name: **${steps.env.JOB_NAME}**\\n
+                            > Build Version: **${steps.env.BUILD_DISPLAY_NAME}**\\n
+                            > Start Time: **${startTime}**\\n
+                            > Build Duration: **${duration}**\\n
+                            > Build Log: [Click to open](${steps.env.BUILD_URL}console)\\n
+                            #### Changes:\\n
+                            ${this.getChangeString()}
+                        "
+                    }
+                }""",
+                responseHandle: 'NONE',
+                timeout: 10,
+                url: "${webHook}",
+                wrapAsMultipart: false
         )
     }
 
@@ -168,11 +239,11 @@ class Notification {
                 def entry = entries[j]
                 String truncatedMsg = entry.msg.take(MAX_MSG_LEN)
                 String commitTime = new Date(entry.timestamp).format("yyyy-MM-dd HH:mm:ss")
-                changeString += " - ${truncatedMsg} [${entry.author} ${commitTime}]\n"
+                changeString += "> ${truncatedMsg} [${entry.author} ${commitTime}]\n"
             }
         }
         if (!changeString) {
-            changeString = " - No new changes"
+            changeString = "> No new changes"
         }
         return (changeString)
     }
