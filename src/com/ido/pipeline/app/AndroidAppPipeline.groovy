@@ -1,6 +1,7 @@
 package com.ido.pipeline.app
 
 import com.ido.pipeline.Utils
+import com.ido.pipeline.base.Artifact
 
 /**
  * @author xinnj
@@ -152,6 +153,7 @@ class AndroidAppPipeline extends AppPipeline {
 
     @Override
     def build() {
+        String newFileName = this.getFileName()
         steps.container('builder') {
             String updateDependenciesArgs = ""
             if (config.java.forceUpdateDependencies) {
@@ -163,6 +165,8 @@ class AndroidAppPipeline extends AppPipeline {
                            "CI_BRANCH=" + Utils.getBranchName(steps)]) {
                 steps.sh """
                     cd "${config.srcRootPath}"
+                    mkdir -p outputs/files
+                    rm -f outputs/files/*
 
                     if [ -s "./${config.buildScript}" ]; then
                         sh "./${config.buildScript}"
@@ -176,6 +180,17 @@ class AndroidAppPipeline extends AppPipeline {
                                 -Dfile.encoding=UTF-8 \
                                 "-Dorg.gradle.jvmargs=-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" \
                                 -p ${config.java.moduleName}
+                            numFound=\$(find ./ -type f -name "*-debug*.apk" -not -path "./outputs/*" -print | wc -l)
+                            if [ \$numFound -lt 1 ]; then
+                                echo "Can't find debug version apk file!"
+                                exit 1
+                            fi
+                            if [ \$numFound -gt 1 ]; then
+                                echo "Find multiple debug version apk files!"
+                                exit 1
+                            fi
+                            find ./ -type f -name "*-debug*.apk" -not -path "./outputs/*" \
+                                -exec mv "{}" "outputs/files/${newFileName}-debug.apk" \\;
                         fi
                         if [ "$config.android.buildRelease" == "true" ]; then
                             sh ./gradlew assembleRelease \
@@ -186,6 +201,17 @@ class AndroidAppPipeline extends AppPipeline {
                                 -Dfile.encoding=UTF-8 \
                                 "-Dorg.gradle.jvmargs=-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" \
                                 -p ${config.java.moduleName}
+                            numFound=\$(find ./ -type f -name "*-release*.apk" -not -path "./outputs/*" -print | wc -l)
+                            if [ \$numFound -lt 1 ]; then
+                                echo "Can't find release version apk file!"
+                                exit 1
+                            fi
+                            if [ \$numFound -gt 1 ]; then
+                                echo "Find multiple release version apk files!"
+                                exit 1
+                            fi
+                            find ./ -type f -name "*-release*.apk" -not -path "./outputs/*" \
+                                -exec mv "{}" "outputs/files/${newFileName}-release.apk" \\;
                         fi
                     fi
                 """
@@ -195,6 +221,56 @@ class AndroidAppPipeline extends AppPipeline {
 
     @Override
     def archive() {
+        String newFileName = this.getFileName()
+        steps.container('uploader') {
+            String uploadUrl = "${config.fileServer.uploadUrl}${config.fileServer.uploadRootPath}${config.productName}/" +
+                    Utils.getBranchName(steps) + "/android"
+            String debugDownloadUrl = "${config.fileServer.downloadUrl}${config.fileServer.uploadRootPath}/${config.productName}/" +
+                    Utils.getBranchName(steps) + "/android/files/${newFileName}-debug.apk"
+            String releaseDownloadUrl = "${config.fileServer.downloadUrl}${config.fileServer.uploadRootPath}/${config.productName}/" +
+                    Utils.getBranchName(steps) + "/android/files/${newFileName}-release.apk"
 
+
+            steps.sh """
+                cd "${config.srcRootPath}/outputs"
+                touch ${newFileName}.html
+                echo "<html>" >> ${newFileName}.html
+                echo "<meta http-equiv='Content-Type' content='text/html; charset=utf-8' />" >> ${newFileName}.html
+                
+                if [ "${config.android.buildDebug}" == "true" ]; then
+                    qrencode --output qrcode.png "${debugDownloadUrl}"
+                    if [ ! -f qrcode.png ]; then
+                        echo QR code is not generated!
+                        exit 1
+                    fi
+                    debugQrcode="\$(cat qrcode.png | base64 )"
+                    rm -f qrcode.png
+                    
+                    echo "<p><a href='files/${newFileName}-debug.apk'>${newFileName}-debug.apk</a>" >> ${newFileName}.html
+                    echo "<p><img src='data:image/png;base64,\${debugQrcode}'/><hr>" >> ${newFileName}.html
+                fi
+                
+                if [ "${config.android.buildRelease}" == "true" ]; then
+                    qrencode --output qrcode.png "${releaseDownloadUrl}"
+                    if [ ! -f qrcode.png ]; then
+                        echo QR code is not generated!
+                        exit 1
+                    fi
+                    releaseQrcode="\$(cat qrcode.png | base64 )"
+                    rm -f qrcode.png
+                    
+                    echo "<p><a href='files/${newFileName}-release.apk'>${newFileName}-release.apk</a>" >> ${newFileName}.html
+                    echo "<p><img src='data:image/png;base64,\${releaseQrcode}'/>" >> ${newFileName}.html
+                fi
+            """
+
+            Artifact artifact = new Artifact()
+            artifact.uploadToFileServer(steps, uploadUrl, "${config.srcRootPath}/outputs")
+        }
+    }
+
+    String getFileName() {
+        String branch = Utils.getBranchName(steps)
+        return "${config.productName}-${branch}-${config.version}"
     }
 }

@@ -1,5 +1,8 @@
 package com.ido.pipeline.base
 
+/**
+ * @author xinnj
+ */
 class Version {
     String getVersion(Object steps, Map config) {
         switch (config.versionMethod) {

@@ -1,5 +1,8 @@
 package com.ido.pipeline.base
 
+/**
+ * @author xinnj
+ */
 class Notification {
     Object steps
     Map config

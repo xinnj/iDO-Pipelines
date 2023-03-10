@@ -1,5 +1,8 @@
 package com.ido.pipeline.base
 
+/**
+ * @author xinnj
+ */
 class HelmChart {
     def upload(Object steps, Map config) {
         Map chart = steps.readYaml(file: "${config.helm.chartPath}/Chart.yaml")

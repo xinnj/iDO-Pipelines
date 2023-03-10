@@ -7,6 +7,9 @@ stopAllRunningBuild: true
 # Do UT and Code Analysis in parallel
 parallelUtAnalysis: false
 
+# Log more information
+debug: true
+
 # Source code root path. A relative path to workspace root folder
 srcRootPath: "."
 
@@ -97,13 +100,20 @@ registryPush:
   url: "registry.cn-zhangjiakou.aliyuncs.com/bizconf_devops"
   credentialsId: "registry"
 
-# Helm chart config
+## Helm chart config
 helm:
   buildChart: true
   chartPath: "helm"
   repo: "https://devops.bizconf.cn/nexus/repository/helm-hosted/"
   uploadCredentialId: "uploader"
   chartVersion: ""
+
+## File server config
+fileServer:
+  uploadUrl: "http://file-server.files/upload"
+  downloadUrl: "http://pipeline.ido-cluster.com/download"
+  # must end with '/'
+  uploadRootPath: "/"
 
 ## SpringBoot config
 springBoot:
@@ -166,3 +176,4 @@ android:
   sonarqubeServerName: ""
   qualityGateEnabled: false
   sonarqubeTimeoutMinutes: 10
+
