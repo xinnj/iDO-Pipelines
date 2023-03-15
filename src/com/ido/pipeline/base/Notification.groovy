@@ -200,36 +200,37 @@ class Notification {
 
         String title
         if (resultDesc == 'Success') {
-            title = "${resultDesc}"
+            title = "${resultDesc}: ${steps.env.JOB_NAME}"
         } else {
-            title = "<font color=\\\"warning\\\">${resultDesc}</font>"
+            title = "<font color=\\\"warning\\\">${resultDesc}: ${steps.env.JOB_NAME}</font>"
         }
 
-        String webHook = steps.credentials(webhookCredentialId)
-        steps.httpRequest(
-                contentType: 'APPLICATION_JSON',
-                httpMode: 'POST',
-                quiet: true,
-                requestBody: """{
-                    "msgtype": "markdown",
-                    "markdown": {
-                        "content": "
-                            ### ${title}\\n
-                            > Job Name: **${steps.env.JOB_NAME}**\\n
-                            > Build Version: **${steps.env.BUILD_DISPLAY_NAME}**\\n
-                            > Start Time: **${startTime}**\\n
-                            > Build Duration: **${duration}**\\n
-                            > Build Log: [Click to open](${steps.env.BUILD_URL}console)\\n
-                            #### Changes:\\n
-                            ${this.getChangeString()}
-                        "
-                    }
-                }""",
-                responseHandle: 'NONE',
-                timeout: 10,
-                url: "${webHook}",
-                wrapAsMultipart: false
-        )
+        steps.withCredentials([steps.string(credentialsId: webhookCredentialId, variable: 'webHook')]) {
+            steps.httpRequest(
+                    contentType: 'APPLICATION_JSON',
+                    httpMode: 'POST',
+                    quiet: true,
+                    requestBody: """{
+                        "msgtype": "markdown",
+                        "markdown": {
+                            "content": "
+                                ### ${title}\\n
+                                > Job Name: **${steps.env.JOB_NAME}**\\n
+                                > Build Version: **${steps.env.BUILD_DISPLAY_NAME}**\\n
+                                > Start Time: **${startTime}**\\n
+                                > Build Duration: **${duration}**\\n
+                                > Build Log: [Click to open](${steps.env.BUILD_URL}console)\\n
+                                #### Changes:\\n
+                                ${this.getChangeString()}
+                            "
+                        }
+                    }""",
+                    responseHandle: 'NONE',
+                    timeout: 10,
+                    url: steps.webHook,
+                    wrapAsMultipart: false
+            )
+        }
     }
 
     private String getChangeString() {
