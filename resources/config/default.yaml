@@ -80,7 +80,7 @@ java:
   # "maven", "gradle"
   buildTool: "maven"
   # Builder image with JDK installed
-  builderImage: "docker.io/amazoncorretto:11"
+  builderImage: "docker.io/eclipse-temurin:11-jdk"
   mavenVersion: "3.8.6"
   useDefaultMavenSettings: true
   gradleVersion: "7.6"
@@ -119,7 +119,7 @@ fileServer:
 springBoot:
   mainClass: ""
   appRoot: "/app"
-  baseImage: "docker.io/amazoncorretto:8"
+  baseImage: "docker.io/eclipse-temurin:11-jre"
   jvmFlages: "-Duser.timezone=PRC -Dfile.encoding=UTF-8"
   environment: "TZ='Asia/Shanghai'"
   # Execute UT
