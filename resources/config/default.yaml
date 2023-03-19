@@ -97,8 +97,8 @@ registryPull:
   credentialsId: ""
 # Push registry info
 registryPush:
-  url: "registry.cn-zhangjiakou.aliyuncs.com/bizconf_devops"
-  credentialsId: "registry"
+  url: "nexus-nexus-repository-manager-docker-5000.nexus:5000"
+  credentialsId: "uploader"
 
 ## Helm chart config
 helm:

@@ -289,6 +289,7 @@ class SpringBootImagePipeline extends ImagePipeline {
                             ${jvm_flags} \
                             ${environment} \
                             -Djib.allowInsecureRegistries=true \
+                            -DsendCredentialsOverHttp=true \
                             ${jib_from_auth} -Djib.from.image=${config.springBoot.baseImage} \
                             ${jib_to_auth} -Djib.to.image=${config.registryPush.url}/${config.productName} -Djib.to.tags=${config.version}
                     """
@@ -321,6 +322,7 @@ class SpringBootImagePipeline extends ImagePipeline {
                             ${jvm_flags} \
                             ${environment} \
                             -Djib.allowInsecureRegistries=true \
+                            -DsendCredentialsOverHttp=true \
                             ${jib_from_auth} -Djib.from.image=${config.springBoot.baseImage} \
                             ${jib_to_auth} -Djib.to.image=${config.registryPush.url}/${config.productName} -Djib.to.tags=${config.version}
 

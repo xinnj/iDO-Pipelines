@@ -40,8 +40,8 @@ spec:
       args:
         - <keepBuilderPodMinutes>m
       volumeMounts:
-        - mountPath: /home/jenkins/agent
-          name: workspace-volume
+        - mountPath: /var/buildah-cache
+          name: buildah-cache
       securityContext:
         runAsUser: 0
         runAsGroup: 0
@@ -63,3 +63,8 @@ spec:
   securityContext:
     runAsGroup: 1000
     runAsUser: 1000
+  volumes:
+    - name: buildah-cache
+      hostPath:
+        path: "/var/buildah-cache"
+        type: DirectoryOrCreate
