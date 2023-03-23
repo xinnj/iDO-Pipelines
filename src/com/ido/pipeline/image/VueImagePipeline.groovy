@@ -154,51 +154,8 @@ class VueImagePipeline extends ImagePipeline {
             config.dockerFile = "Dockerfile"
         }
 
-        steps.container('buildah') {
-            if (config.registryPull && config.registryPull.credentialsId) {
-                steps.withCredentials([steps.usernamePassword(credentialsId: config.registryPull.credentialsId, passwordVariable: 'passwordPull', usernameVariable: 'userNamePull')]) {
-                    if (config.registryPush && config.registryPush.credentialsId) {
-                        steps.withCredentials([steps.usernamePassword(credentialsId: config.registryPush.credentialsId, passwordVariable: 'passwordPush', usernameVariable: 'userNamePush')]) {
-                            runScript()
-                        }
-                    } else {
-                        runScript()
-                    }
-                }
-            } else {
-                if (config.registryPush && config.registryPush.credentialsId) {
-                    steps.withCredentials([steps.usernamePassword(credentialsId: config.registryPush.credentialsId, passwordVariable: 'passwordPush', usernameVariable: 'userNamePush')]) {
-                        runScript()
-                    }
-                } else {
-                    runScript()
-                }
-            }
-        }
+        this.buildImage()
     }
 
-    private runScript() {
-        String registry_login_pull = ""
-        if (config.registryPull && config.registryPull.credentialsId) {
-            registry_login_pull = "buildah login --tls-verify=false -u \${userNamePull}  -p \${passwordPull} " + config.registryPull.url
-        }
 
-        String registry_login_push = ""
-        if (config.registryPush && config.registryPush.credentialsId) {
-            registry_login_push = "buildah login --tls-verify=false -u \${userNamePush}  -p \${passwordPush} " + config.registryPush.url
-        }
-
-        String pushImageFullName = "${config.registryPush.url}/${config.productName}:${config.version}"
-        steps.sh """
-            cd "${config.srcRootPath}"
-            alias buildah="buildah --root /var/buildah-cache --runroot /tmp/containers"
-            pushImageFullName=${config.registryPush.url}/${config.productName}:${config.version}
-            ${registry_login_pull}
-            buildah build --format ${config._system.imageFormat} -f ${config.dockerFile} -t ${pushImageFullName} ./
-            
-            ${registry_login_push}
-            buildah push --tls-verify=false ${pushImageFullName}
-            buildah rmi ${pushImageFullName}
-        """
-    }
 }
