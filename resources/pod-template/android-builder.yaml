@@ -58,9 +58,20 @@ spec:
         - mountPath: /home/jenkins/agent
           name: workspace-volume
     - name: jnlp
-      image: "docker.io/jenkins/inbound-agent:4.11-1-jdk11"
+      image: "docker.io/xinnj/inbound-agent:4.11-1-alpine-jdk11-nolog"
+      env:
+        - name: "JENKINS_AGENT_CACHEDIR"
+          value: "/home/jenkins/agent/remoting/jarCache"
   imagePullSecrets:
     - name: <imagePullSecret>
   securityContext:
     runAsGroup: 1000
     runAsUser: 1000
+  affinity:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 1
+          preference:
+            matchExpressions:
+              - key: vm-agent
+                operator: DoesNotExist

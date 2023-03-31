@@ -1,0 +1,216 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    macos-agent: true
+spec:
+  initContainers:
+    - name: prepare
+      image: docker.io/alpine
+      command:
+        - /bin/sh
+        - -c
+        - |
+          set -euaxo pipefail
+          if ! [ -f "/home/arch/macos-image/<macosImage>" ]; then
+            date
+            cp -f /Users/jenkins/agent/macos-image/<macosImage> /home/arch/macos-image/<macosImage>.download
+            mv /home/arch/macos-image/<macosImage>.download /home/arch/macos-image/<macosImage>
+            chown -R 1000:1000 /home/arch/macos-image
+            date
+          fi
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+      volumeMounts:
+        - mountPath: /Users/jenkins/agent
+          name: workspace-volume
+        - mountPath: /home/arch/macos-image
+          name: macos-image-folder
+  containers:
+    - name: sonar-scanner
+      image: "docker.io/sonarsource/sonar-scanner-cli"
+      imagePullPolicy: IfNotPresent
+      command:
+        - sleep
+      args:
+        - <keepBuilderPodMinutes>m
+      volumeMounts:
+        - mountPath: /home/jenkins/agent
+          name: workspace-volume
+      env:
+        - name: SONAR_USER_HOME
+          value: /home/jenkins/agent/sonar
+    - name: builder
+      image: <builderImage>
+      imagePullPolicy: IfNotPresent
+      command:
+        - /bin/sh
+        - -c
+        - |
+          cd /home/arch/OSX-KVM
+          echo "Disk is being copied between layers... Please wait a minute..."
+          sudo touch /dev/kvm /dev/snd "${IMAGE_PATH}" "${BOOTDISK}" "${ENV}" 2>/dev/null || true
+          sudo chown -R $(id -u):$(id -g) /dev/kvm /dev/snd "${IMAGE_PATH}" "${BOOTDISK}" "${ENV}" 2>/dev/null || true
+          
+          sed -i '/^.*InstallMedia.*/d' Launch.sh
+          export BOOTDISK="${BOOTDISK:=/home/arch/OSX-KVM/OpenCore/OpenCore-nopicker.qcow2}"
+          
+          [[ -s "${ENV:=/env}" ]] && [[ -s "${BOOTDISK}" ]] || {
+            echo "Generate unique machine value."
+            ./Docker-OSX/osx-serial-generator/generate-unique-machine-values.sh \
+              --master-plist="./config-custom.plist" \
+              --count 1 \
+              --bootdisks \
+              --output-bootdisk "${BOOTDISK}" \
+              --output-env "${ENV:=/env}"
+          }
+          cat "${ENV:=/env}"
+          source "${ENV:=/env}"
+          
+          nohup Xvfb :99 -screen 0 1920x1080x16 & until [[ "$(xrandr --query 2>/dev/null)" ]]; do sleep 1 ; done
+
+          stat "${IMAGE_PATH}"
+          echo "Large image is being copied between layers, please wait a minute..."
+          [[ -s "${SSH_KEY}" ]] || {
+            /usr/bin/ssh-keygen -t rsa -f "${SSH_KEY}" -q -N ""
+            chmod 600 "${SSH_KEY}"
+          }
+          /bin/bash -c ./Launch.sh & echo "Booting Docker-OSX in the background. Please wait..."
+          for i in {1..5}; do
+            sshpass -p${PASSWORD:=Jenkins} ssh-copy-id -f -i "${SSH_KEY}.pub" -p 10022 ${USERNAME:=jenkins}@127.0.0.1 > /dev/null
+            if [[ "$?" == '0' ]]; then
+              break
+            else
+              echo "Disk is being copied between layers. Repeating until able to copy SSH key into OSX..."
+              if [[ "$i" == '5' ]]; then
+                echo "Connect macos vm failed!"
+                while killall -15 qemu-system-x86_64; do
+                  echo 'Shutting down macos...'
+                  sleep 1
+                done
+                echo 'Shutdown macos finished, exist.'
+                exit 1
+              fi
+              sleep 1
+            fi
+          done
+          grep id_docker_osx ~/.ssh/config || {
+            tee -a ~/.ssh/config <<< 'Host 127.0.0.1'
+            tee -a ~/.ssh/config <<< "    User ${USERNAME:=jenkins}"
+            tee -a ~/.ssh/config <<< '    Port 10022'
+            tee -a ~/.ssh/config <<< "    IdentityFile ${SSH_KEY}"
+            tee -a ~/.ssh/config <<< '    StrictHostKeyChecking no'
+            tee -a ~/.ssh/config <<< '    UserKnownHostsFile=~/.ssh/known_hosts'
+          }
+          ssh 127.0.0.1 -q "${OSX_COMMANDS}"
+          touch /home/arch/vm-started
+          echo "Sleep for <keepBuilderPodMinutes>m"
+          sleep <keepBuilderPodMinutes>m
+      volumeMounts:
+        - mountPath: /Users/jenkins/agent
+          name: workspace-volume
+        - mountPath: /home/arch/macos-image
+          name: macos-image-folder
+      resources:
+        requests:
+          cpu: 6000m
+          memory: 8Gi
+        limits:
+          cpu: 8000m
+          memory: 9Gi
+      securityContext:
+        privileged: true
+      readinessProbe:
+        exec:
+          command:
+            - /bin/sh
+            - -c
+            - ls /home/arch/vm-started
+        initialDelaySeconds: 90
+        periodSeconds: 5
+      lifecycle:
+        preStop:
+          exec:
+            command:
+              - /bin/sh
+              - -c
+              - |
+                if killall -0 qemu-system-x86_64; then
+                  ssh 127.0.0.1 'sudo shutdown -h now' > /proc/1/fd/1
+                fi
+                while killall -0 qemu-system-x86_64; do
+                  echo 'Shutting down macos...' > /proc/1/fd/1
+                  sleep 1
+                done
+                echo 'Shutdown macos finished.' > /proc/1/fd/1
+      env:
+        - name: "IMAGE_PATH"
+          value: "/home/arch/macos-image/<macosImage>"
+        - name: "BOOTDISK"
+          value: "/home/arch/macos-image/OpenCore-nopicker.qcow2"
+        - name: "ENV"
+          value: "/home/arch/macos-image/OpenCore-nopicker.env"
+        - name: "SSH_KEY"
+          value: "/home/arch/macos-image/id_docker_osx"
+        - name: "RAM"
+          value: "8"
+        - name: "SMP"
+          value: "16"
+        - name: "CORES"
+          value: "8"
+        - name: "EXTRA"
+          value: "-virtfs local,path=/Users/jenkins/agent,mount_tag=hostshare,security_model=passthrough,id=hostshare"
+        - name: "USERNAME"
+          value: "jenkins"
+        - name: "PASSWORD"
+          value: "Jenkins"
+        - name: "OSX_COMMANDS"
+          value: "/bin/bash -c \"sudo -S mount_9p hostshare && ioreg -l | grep IOPlatformSerialNumber\""
+        - name: "CP_HOME_DIR"
+          value: "/Users/jenkins/agent/CocoaPods"
+        - name: "SPM_CACHE_DIR"
+          value: "/Users/jenkins/agent/spm-cache"
+    - name: uploader
+      image: "docker.io/dwimberger/alpine-qr"
+      imagePullPolicy: IfNotPresent
+      command:
+        - sleep
+      args:
+        - <keepBuilderPodMinutes>m
+      volumeMounts:
+        - mountPath: /Users/jenkins/agent
+          name: workspace-volume
+    - name: jnlp
+      image: "docker.io/xinnj/inbound-agent:4.11-1-alpine-jdk11-nolog"
+      workingDir: "/Users/jenkins/agent"
+      env:
+        - name: "JENKINS_AGENT_CACHEDIR"
+          value: "/Users/jenkins/agent/remoting/jarCache"
+  imagePullSecrets:
+    - name: <imagePullSecret>
+  securityContext:
+    runAsGroup: 1000
+    runAsUser: 1000
+  volumes:
+    - name: macos-image-folder
+      hostPath:
+        path: "/home/iDO-Cluster/macos-image"
+        type: DirectoryOrCreate
+  terminationGracePeriodSeconds: 30
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+              - key: macos-agent
+                operator: In
+                values:
+                  - "true"
+          topologyKey: "kubernetes.io/hostname"
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: vm-agent
+                operator: Exists

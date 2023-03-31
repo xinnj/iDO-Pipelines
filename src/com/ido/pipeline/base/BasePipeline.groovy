@@ -89,7 +89,8 @@ abstract class BasePipeline implements Pipeline, Serializable {
                 steps.podTemplate(yaml: config.podTemplate,
                         namespace: "jenkins",
                         podRetention: podRetentionType(config.keepBuilderPod),
-                        workspaceVolume: workspaceVolumeType(config._system.workspaceVolume.type)
+                        workspaceVolume: workspaceVolumeType(config._system.workspaceVolume.type),
+                        slaveConnectTimeout: "3600",
                 ) {
                     steps.node(steps.POD_LABEL) {
                         try {

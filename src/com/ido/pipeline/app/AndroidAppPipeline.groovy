@@ -246,8 +246,8 @@ class AndroidAppPipeline extends AppPipeline {
                     debugQrcode="\$(cat qrcode.png | base64 )"
                     rm -f qrcode.png
                     
-                    echo "<p><a href='files/${newFileName}-debug.apk'>${newFileName}-debug.apk</a>" >> ${newFileName}.html
-                    echo "<p><img src='data:image/png;base64,\${debugQrcode}'/><hr>" >> ${newFileName}.html
+                    echo "<hr><p><a href='files/${newFileName}-debug.apk'>${newFileName}-debug.apk</a>" >> ${newFileName}.html
+                    echo "<p><img src='data:image/png;base64,\${debugQrcode}'/>" >> ${newFileName}.html
                 fi
                 
                 if [ "${config.android.buildRelease}" == "true" ]; then
@@ -259,7 +259,7 @@ class AndroidAppPipeline extends AppPipeline {
                     releaseQrcode="\$(cat qrcode.png | base64 )"
                     rm -f qrcode.png
                     
-                    echo "<p><a href='files/${newFileName}-release.apk'>${newFileName}-release.apk</a>" >> ${newFileName}.html
+                    echo "<hr><p><a href='files/${newFileName}-release.apk'>${newFileName}-release.apk</a>" >> ${newFileName}.html
                     echo "<p><img src='data:image/png;base64,\${releaseQrcode}'/>" >> ${newFileName}.html
                 fi
             """

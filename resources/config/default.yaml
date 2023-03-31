@@ -21,6 +21,12 @@ dependOn:
 # Build script file name
 buildScript: "build-ci.sh"
 
+# Customer build scripts
+customerBuildScript:
+  afterScm: "ido-cluster/after-scm.sh"
+  beforeBuild: "ido-cluster/before-build.sh"
+  afterBuild: "ido-cluster/after-build.sh"
+
 ## Node config
 # "standalone", "k8s"
 nodeType: "standalone"
@@ -111,7 +117,7 @@ helm:
 ## File server config
 fileServer:
   uploadUrl: "http://file-server.files/upload"
-  downloadUrl: "http://pipeline.ido-cluster.com/download"
+  downloadUrl: "http://10.184.101.50/download"
   # must end with '/'
   uploadRootPath: "/"
 
@@ -177,3 +183,58 @@ android:
   qualityGateEnabled: false
   sonarqubeTimeoutMinutes: 10
 
+## iOS app config
+ios:
+  builderImage: "nexus-nexus-repository-manager-docker-5000.nexus:5000/docker-osx:naked"
+  macosImage: "monterey-v1.img"
+  # The password to unlock keychain
+  keychainCredentialId: "mac-keychain"
+  # Credential ID of distribution certificate to be used
+  # The certificate file (p12 format) need be imported into Jenkins as certificate credential
+  distributionCertCredentialId: "apple_distribution"
+  # Profiles to be imported if code sign style is Manual
+  # profilesImport:
+  #   - "<mobileprovision file, relative path to srcRootPath>"
+  profilesImport: []
+  # Workspace or project to be built, relative path to srcRootPath
+  location: ""
+  # Export archive types
+  # buildOptions:
+  #   - name: "adhoc"
+  #     scheme: "<scheme name>"
+  #     configuration: "<Debug or Release>"
+  #     signStyle: "<Automatic or Manual>"
+  #     xcconfig: "<path to xcconfig file, relative path to srcRootPath>"
+  #     exportOptionsPlist: "<path to exportOptionsPlist file, relative path to srcRootPath>"
+  #   - name: "appstore"
+  #     scheme: "<scheme name>"
+  #     configuration: "<Debug or Release>"
+  #     signStyle: "<Automatic or Manual>"
+  #     xcconfig: "<path to xcconfig file, relative path to srcRootPath>"
+  #     exportOptionsPlist: "<path to exportOptionsPlist file, relative path to srcRootPath>"
+  buildOptions: []
+  # Apple connect API key, used by automatic code sign
+  authenticationKey:
+    IssuerID: "69a6de7e-1093-47e3-e053-5b8c7c11a4d1"
+    ID: "WP8BYJ39Z2"
+    # Secret file credential
+    keyFileCredentialId: "apple-auth-key"
+  useCocoapods: false
+  downloadDisplayImages:
+    standard: "http://10.184.101.50/download/ios-install-images/Install.png"
+    fullSize: "http://10.184.101.50/download/ios-install-images/Install-large.png"
+  # Execute UT
+  ut:
+    enabled: false
+    scheme: "Test"
+    # Automatic or Manual
+    signStyle: "Automatic"
+    # Path to xcconfig file, relative path to srcRootPath
+    xcconfig: ""
+  # Code coverage is not supported yet
+  lineCoverageThreshold: 0
+  # execute code analysis
+  codeAnalysisEnabled: false
+  sonarqubeServerName: ""
+  qualityGateEnabled: false
+  sonarqubeTimeoutMinutes: 10
