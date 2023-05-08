@@ -29,70 +29,12 @@ abstract class BasePipeline implements Pipeline, Serializable {
             this.stopCurrentJob()
         }
 
-        steps.node('built-in') {}
+        steps.lock(resource: "lock_${steps.currentBuild.fullProjectName}") {
+            steps.node('built-in') {}
 
-        switch (config.nodeType) {
-            case "standalone":
-                steps.node(config.nodeName) {
-                    try {
-                        customStages()
-                        steps.currentBuild.result = 'SUCCESS'
-                    }
-                    catch (FlowInterruptedException interruptEx) {
-                        steps.echo 'Received FlowInterruptedException'
-                        steps.currentBuild.result = 'ABORTED'
-                    }
-                    catch (Exception e) {
-                        if (fastStop != "") {
-                            steps.currentBuild.result = fastStop
-                        } else {
-                            steps.echo 'Exception occurred: ' + e.toString()
-                            steps.currentBuild.result = 'FAILURE'
-                        }
-                    }
-                    finally {
-                        steps.echo "########## Stage: Notify ##########"
-                        this.sendNotification()
-                    }
-                }
-                break
-            case "k8s":
-                def podRetentionType = { Boolean k ->
-                    if (k) {
-                        steps.always()
-                    } else {
-                        steps.never()
-                    }
-                }
-
-                def workspaceVolumeType = { String type ->
-                    switch (type) {
-                        case "hostPath":
-                            return steps.hostPathWorkspaceVolume(hostPath: config._system.workspaceVolume.hostPath)
-                            break
-                        case "nfs":
-                            return steps.nfsWorkspaceVolume(serverAddress: config._system.workspaceVolume.nfsServerAddress,
-                                    serverPath: config._system.workspaceVolume.nfsServerPath)
-                            break
-                        case "pvc":
-                            return steps.persistentVolumeClaimWorkspaceVolume(claimName: config._system.workspaceVolume.pvcName)
-                            break
-                        default:
-                            steps.error "Wrong workspaceVolumeType: ${type}"
-                    }
-                }
-
-                if (config._system.imagePullMirror) {
-                    config.podTemplate = Utils.replaceImageMirror(config.podTemplate)
-                }
-
-                steps.podTemplate(yaml: config.podTemplate,
-                        namespace: "jenkins",
-                        podRetention: podRetentionType(config.keepBuilderPod),
-                        workspaceVolume: workspaceVolumeType(config._system.workspaceVolume.type),
-                        slaveConnectTimeout: "3600",
-                ) {
-                    steps.node(steps.POD_LABEL) {
+            switch (config.nodeType) {
+                case "standalone":
+                    steps.node(config.nodeName) {
                         try {
                             customStages()
                             steps.currentBuild.result = 'SUCCESS'
@@ -114,12 +56,72 @@ abstract class BasePipeline implements Pipeline, Serializable {
                             this.sendNotification()
                         }
                     }
-                }
-                podRetentionType = null
-                workspaceVolumeType = null
-                break
-            default:
-                steps.error "Node type: ${config.nodeType} is not supported!"
+                    break
+                case "k8s":
+                    def podRetentionType = { Boolean k ->
+                        if (k) {
+                            steps.always()
+                        } else {
+                            steps.never()
+                        }
+                    }
+
+                    def workspaceVolumeType = { String type ->
+                        switch (type) {
+                            case "hostPath":
+                                return steps.hostPathWorkspaceVolume(hostPath: config._system.workspaceVolume.hostPath)
+                                break
+                            case "nfs":
+                                return steps.nfsWorkspaceVolume(serverAddress: config._system.workspaceVolume.nfsServerAddress,
+                                        serverPath: config._system.workspaceVolume.nfsServerPath)
+                                break
+                            case "pvc":
+                                return steps.persistentVolumeClaimWorkspaceVolume(claimName: config._system.workspaceVolume.pvcName)
+                                break
+                            default:
+                                steps.error "Wrong workspaceVolumeType: ${type}"
+                        }
+                    }
+
+                    if (config._system.imagePullMirror) {
+                        config.podTemplate = Utils.replaceImageMirror(config.podTemplate)
+                    }
+
+                    steps.podTemplate(yaml: config.podTemplate,
+                            namespace: "jenkins",
+                            podRetention: podRetentionType(config.keepBuilderPod),
+                            workspaceVolume: workspaceVolumeType(config._system.workspaceVolume.type),
+                            slaveConnectTimeout: "3600",
+                    ) {
+                        steps.node(steps.POD_LABEL) {
+                            try {
+                                customStages()
+                                steps.currentBuild.result = 'SUCCESS'
+                            }
+                            catch (FlowInterruptedException interruptEx) {
+                                steps.echo 'Received FlowInterruptedException'
+                                steps.currentBuild.result = 'ABORTED'
+                            }
+                            catch (Exception e) {
+                                if (fastStop != "") {
+                                    steps.currentBuild.result = fastStop
+                                } else {
+                                    steps.echo 'Exception occurred: ' + e.toString()
+                                    steps.currentBuild.result = 'FAILURE'
+                                }
+                            }
+                            finally {
+                                steps.echo "########## Stage: Notify ##########"
+                                this.sendNotification()
+                            }
+                        }
+                    }
+                    podRetentionType = null
+                    workspaceVolumeType = null
+                    break
+                default:
+                    steps.error "Node type: ${config.nodeType} is not supported!"
+            }
         }
         return result
     }
