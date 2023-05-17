@@ -87,9 +87,13 @@ abstract class BasePipeline implements Pipeline, Serializable {
                         config.podTemplate = Utils.replaceImageMirror(config.podTemplate)
                     }
 
+                    config.podTemplate = (config.podTemplate as String)
+                            .replaceAll('<keepBuilderPodMaxMinutes>', (config._system.keepBuilderPodMaxMinutes).toString())
+                            .replaceAll('<imagePullSecret>', config._system.imagePullSecret as String)
+
                     steps.podTemplate(yaml: config.podTemplate,
                             namespace: "jenkins",
-                            podRetention: podRetentionType(config.keepBuilderPod),
+                            idleMinutes: config.keepBuilderPodMinutes,
                             workspaceVolume: workspaceVolumeType(config._system.workspaceVolume.type),
                             slaveConnectTimeout: "3600",
                     ) {

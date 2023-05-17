@@ -73,7 +73,7 @@ class IosAppPipeline extends AppPipeline {
                     
                     set -x
                     export LANG=en_US.UTF-8
-                    if [ "${useCocoapods}" == "true" ]; then
+                    if [ "${useCocoapods}" = "true" ]; then
                         if [ ! -d "\${CP_HOME_DIR}/repos/trunk" ]; then
                             /usr/local/bin/pod --version
                             mkdir -p "\${CP_HOME_DIR}/repos"

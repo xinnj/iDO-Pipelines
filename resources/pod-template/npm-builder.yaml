@@ -8,7 +8,7 @@ spec:
       command:
         - sleep
       args:
-        - <keepBuilderPodMinutes>m
+        - <keepBuilderPodMaxMinutes>m
       volumeMounts:
         - mountPath: /home/jenkins/agent
           name: workspace-volume
@@ -21,7 +21,7 @@ spec:
       command:
         - sleep
       args:
-        - <keepBuilderPodMinutes>m
+        - <keepBuilderPodMaxMinutes>m
       volumeMounts:
         - mountPath: /home/jenkins/agent
           name: workspace-volume
@@ -38,7 +38,7 @@ spec:
       command:
         - sleep
       args:
-        - <keepBuilderPodMinutes>m
+        - <keepBuilderPodMaxMinutes>m
       volumeMounts:
         - mountPath: /var/buildah-cache
           name: buildah-cache
@@ -52,7 +52,7 @@ spec:
       command:
         - sleep
       args:
-        - <keepBuilderPodMinutes>m
+        - <keepBuilderPodMaxMinutes>m
       volumeMounts:
         - mountPath: /home/jenkins/agent
           name: workspace-volume

@@ -22,3 +22,6 @@ androidCmdLineToolsUrl: "https://dl.google.com/android/repository/commandlinetoo
 
 # CocoaPods repo url, e.g.: https://github.com/CocoaPods/Specs.git
 cocoapodsRepoUrl: "https://mirrors.tuna.tsinghua.edu.cn/git/CocoaPods/Specs.git"
+
+# Keep the builder pod in minutes maximally
+keepBuilderPodMaxMinutes: 1440

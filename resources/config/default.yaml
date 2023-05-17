@@ -32,8 +32,7 @@ customerBuildScript:
 nodeType: "standalone"
 nodeName: ""
 podTemplate: ""
-keepBuilderPod: false
-keepBuilderPodMinutes: 240
+keepBuilderPodMinutes: 0
 
 ## Version config
 # "GIT_DESCRIBE", "GIT_FILE", "JENKINS_BUILD_NUMBER"

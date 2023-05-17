@@ -34,7 +34,7 @@ spec:
       command:
         - sleep
       args:
-        - <keepBuilderPodMinutes>m
+        - <keepBuilderPodMaxMinutes>m
       volumeMounts:
         - mountPath: /home/jenkins/agent
           name: workspace-volume
@@ -105,8 +105,8 @@ spec:
           }
           ssh 127.0.0.1 -q "${OSX_COMMANDS}"
           touch /home/arch/vm-started
-          echo "Sleep for <keepBuilderPodMinutes>m"
-          sleep <keepBuilderPodMinutes>m
+          echo "Sleep for <keepBuilderPodMaxMinutes>m"
+          sleep <keepBuilderPodMaxMinutes>m
       volumeMounts:
         - mountPath: /Users/jenkins/agent
           name: workspace-volume
@@ -177,7 +177,7 @@ spec:
       command:
         - sleep
       args:
-        - <keepBuilderPodMinutes>m
+        - <keepBuilderPodMaxMinutes>m
       volumeMounts:
         - mountPath: /Users/jenkins/agent
           name: workspace-volume

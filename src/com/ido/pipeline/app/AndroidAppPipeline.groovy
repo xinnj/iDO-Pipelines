@@ -171,7 +171,7 @@ class AndroidAppPipeline extends AppPipeline {
                     if [ -s "./${config.buildScript}" ]; then
                         sh "./${config.buildScript}"
                     else
-                        if [ "$config.android.buildDebug" == "true" ]; then
+                        if [ "$config.android.buildDebug" = "true" ]; then
                             sh ./gradlew assembleDebug \
                                 --no-daemon \
                                 -x test \
@@ -192,7 +192,7 @@ class AndroidAppPipeline extends AppPipeline {
                             find ./ -type f -name "*-debug*.apk" -not -path "./outputs/*" \
                                 -exec mv "{}" "ido-cluster/outputs/files/${newFileName}-debug.apk" \\;
                         fi
-                        if [ "$config.android.buildRelease" == "true" ]; then
+                        if [ "$config.android.buildRelease" = "true" ]; then
                             sh ./gradlew assembleRelease \
                                 --no-daemon \
                                 -x test \
@@ -237,7 +237,7 @@ class AndroidAppPipeline extends AppPipeline {
                 echo "<html>" >> ${newFileName}.html
                 echo "<meta http-equiv='Content-Type' content='text/html; charset=utf-8' />" >> ${newFileName}.html
                 
-                if [ "${config.android.buildDebug}" == "true" ]; then
+                if [ "${config.android.buildDebug}" = "true" ]; then
                     qrencode --output qrcode.png "${debugDownloadUrl}"
                     if [ ! -f qrcode.png ]; then
                         echo QR code is not generated!
@@ -250,7 +250,7 @@ class AndroidAppPipeline extends AppPipeline {
                     echo "<p><img src='data:image/png;base64,\${debugQrcode}'/>" >> ${newFileName}.html
                 fi
                 
-                if [ "${config.android.buildRelease}" == "true" ]; then
+                if [ "${config.android.buildRelease}" = "true" ]; then
                     qrencode --output qrcode.png "${releaseDownloadUrl}"
                     if [ ! -f qrcode.png ]; then
                         echo QR code is not generated!
