@@ -141,11 +141,6 @@ abstract class BasePipeline implements Pipeline, Serializable {
             steps.echo "########## Stage: Versioning ##########"
             this.versioning()
         }
-
-        steps.stage('Build') {
-            steps.echo "########## Stage: Build ##########"
-            this.build()
-        }
     }
 
     def prepare() {
@@ -312,8 +307,6 @@ abstract class BasePipeline implements Pipeline, Serializable {
         }
         steps.currentBuild.displayName = config.version
     }
-
-    def abstract build()
 
     def sendNotification() {
         if (steps.fileExists('_finalVersion')) {

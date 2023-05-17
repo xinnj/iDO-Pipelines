@@ -22,19 +22,13 @@ abstract class AppPipeline extends BasePipeline {
 
     @Override
     def customStages() {
-        steps.stage('Prepare') {
-            steps.echo "########## Stage: Prepare ##########"
-            this.prepare()
-        }
+        super.customStages()
 
-        steps.stage('SCM') {
-            steps.echo "########## Stage: SCM ##########"
-            this.scm()
-        }
-
-        steps.stage('Versioning') {
-            steps.echo "########## Stage: Versioning ##########"
-            this.versioning()
+        if (steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${config.customerBuildScript.afterScm}")) {
+            steps.stage('afterScm') {
+                steps.echo "########## Stage: After Scm ##########"
+                this.afterScm()
+            }
         }
 
         if (config.parallelUtAnalysis) {
@@ -61,9 +55,23 @@ abstract class AppPipeline extends BasePipeline {
             }
         }
 
+        if (steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${config.customerBuildScript.beforeBuild}")) {
+            steps.stage('beforeBuild') {
+                steps.echo "########## Stage: Before Build ##########"
+                this.beforeBuild()
+            }
+        }
+
         steps.stage('Build App') {
             steps.echo "########## Stage: Build App ##########"
             this.build()
+        }
+
+        if (steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${config.customerBuildScript.afterBuild}")) {
+            steps.stage('afterBuild') {
+                steps.echo "########## Stage: After Build ##########"
+                this.afterBuild()
+            }
         }
 
         steps.stage('Archive App') {
@@ -77,9 +85,59 @@ abstract class AppPipeline extends BasePipeline {
         super.prepare()
     }
 
+    def afterScm() {
+        steps.container('builder') {
+            if (steps.isUnix()) {
+                steps.sh """
+                    cd "${config.srcRootPath}"
+                    sh "${config.customerBuildScript.afterScm}"
+                """
+            } else {
+                steps.powershell """
+                    cd "${config.srcRootPath}"
+                    "${config.customerBuildScript.afterScm}"
+                """
+            }
+        }
+    }
+
     def abstract ut()
 
     def abstract codeAnalysis()
+
+    def beforeBuild() {
+        steps.container('builder') {
+            if (steps.isUnix()) {
+                steps.sh """
+                    cd "${config.srcRootPath}"
+                    sh "${config.customerBuildScript.beforeBuild}"
+                """
+            } else {
+                steps.powershell """
+                    cd "${config.srcRootPath}"
+                    "${config.customerBuildScript.beforeBuild}"
+                """
+            }
+        }
+    }
+
+    def abstract build()
+
+    def afterBuild() {
+        steps.container('builder') {
+            if (steps.isUnix()) {
+                steps.sh """
+                    cd "${config.srcRootPath}"
+                    sh "${config.customerBuildScript.afterBuild}"
+                """
+            } else {
+                steps.powershell """
+                    cd "${config.srcRootPath}"
+                    "${config.customerBuildScript.afterBuild}"
+                """
+            }
+        }
+    }
 
     def abstract archive()
 }

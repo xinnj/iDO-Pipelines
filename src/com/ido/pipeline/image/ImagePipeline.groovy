@@ -24,19 +24,13 @@ abstract class ImagePipeline extends BasePipeline {
 
     @Override
     def customStages() {
-        steps.stage('Prepare') {
-            steps.echo "########## Stage: Prepare ##########"
-            this.prepare()
-        }
+        super.customStages()
 
-        steps.stage('SCM') {
-            steps.echo "########## Stage: SCM ##########"
-            this.scm()
-        }
-
-        steps.stage('Versioning') {
-            steps.echo "########## Stage: Versioning ##########"
-            this.versioning()
+        if (steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${config.customerBuildScript.afterScm}")) {
+            steps.stage('afterScm') {
+                steps.echo "########## Stage: After Scm ##########"
+                this.afterScm()
+            }
         }
 
         if (config.parallelUtAnalysis) {
@@ -63,6 +57,13 @@ abstract class ImagePipeline extends BasePipeline {
             }
         }
 
+        if (steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${config.customerBuildScript.beforeBuild}")) {
+            steps.stage('beforeBuild') {
+                steps.echo "########## Stage: Before Build ##########"
+                this.beforeBuild()
+            }
+        }
+
         steps.parallel 'Build Image': {
             steps.stage('Build Image') {
                 steps.echo "########## Stage: Build Image ##########"
@@ -76,6 +77,13 @@ abstract class ImagePipeline extends BasePipeline {
                 }
             }
         }, failFast: true
+
+        if (steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${config.customerBuildScript.afterBuild}")) {
+            steps.stage('afterBuild') {
+                steps.echo "########## Stage: After Build ##########"
+                this.afterBuild()
+            }
+        }
     }
 
     @Override
@@ -83,9 +91,59 @@ abstract class ImagePipeline extends BasePipeline {
         super.prepare()
     }
 
+    def afterScm() {
+        steps.container('builder') {
+            if (steps.isUnix()) {
+                steps.sh """
+                    cd "${config.srcRootPath}"
+                    sh "${config.customerBuildScript.afterScm}"
+                """
+            } else {
+                steps.powershell """
+                    cd "${config.srcRootPath}"
+                    "${config.customerBuildScript.afterScm}"
+                """
+            }
+        }
+    }
+
     def abstract ut()
 
     def abstract codeAnalysis()
+
+    def beforeBuild() {
+        steps.container('builder') {
+            if (steps.isUnix()) {
+                steps.sh """
+                    cd "${config.srcRootPath}"
+                    sh "${config.customerBuildScript.beforeBuild}"
+                """
+            } else {
+                steps.powershell """
+                    cd "${config.srcRootPath}"
+                    "${config.customerBuildScript.beforeBuild}"
+                """
+            }
+        }
+    }
+
+    def abstract build()
+
+    def afterBuild() {
+        steps.container('builder') {
+            if (steps.isUnix()) {
+                steps.sh """
+                    cd "${config.srcRootPath}"
+                    sh "${config.customerBuildScript.afterBuild}"
+                """
+            } else {
+                steps.powershell """
+                    cd "${config.srcRootPath}"
+                    "${config.customerBuildScript.afterBuild}"
+                """
+            }
+        }
+    }
 
     @Override
     def versioning() {

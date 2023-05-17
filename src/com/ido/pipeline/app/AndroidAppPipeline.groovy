@@ -165,8 +165,8 @@ class AndroidAppPipeline extends AppPipeline {
                            "CI_BRANCH=" + Utils.getBranchName(steps)]) {
                 steps.sh """
                     cd "${config.srcRootPath}"
-                    mkdir -p outputs/files
-                    rm -f outputs/files/*
+                    mkdir -p ido-cluster/outputs/files
+                    rm -f ido-cluster/outputs/files/*
 
                     if [ -s "./${config.buildScript}" ]; then
                         sh "./${config.buildScript}"
@@ -190,7 +190,7 @@ class AndroidAppPipeline extends AppPipeline {
                                 exit 1
                             fi
                             find ./ -type f -name "*-debug*.apk" -not -path "./outputs/*" \
-                                -exec mv "{}" "outputs/files/${newFileName}-debug.apk" \\;
+                                -exec mv "{}" "ido-cluster/outputs/files/${newFileName}-debug.apk" \\;
                         fi
                         if [ "$config.android.buildRelease" == "true" ]; then
                             sh ./gradlew assembleRelease \
@@ -211,7 +211,7 @@ class AndroidAppPipeline extends AppPipeline {
                                 exit 1
                             fi
                             find ./ -type f -name "*-release*.apk" -not -path "./outputs/*" \
-                                -exec mv "{}" "outputs/files/${newFileName}-release.apk" \\;
+                                -exec mv "{}" "ido-cluster/outputs/files/${newFileName}-release.apk" \\;
                         fi
                     fi
                 """
@@ -232,7 +232,7 @@ class AndroidAppPipeline extends AppPipeline {
 
 
             steps.sh """
-                cd "${config.srcRootPath}/outputs"
+                cd "${config.srcRootPath}/ido-cluster/outputs"
                 touch ${newFileName}.html
                 echo "<html>" >> ${newFileName}.html
                 echo "<meta http-equiv='Content-Type' content='text/html; charset=utf-8' />" >> ${newFileName}.html
@@ -265,7 +265,7 @@ class AndroidAppPipeline extends AppPipeline {
             """
 
             Artifact artifact = new Artifact()
-            artifact.uploadToFileServer(steps, uploadUrl, "${config.srcRootPath}/outputs")
+            artifact.uploadToFileServer(steps, uploadUrl, "${config.srcRootPath}/ido-cluster/outputs")
         }
     }
 

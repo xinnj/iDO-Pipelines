@@ -89,7 +89,7 @@ spec:
                   echo 'Shutting down macos...'
                   sleep 1
                 done
-                echo 'Shutdown macos finished, exist.'
+                echo 'Shutdown macos finished, exit.'
                 exit 1
               fi
               sleep 1

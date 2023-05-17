@@ -95,7 +95,12 @@ class IosAppPipeline extends AppPipeline {
                     cp -f ${it} ~/Library/MobileDevice/Provisioning\\ Profiles/\${uuid}.mobileprovision
                 """
             }
+        }
+    }
 
+    @Override
+    def afterScm() {
+        steps.container('builder') {
             steps.withEnv(["CI_PRODUCTNAME=$config.productName",
                            "CI_VERSION=$config.version",
                            "CI_BRANCH=" + Utils.getBranchName(steps)]) {
@@ -108,12 +113,7 @@ class IosAppPipeline extends AppPipeline {
                         set -x
 
                         cd "${steps.WORKSPACE}/${config.srcRootPath}"
-                        rm -rf ido-cluster/outputs
-                        mkdir -p ido-cluster/outputs/files
-                        
-                        if [ -s "./${config.customerBuildScript.afterScm}" ]; then
-                            sh "./${config.customerBuildScript.afterScm}"
-                        fi
+                        sh "${config.customerBuildScript.afterScm}"
                     """
                 }
             }
@@ -202,6 +202,28 @@ class IosAppPipeline extends AppPipeline {
     }
 
     @Override
+    def beforeBuild() {
+        steps.container('builder') {
+            steps.withEnv(["CI_PRODUCTNAME=$config.productName",
+                           "CI_VERSION=$config.version",
+                           "CI_BRANCH=" + Utils.getBranchName(steps)]) {
+                steps.withCredentials([steps.string(credentialsId: config.ios.keychainCredentialId, variable: 'macKeychain')]) {
+                    steps.sh """
+                        ssh 127.0.0.1 -q /bin/sh << EOF
+                        set -euao pipefail
+                        security unlock-keychain -p \${macKeychain}
+                        security set-keychain-settings -lut 21600 login.keychain
+                        set -x
+
+                        cd "${steps.WORKSPACE}/${config.srcRootPath}"
+                        sh "./${config.customerBuildScript.beforeBuild}"
+                    """
+                }
+            }
+        }
+    }
+
+    @Override
     def build() {
         String newFileName = this.getFileName()
         steps.container('builder') {
@@ -267,6 +289,9 @@ class IosAppPipeline extends AppPipeline {
                             set -x
 
                             cd "${steps.WORKSPACE}/${config.srcRootPath}"
+
+                            mkdir -p ido-cluster/outputs/files
+                            rm -f ido-cluster/outputs/files/*
                             
                             rm -rf ~/build.tmp
                             mkdir -p ~/build.tmp
@@ -334,6 +359,28 @@ class IosAppPipeline extends AppPipeline {
                         if [ -s "./${config.customerBuildScript.afterBuild}" ]; then
                             sh "./${config.customerBuildScript.afterBuild}"
                         fi
+                    """
+                }
+            }
+        }
+    }
+
+    @Override
+    def afterBuild() {
+        steps.container('builder') {
+            steps.withEnv(["CI_PRODUCTNAME=$config.productName",
+                           "CI_VERSION=$config.version",
+                           "CI_BRANCH=" + Utils.getBranchName(steps)]) {
+                steps.withCredentials([steps.string(credentialsId: config.ios.keychainCredentialId, variable: 'macKeychain')]) {
+                    steps.sh """
+                        ssh 127.0.0.1 -q /bin/sh << EOF
+                        set -euao pipefail
+                        security unlock-keychain -p \${macKeychain}
+                        security set-keychain-settings -lut 21600 login.keychain
+                        set -x
+
+                        cd "${steps.WORKSPACE}/${config.srcRootPath}"
+                        sh "./${config.customerBuildScript.afterBuild}"
                     """
                 }
             }
