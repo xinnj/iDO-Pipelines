@@ -1,8 +1,10 @@
 ## Common process config
 productName: ""
 
-# All running and queued builds of the triggered job will be aborted if enabled
-stopAllRunningBuild: true
+# Stop all running build of the same job
+stopSameJob: true
+# Stop all running build of the invoked job
+stopInvokedJob: true
 
 # Do UT and Code Analysis in parallel
 parallelUtAnalysis: false
@@ -14,9 +16,16 @@ debug: true
 srcRootPath: "."
 
 # Trigger by upstream projects
-dependOn:
-  - name: ""
-    branch: ""
+dependOn: []
+#dependOn:
+#  - name: ""
+#    branch: ""
+
+# Downstream projects to be invoked
+jobsInvoked: []
+#jobsInvoked:
+#  - name: ""
+#    branch: ""
 
 # Build script file name
 buildScript: "build-ci.sh"

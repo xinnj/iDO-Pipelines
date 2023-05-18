@@ -74,6 +74,11 @@ abstract class AppPipeline extends BasePipeline {
             steps.echo "########## Stage: Archive App ##########"
             this.archive()
         }
+
+        if (config.jobsInvoked.size() != 0) {
+            steps.echo "########## Stage: Invoke ##########"
+            this.invoke(null)
+        }
     }
 
     @Override

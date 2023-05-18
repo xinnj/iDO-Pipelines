@@ -24,9 +24,13 @@ abstract class BasePipeline implements Pipeline, Serializable {
         this.config = config
         def result = [:]
 
-        if (config.stopAllRunningBuild) {
+        if (config.stopSameJob) {
             // Stop all running build of the same job
-            this.stopCurrentJob()
+            this.stopSameJob()
+        }
+        if (config.stopInvokedJob) {
+            // Stop all running build of the invoked job
+            this.stopInvokedJob()
         }
 
         steps.lock(resource: "lock_${steps.currentBuild.fullProjectName}") {
@@ -152,32 +156,34 @@ abstract class BasePipeline implements Pipeline, Serializable {
             steps.error "productName is empty!"
         }
 
-        String upstreamProjects = ""
-        String branch = Utils.getBranchName(steps)
+        if (config.dependOn.size() != 0) {
+            String upstreamProjects = ""
+            String defaultBranch = Utils.getBranchName(steps)
 
-        for (Map job in config.dependOn) {
-            if (job.name) {
-                if (job.branch) {
-                    if (upstreamProjects == "") {
-                        upstreamProjects = job.name + '/' + branch
+            for (Map job in config.dependOn) {
+                if (job.name) {
+                    if (job.branch) {
+                        if (upstreamProjects == "") {
+                            upstreamProjects = job.name + '/' + job.branch
+                        } else {
+                            upstreamProjects += ',' + job.name + '/' + job.branch
+                        }
                     } else {
-                        upstreamProjects += ',' + job.name + '/' + branch
-                    }
-                } else {
-                    if (upstreamProjects == "") {
-                        upstreamProjects = job.name + '/' + job.branch
-                    } else {
-                        upstreamProjects += ',' + job.name + '/' + job.branch
+                        if (upstreamProjects == "") {
+                            upstreamProjects = job.name + '/' + defaultBranch
+                        } else {
+                            upstreamProjects += ',' + job.name + '/' + defaultBranch
+                        }
                     }
                 }
             }
-        }
 
-        steps.echo "upstreamProjects: " + upstreamProjects
-        if (upstreamProjects != "") {
-            steps.properties([
-                    steps.pipelineTriggers([steps.upstream(upstreamProjects: upstreamProjects, threshold: hudson.model.Result.SUCCESS)])
-            ])
+            steps.echo "upstreamProjects: " + upstreamProjects
+            if (upstreamProjects != "") {
+                steps.properties([
+                        steps.pipelineTriggers([steps.upstream(upstreamProjects: upstreamProjects, threshold: hudson.model.Result.SUCCESS)])
+                ])
+            }
         }
     }
 
@@ -321,7 +327,7 @@ abstract class BasePipeline implements Pipeline, Serializable {
         notification.send()
     }
 
-    def stopCurrentJob() {
+    def stopSameJob() {
         steps.echo "Stop all running build of the same job..."
         try {
             def jobName = steps.currentBuild.fullProjectName
@@ -332,7 +338,74 @@ abstract class BasePipeline implements Pipeline, Serializable {
                     build.doStop()
                 }
             }
-        } catch (Exception e) {
+        } catch (Exception ignored) {
+        }
+    }
+
+    def invoke(List<?> parameters) {
+        String defaultBranch = Utils.getBranchName(steps)
+
+        for (Map job in config.jobsInvoked) {
+            if (job.name) {
+                if (job.branch) {
+                    try {
+                        if (parameters) {
+                            steps.build(job: job.name + '/' + job.branch, parameters: parameters, propagate: false, wait: false)
+                        } else {
+                            steps.build(job: job.name + '/' + job.branch, propagate: false, wait: false)
+                        }
+                    } catch (Exception e) {
+                        steps.echo e.toString()
+                        steps.echo "Can't invoke job: " + job.name + '/' + job.branch
+                    }
+                } else {
+                    try {
+                        if (parameters) {
+                            steps.build(job: job.name + '/' + defaultBranch, parameters: parameters, propagate: false, wait: false)
+                        } else {
+                            steps.build(job: job.name + '/' + defaultBranch, propagate: false, wait: false)
+                        }
+                    } catch (Exception e) {
+                        steps.echo e.toString()
+                        steps.echo "Can't invoke job: " + job.name + '/' + defaultBranch
+                    }
+                }
+            }
+        }
+    }
+
+    // Todo: the pod will be created and remain running if the job is stopped before pod created
+    def stopInvokedJob() {
+        if (config.jobsInvoked.size() != 0) {
+            steps.echo "Stop all running build of the jobs to be invoked..."
+            String defaultBranch = Utils.getBranchName(steps)
+
+            def item
+            for (Map job in config.jobsInvoked) {
+                if (job.name) {
+                    if (job.branch) {
+                        try {
+                            item = Jenkins.instance.getItemByFullName(job.name + '/' + job.branch)
+                            for (build in item.builds) {
+                                if (build.isBuilding()) {
+                                    build.doStop()
+                                }
+                            }
+                        } catch (Exception ignored) {
+                        }
+                    } else {
+                        try {
+                            item = Jenkins.instance.getItemByFullName(job.name + '/' + defaultBranch)
+                            for (build in item.builds) {
+                                if (build.isBuilding()) {
+                                    build.doStop()
+                                }
+                            }
+                        } catch (Exception ignored) {
+                        }
+                    }
+                }
+            }
         }
     }
 }

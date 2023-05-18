@@ -80,6 +80,11 @@ abstract class ImagePipeline extends BasePipeline {
                 this.afterBuild()
             }
         }
+
+        if (config.jobsInvoked.size() != 0) {
+            steps.echo "########## Stage: Invoke ##########"
+            this.invoke(null)
+        }
     }
 
     @Override
