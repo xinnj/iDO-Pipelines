@@ -114,10 +114,10 @@ spec:
           name: macos-image-folder
       resources:
         requests:
-          cpu: 6000m
+          cpu: "6"
           memory: 8Gi
         limits:
-          cpu: 8000m
+          cpu: "16"
           memory: 9Gi
       securityContext:
         privileged: true
@@ -158,7 +158,7 @@ spec:
         - name: "SMP"
           value: "16"
         - name: "CORES"
-          value: "8"
+          value: "16"
         - name: "EXTRA"
           value: "-virtfs local,path=/Users/jenkins/agent,mount_tag=hostshare,security_model=passthrough,id=hostshare"
         - name: "USERNAME"
