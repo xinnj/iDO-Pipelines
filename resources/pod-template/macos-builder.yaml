@@ -95,15 +95,15 @@ spec:
               sleep 1
             fi
           done
-          grep id_docker_osx ~/.ssh/config || {
-            tee -a ~/.ssh/config <<< 'Host 127.0.0.1'
-            tee -a ~/.ssh/config <<< "    User ${USERNAME:=jenkins}"
-            tee -a ~/.ssh/config <<< '    Port 10022'
-            tee -a ~/.ssh/config <<< "    IdentityFile ${SSH_KEY}"
-            tee -a ~/.ssh/config <<< '    StrictHostKeyChecking no'
-            tee -a ~/.ssh/config <<< '    UserKnownHostsFile=~/.ssh/known_hosts'
-          }
-          ssh 127.0.0.1 -q "${OSX_COMMANDS}"
+          echo > ~/.ssh/config
+          tee -a ~/.ssh/config <<< 'Host 127.0.0.1'
+          tee -a ~/.ssh/config <<< "    User ${USERNAME:=jenkins}"
+          tee -a ~/.ssh/config <<< '    Port 10022'
+          tee -a ~/.ssh/config <<< "    IdentityFile ${SSH_KEY}"
+          tee -a ~/.ssh/config <<< '    StrictHostKeyChecking no'
+          tee -a ~/.ssh/config <<< '    UserKnownHostsFile=~/.ssh/known_hosts'
+
+          ssh 127.0.0.1 "${OSX_COMMANDS}"
           touch /home/arch/vm-started
           echo "Sleep for <keepBuilderPodMaxMinutes>m"
           sleep <keepBuilderPodMaxMinutes>m
