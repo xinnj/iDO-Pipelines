@@ -76,6 +76,7 @@ spec:
             /usr/bin/ssh-keygen -t rsa -f "${SSH_KEY}" -q -N ""
             chmod 600 "${SSH_KEY}"
           }
+          sed -i -e 's/-netdev user,id=net0/-netdev user,id=net0,dnssearch=default.svc.cluster.local,dnssearch=svc.cluster.local/' ./Launch.sh
           /bin/bash -c ./Launch.sh & echo "Booting Docker-OSX in the background. Please wait..."
           for i in {1..5}; do
             sshpass -p${PASSWORD:=Jenkins} ssh-copy-id -f -i "${SSH_KEY}.pub" -p 10022 ${USERNAME:=jenkins}@127.0.0.1 > /dev/null
