@@ -115,7 +115,7 @@ spec:
           name: macos-image-folder
       resources:
         requests:
-          cpu: "6"
+          cpu: "8"
           memory: 8Gi
         limits:
           cpu: "16"
@@ -137,10 +137,11 @@ spec:
               - /bin/sh
               - -c
               - |
-                if killall -0 qemu-system-x86_64; then
+                pid=$(pgrep -f qemu-system-x86_64)
+                if pwdx $pid > /dev/null 2>&1; then
                   ssh 127.0.0.1 'sudo shutdown -h now' > /proc/1/fd/1
                 fi
-                while killall -0 qemu-system-x86_64; do
+                while pwdx $pid > /dev/null 2>&1; do
                   echo 'Shutting down macos...' > /proc/1/fd/1
                   sleep 1
                 done

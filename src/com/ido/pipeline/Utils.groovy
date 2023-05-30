@@ -260,4 +260,22 @@ plugins {
         }
         return original
     }
+
+    static boolean isDirectory(Object steps, def providedPath) {
+        // handle case where a File, nio Path, FileWrapper, etc object is passed
+        String path = providedPath.toString()
+
+        // Search for this path as a glob - it will find files beneath a dir
+        // and will not report directories
+        def files = steps.findFiles(glob: path)
+
+        // check for path found in list then it is a file
+        for (def file in files) {
+            if ("${file.path}" == path) {
+                return false
+            }
+        }
+
+        return true
+    }
 }

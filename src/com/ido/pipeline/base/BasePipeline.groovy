@@ -316,11 +316,103 @@ abstract class BasePipeline implements Pipeline, Serializable {
             config.version = ver
         }
         steps.currentBuild.displayName = config.version
+        steps.sh """
+            mkdir -p "${config.srcRootPath}/ido-cluster"
+            echo ${config.version} > "${config.srcRootPath}/ido-cluster/_version"
+        """
+    }
+
+    def afterScm() {
+        steps.container('builder') {
+            steps.withEnv(["CI_PRODUCTNAME=$config.productName",
+                           "CI_VERSION=$config.version",
+                           "CI_BRANCH=" + Utils.getBranchName(steps)]) {
+                if (steps.isUnix()) {
+                    steps.sh """
+                        cd "${config.srcRootPath}"
+                        sh "${config.customerBuildScript.afterScm}"
+                    """
+                } else {
+                    steps.powershell """
+                        cd "${config.srcRootPath}"
+                        "${config.customerBuildScript.afterScm}"
+                    """
+                }
+            }
+
+            config.version = steps.readFile(file: "${config.srcRootPath}/ido-cluster/_version", encoding: "UTF-8").trim()
+        }
+    }
+
+    def beforeBuild() {
+        steps.container('builder') {
+            steps.withEnv(["CI_PRODUCTNAME=$config.productName",
+                           "CI_VERSION=$config.version",
+                           "CI_BRANCH=" + Utils.getBranchName(steps)]) {
+                if (steps.isUnix()) {
+                    steps.sh """
+                        cd "${config.srcRootPath}"
+                        sh "${config.customerBuildScript.beforeBuild}"
+                    """
+                } else {
+                    steps.powershell """
+                        cd "${config.srcRootPath}"
+                        "${config.customerBuildScript.beforeBuild}"
+                    """
+                }
+            }
+        }
+    }
+
+    Boolean customerBuild() {
+        steps.container('builder') {
+            if (steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${config.customerBuildScript.build}")) {
+                steps.echo "Execute customer build script: ${config.customerBuildScript.build}"
+                steps.withEnv(["CI_PRODUCTNAME=$config.productName",
+                               "CI_VERSION=$config.version",
+                               "CI_BRANCH=" + Utils.getBranchName(steps)]) {
+                    if (steps.isUnix()) {
+                        steps.sh """
+                            cd "${config.srcRootPath}" 
+                            sh "./${config.customerBuildScript.build}"
+                        """
+                    } else {
+                        steps.powershell """
+                            cd "${config.srcRootPath}"
+                            "${config.customerBuildScript.build}"
+                        """
+                    }
+                }
+                return true
+            } else {
+                return false
+            }
+        }
+    }
+
+    def afterBuild() {
+        steps.container('builder') {
+            steps.withEnv(["CI_PRODUCTNAME=$config.productName",
+                           "CI_VERSION=$config.version",
+                           "CI_BRANCH=" + Utils.getBranchName(steps)]) {
+                if (steps.isUnix()) {
+                    steps.sh """
+                        cd "${config.srcRootPath}"
+                        sh "${config.customerBuildScript.afterBuild}"
+                    """
+                } else {
+                    steps.powershell """
+                        cd "${config.srcRootPath}"
+                        "${config.customerBuildScript.afterBuild}"
+                    """
+                }
+            }
+        }
     }
 
     def sendNotification() {
-        if (steps.fileExists('_finalVersion')) {
-            steps.currentBuild.displayName = steps.readFile(file: '_finalVersion', encoding: "UTF-8").trim()
+        if (steps.fileExists("${config.srcRootPath}/ido-cluster/_finalVersion")) {
+            steps.currentBuild.displayName = steps.readFile(file: "${config.srcRootPath}/ido-cluster/_finalVersion", encoding: "UTF-8").trim()
         }
 
         Notification notification = new Notification(steps, config)

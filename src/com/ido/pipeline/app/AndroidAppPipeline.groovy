@@ -153,6 +153,10 @@ class AndroidAppPipeline extends AppPipeline {
 
     @Override
     def build() {
+        if (this.customerBuild()) {
+            return
+        }
+
         String newFileName = this.getFileName()
         steps.container('builder') {
             String updateDependenciesArgs = ""
@@ -160,62 +164,54 @@ class AndroidAppPipeline extends AppPipeline {
                 updateDependenciesArgs = "--refresh-dependencies"
             }
 
-            steps.withEnv(["CI_PRODUCTNAME=$config.productName",
-                           "CI_VERSION=$config.version",
-                           "CI_BRANCH=" + Utils.getBranchName(steps)]) {
-                steps.sh """
-                    cd "${config.srcRootPath}"
-                    mkdir -p ido-cluster/outputs/files
-                    rm -f ido-cluster/outputs/files/*
+            steps.sh """
+                cd "${config.srcRootPath}"
+                mkdir -p ido-cluster/outputs/files
+                rm -f ido-cluster/outputs/files/*
 
-                    if [ -s "./${config.buildScript}" ]; then
-                        sh "./${config.buildScript}"
-                    else
-                        if [ "$config.android.buildDebug" = "true" ]; then
-                            sh ./gradlew assembleDebug \
-                                --no-daemon \
-                                -x test \
-                                ${updateDependenciesArgs} \
-                                -I "${steps.env.WORKSPACE}/${config.srcRootPath}/default-gradle-init.gradle" \
-                                -Dfile.encoding=UTF-8 \
-                                "-Dorg.gradle.jvmargs=-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" \
-                                -p ${config.java.moduleName}
-                            numFound=\$(find ./ -type f -name "*-debug*.apk" -not -path "./outputs/*" -print | wc -l)
-                            if [ \$numFound -lt 1 ]; then
-                                echo "Can't find debug version apk file!"
-                                exit 1
-                            fi
-                            if [ \$numFound -gt 1 ]; then
-                                echo "Find multiple debug version apk files!"
-                                exit 1
-                            fi
-                            find ./ -type f -name "*-debug*.apk" -not -path "./outputs/*" \
-                                -exec mv "{}" "ido-cluster/outputs/files/${newFileName}-debug.apk" \\;
-                        fi
-                        if [ "$config.android.buildRelease" = "true" ]; then
-                            sh ./gradlew assembleRelease \
-                                --no-daemon \
-                                -x test \
-                                ${updateDependenciesArgs} \
-                                -I "${steps.env.WORKSPACE}/${config.srcRootPath}/default-gradle-init.gradle" \
-                                -Dfile.encoding=UTF-8 \
-                                "-Dorg.gradle.jvmargs=-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" \
-                                -p ${config.java.moduleName}
-                            numFound=\$(find ./ -type f -name "*-release*.apk" -not -path "./outputs/*" -print | wc -l)
-                            if [ \$numFound -lt 1 ]; then
-                                echo "Can't find release version apk file!"
-                                exit 1
-                            fi
-                            if [ \$numFound -gt 1 ]; then
-                                echo "Find multiple release version apk files!"
-                                exit 1
-                            fi
-                            find ./ -type f -name "*-release*.apk" -not -path "./outputs/*" \
-                                -exec mv "{}" "ido-cluster/outputs/files/${newFileName}-release.apk" \\;
-                        fi
+                if [ "$config.android.buildDebug" = "true" ]; then
+                    sh ./gradlew assembleDebug \
+                        --no-daemon \
+                        -x test \
+                        ${updateDependenciesArgs} \
+                        -I "${steps.env.WORKSPACE}/${config.srcRootPath}/default-gradle-init.gradle" \
+                        -Dfile.encoding=UTF-8 \
+                        "-Dorg.gradle.jvmargs=-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" \
+                        -p ${config.java.moduleName}
+                    numFound=\$(find ./ -type f -name "*-debug*.apk" -not -path "./outputs/*" -print | wc -l)
+                    if [ \$numFound -lt 1 ]; then
+                        echo "Can't find debug version apk file!"
+                        exit 1
                     fi
-                """
-            }
+                    if [ \$numFound -gt 1 ]; then
+                        echo "Find multiple debug version apk files!"
+                        exit 1
+                    fi
+                    find ./ -type f -name "*-debug*.apk" -not -path "./outputs/*" \
+                        -exec mv "{}" "ido-cluster/outputs/files/${newFileName}-debug.apk" \\;
+                fi
+                if [ "$config.android.buildRelease" = "true" ]; then
+                    sh ./gradlew assembleRelease \
+                        --no-daemon \
+                        -x test \
+                        ${updateDependenciesArgs} \
+                        -I "${steps.env.WORKSPACE}/${config.srcRootPath}/default-gradle-init.gradle" \
+                        -Dfile.encoding=UTF-8 \
+                        "-Dorg.gradle.jvmargs=-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" \
+                        -p ${config.java.moduleName}
+                    numFound=\$(find ./ -type f -name "*-release*.apk" -not -path "./outputs/*" -print | wc -l)
+                    if [ \$numFound -lt 1 ]; then
+                        echo "Can't find release version apk file!"
+                        exit 1
+                    fi
+                    if [ \$numFound -gt 1 ]; then
+                        echo "Find multiple release version apk files!"
+                        exit 1
+                    fi
+                    find ./ -type f -name "*-release*.apk" -not -path "./outputs/*" \
+                        -exec mv "{}" "ido-cluster/outputs/files/${newFileName}-release.apk" \\;
+                fi
+            """
         }
     }
 

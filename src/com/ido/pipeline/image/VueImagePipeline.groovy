@@ -112,21 +112,17 @@ class VueImagePipeline extends ImagePipeline {
 
     @Override
     def build() {
+        if (this.customerBuild()) {
+            return
+        }
+
         steps.container('builder') {
-            steps.withEnv(["CI_PRODUCTNAME=$config.productName",
-                           "CI_VERSION=$config.version",
-                           "CI_BRANCH=" + Utils.getBranchName(steps)]) {
-                steps.sh """
-                    cd "${config.srcRootPath}"
+            steps.sh """
+                cd "${config.srcRootPath}"
         
-                    if [ -s "./${config.buildScript}" ]; then
-                        sh "./${config.buildScript}"
-                    else
-                        npm install
-                        npm run build
-                    fi
-                """
-            }
+                npm install
+                npm run build
+            """
         }
 
         if (!steps.fileExists("${config.srcRootPath}/.dockerignore")) {

@@ -92,59 +92,11 @@ abstract class ImagePipeline extends BasePipeline {
         super.prepare()
     }
 
-    def afterScm() {
-        steps.container('builder') {
-            if (steps.isUnix()) {
-                steps.sh """
-                    cd "${config.srcRootPath}"
-                    sh "${config.customerBuildScript.afterScm}"
-                """
-            } else {
-                steps.powershell """
-                    cd "${config.srcRootPath}"
-                    "${config.customerBuildScript.afterScm}"
-                """
-            }
-        }
-    }
-
     def abstract ut()
 
     def abstract codeAnalysis()
 
-    def beforeBuild() {
-        steps.container('builder') {
-            if (steps.isUnix()) {
-                steps.sh """
-                    cd "${config.srcRootPath}"
-                    sh "${config.customerBuildScript.beforeBuild}"
-                """
-            } else {
-                steps.powershell """
-                    cd "${config.srcRootPath}"
-                    "${config.customerBuildScript.beforeBuild}"
-                """
-            }
-        }
-    }
-
     def abstract build()
-
-    def afterBuild() {
-        steps.container('builder') {
-            if (steps.isUnix()) {
-                steps.sh """
-                    cd "${config.srcRootPath}"
-                    sh "${config.customerBuildScript.afterBuild}"
-                """
-            } else {
-                steps.powershell """
-                    cd "${config.srcRootPath}"
-                    "${config.customerBuildScript.afterBuild}"
-                """
-            }
-        }
-    }
 
     @Override
     def versioning() {

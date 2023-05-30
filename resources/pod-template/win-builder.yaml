@@ -1,0 +1,148 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    win-agent: true
+spec:
+  initContainers:
+    - name: prepare
+      image: docker.io/alpine
+      command:
+        - /bin/sh
+        - -c
+        - |
+          set -euaxo pipefail
+          if ! [ -f "/home/jenkins/win-image/<winImage>" ]; then
+            date
+            cp -f /home/jenkins/agent/win-image/<winImage> /home/jenkins/win-image/<winImage>.download
+            mv /home/jenkins/win-image/<winImage>.download /home/jenkins/win-image/<winImage>
+            chown -R 1000:1000 /home/jenkins/win-image
+            date
+          fi
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+      volumeMounts:
+        - mountPath: /home/jenkins/agent
+          name: workspace-volume
+        - mountPath: /home/jenkins/win-image
+          name: win-image-folder
+  containers:
+    - name: sonar-scanner
+      image: "docker.io/sonarsource/sonar-scanner-cli"
+      imagePullPolicy: IfNotPresent
+      command:
+        - sleep
+      args:
+        - <keepBuilderPodMaxMinutes>m
+      volumeMounts:
+        - mountPath: /home/jenkins/agent
+          name: workspace-volume
+      env:
+        - name: SONAR_USER_HOME
+          value: /home/jenkins/agent/sonar
+    - name: builder
+      image: <builderImage>
+      imagePullPolicy: IfNotPresent
+      command:
+        - /bin/sh
+        - -c
+        - |
+          set -euaxo pipefail
+          cd /home/arch/win-vm
+          ./Auto.sh
+          touch /home/arch/vm-started
+          echo "Sleep for <keepBuilderPodMaxMinutes>m"
+          sleep <keepBuilderPodMaxMinutes>m
+      volumeMounts:
+        - mountPath: /home/jenkins/agent
+          name: workspace-volume
+        - mountPath: /home/jenkins/win-image
+          name: win-image-folder
+      resources:
+        requests:
+          cpu: "8"
+          memory: 8Gi
+        limits:
+          cpu: "16"
+          memory: 9Gi
+      securityContext:
+        privileged: true
+      readinessProbe:
+        exec:
+          command:
+            - /bin/sh
+            - -c
+            - ls /home/arch/vm-started
+        initialDelaySeconds: 90
+        periodSeconds: 5
+      lifecycle:
+        preStop:
+          exec:
+            command:
+              - /bin/sh
+              - -c
+              - |
+                pid=$(pgrep -f qemu-system-x86_64)
+                if pwdx $pid > /dev/null 2>&1; then
+                  ssh 127.0.0.1 'shutdown /s /t 0' > /proc/1/fd/1
+                fi
+                while pwdx $pid > /dev/null 2>&1; do
+                  echo 'Shutting down win-vm...' > /proc/1/fd/1
+                  sleep 1
+                done
+                echo 'Shutdown win-vm finished.' > /proc/1/fd/1
+      env:
+        - name: "IMAGE_PATH"
+          value: "/home/jenkins/win-image/<winImage>"
+        - name: "SSH_KEY"
+          value: "/home/jenkins/win-image/id_docker_win"
+        - name: "RAM"
+          value: "8"
+        - name: "SMP"
+          value: "16"
+        - name: "CORES"
+          value: "16"
+        - name: "USERNAME"
+          value: "jenkins"
+        - name: "PASSWORD"
+          value: "Jenkins"
+        - name: "SHARED_DIR"
+          value: "/home/jenkins/agent"
+        - name: "WIN_COMMANDS"
+          value: "powershell -command \"New-ItemProperty -Path 'HKLM:\\SOFTWARE\\OpenSSH' -Name DefaultShell -Value 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe' -PropertyType String -Force; Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope CurrentUser\""
+        - name: "EXTRA"
+          value: "-snapshot"
+        - name: "NUGET_PACKAGES"
+          value: "z:\\nuget\\packages"
+        - name: "NUGET_HTTP_CACHE_PATH"
+          value: "z:\\nuget\\v3-cache"
+        - name: "NUGET_PLUGINS_CACHE_PATH"
+          value: "z:\\nuget\\plugins-cache"
+  imagePullSecrets:
+    - name: <imagePullSecret>
+  securityContext:
+    runAsGroup: 1000
+    runAsUser: 1000
+  volumes:
+    - name: win-image-folder
+      hostPath:
+        path: "/home/iDO-Cluster/win-image"
+        type: DirectoryOrCreate
+  terminationGracePeriodSeconds: 30
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+              - key: win-agent
+                operator: In
+                values:
+                  - "true"
+          topologyKey: "kubernetes.io/hostname"
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: vm-agent
+                operator: Exists
