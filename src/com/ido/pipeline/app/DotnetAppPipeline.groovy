@@ -155,8 +155,42 @@ if (\$workloadsStr.Length -ne 0)
             return
         }
 
-        steps.container('builder') {
+        if (!config.dotnet.ut.project) {
+            steps.error "ut.project is empty!"
+        }
 
+        steps.container('builder') {
+            String cmd = """
+\$ErrorActionPreference = "Stop"
+\$ProgressPreference = "SilentlyContinue"
+Set-PSDebug -Strict -Trace 0
+
+\$Env:Path = "${config._system.dotnetSdkPath}/${config.dotnet.sdkVersion};\$Env:Path"
+
+cd "${vmWorkspace}/${config.srcRootPath}"
+
+dotnet build ${config.dotnet.ut.project} -c ${config.dotnet.configuration} -p:Version=${config.version} `
+    --source ${config._system.nugetSource} --no-cache --nologo
+
+dotnet test ${config.dotnet.ut.project} -c ${config.dotnet.configuration} --no-build --nologo --collect:"XPlat Code Coverage" --results-directory "${config.srcRootPath}/TestResults"
+"""
+
+            steps.writeFile(file: '~ido-cluster.ps1', text: cmd, encoding: "UTF-8")
+            steps.sh """
+                ssh 127.0.0.1 "${vmWorkspace}/~ido-cluster.ps1"
+            """
+
+            def files
+            steps.dir("${steps.WORKSPACE}/${config.srcRootPath}") {
+                files = steps.findFiles(glob: "TestResults/**/coverage.cobertura.xml")
+            }
+            if (files) {
+                steps.echo "Coverage report file: ${files[0].path}"
+                steps.cobertura(coberturaReportFile: files[0].path, enableNewApi: true,
+                        lineCoverageTargets: "${config.dotnet.ut.lineCoverageThreshold}, ${config.dotnet.ut.lineCoverageThreshold}, ${config.dotnet.ut.lineCoverageThreshold}")
+            } else {
+                steps.error "Can't find coverage report file!"
+            }
         }
     }
 

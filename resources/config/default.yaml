@@ -237,8 +237,8 @@ ios:
     signStyle: "Automatic"
     # Path to xcconfig file, relative path to srcRootPath
     xcconfig: ""
-  # Code coverage is not supported yet
-  lineCoverageThreshold: 0
+    # Code coverage is not supported yet
+    lineCoverageThreshold: 0
   # execute code analysis
   codeAnalysisEnabled: false
   sonarqubeServerName: ""
@@ -265,8 +265,9 @@ dotnet:
   # Execute UT
   ut:
     enabled: false
-  # Code coverage is not supported yet
-  lineCoverageThreshold: 0
+    # Test project path, relative path to srcRootPath
+    project: ""
+    lineCoverageThreshold: 0
   # execute code analysis
   codeAnalysisEnabled: false
   sonarqubeServerName: ""
