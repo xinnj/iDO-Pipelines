@@ -184,7 +184,7 @@ spec:
         - mountPath: /Users/jenkins/agent
           name: workspace-volume
     - name: jnlp
-      image: "docker.io/xinnj/inbound-agent:4.11-1-alpine-jdk11-nolog"
+      image: "<inboundAgentImage>"
       workingDir: "/Users/jenkins/agent"
       env:
         - name: "JENKINS_AGENT_CACHEDIR"

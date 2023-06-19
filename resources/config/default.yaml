@@ -258,8 +258,6 @@ dotnet:
   configuration: "Debug"
   # Publishes the application for a given runtime. See https://learn.microsoft.com/en-us/dotnet/core/rid-catalog
   runtime: ""
-  # Path including files to be published
-  publishPath: ""
   # Wix Cover config file path
   msiConfig: ""
   # Execute UT

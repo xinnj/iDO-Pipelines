@@ -94,6 +94,7 @@ abstract class BasePipeline implements Pipeline, Serializable {
                     config.podTemplate = (config.podTemplate as String)
                             .replaceAll('<keepBuilderPodMaxMinutes>', (config._system.keepBuilderPodMaxMinutes).toString())
                             .replaceAll('<imagePullSecret>', config._system.imagePullSecret as String)
+                            .replaceAll('<inboundAgentImage>', config._system.inboundAgentImage as String)
 
                     steps.podTemplate(yaml: config.podTemplate,
                             namespace: "jenkins",

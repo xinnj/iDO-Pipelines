@@ -9,6 +9,7 @@ import org.apache.ivy.core.module.descriptor.OverrideDependencyDescriptorMediato
  */
 class DotnetAppPipeline extends AppPipeline {
     String vmWorkspace = ""
+    String smbServerAddress = ""
 
     DotnetAppPipeline(Object steps) {
         super(steps)
@@ -17,7 +18,7 @@ class DotnetAppPipeline extends AppPipeline {
     @Override
     Map runPipeline(Map config) {
         config.nodeType = "k8s"
-        config.parallelUtAnalysis = true
+        config.parallelUtAnalysis = false
 
         String builder = steps.libraryResource(resource: 'pod-template/win-builder.yaml', encoding: 'UTF-8')
         builder = builder.replaceAll('<builderImage>', config.dotnet.builderImage)
@@ -37,9 +38,6 @@ class DotnetAppPipeline extends AppPipeline {
         if (!config.dotnet.buildFile) {
             steps.error "buildFile is empty!"
         }
-        if (!config.dotnet.publishPath) {
-            steps.error "publishPath is empty!"
-        }
         if (!config.dotnet.msiConfig) {
             steps.error "msiConfig is empty!"
         }
@@ -50,7 +48,8 @@ class DotnetAppPipeline extends AppPipeline {
         }
 
         if (config.nodeType == "k8s") {
-            vmWorkspace = (steps.WORKSPACE as String).replace("/home/jenkins/agent", "z:").replace("/", "\\")
+            vmWorkspace = (steps.WORKSPACE as String).replace("/home/jenkins/agent", "R:").replace("/", "\\")
+            smbServerAddress = "${config._system.smbServer.internal} ${config._system.smbServer.password} /user:${config._system.smbServer.user}"
 
             steps.container('builder') {
 
@@ -62,13 +61,18 @@ class DotnetAppPipeline extends AppPipeline {
                 String cmd = """
 \$ErrorActionPreference = "Stop"
 \$ProgressPreference = "SilentlyContinue"
-Set-PSDebug -Strict
+Set-PSDebug -Strict -Trace 0
 
-\$LocalDotnet = ""
+net use R: ${smbServerAddress}
+
+New-Item -ItemType Directory -Force -Path \$Env:NUGET_PACKAGES | out-null
+New-Item -ItemType Directory -Force -Path \$Env:NUGET_HTTP_CACHE_PATH | out-null
+New-Item -ItemType Directory -Force -Path \$Env:NUGET_PLUGINS_CACHE_PATH | out-null
+
 \$InstallDir = "${config._system.dotnetSdkPath}"
 \$SdkVersion = "${config.dotnet.sdkVersion}"
 
-New-Item -Type "directory" -Path \$InstallDir -force
+New-Item -Type "directory" -Path \$InstallDir -force | out-null
 
 if (-not(Test-Path -Path \$InstallDir/dotnet-install.ps1 -PathType Leaf))
 {
@@ -102,11 +106,20 @@ if (\$workloadsStr.Length -ne 0)
                     fi
 
                     ssh 127.0.0.1 << EOF
-                        New-Item -ItemType Directory -Force -Path \${NUGET_PACKAGES} | out-null
-                        New-Item -ItemType Directory -Force -Path \${NUGET_HTTP_CACHE_PATH} | out-null
-                        New-Item -ItemType Directory -Force -Path \${NUGET_PLUGINS_CACHE_PATH} | out-null
-                        
-                        ${vmWorkspace}/~ido-cluster.ps1
+                        [Environment]::SetEnvironmentVariable('DOTNET_CLI_TELEMETRY_OPTOUT','true', 'User')
+                        [Environment]::SetEnvironmentVariable('CI_PRODUCTNAME','$config.productName', 'User')
+                        [Environment]::SetEnvironmentVariable('CI_BRANCH','$branch', 'User')
+                        [Environment]::SetEnvironmentVariable('CI_CONFIGURATION','$config.dotnet.configuration', 'User')
+                        [Environment]::SetEnvironmentVariable('WORKSPACE','$vmWorkspace', 'User')
+                        [Environment]::SetEnvironmentVariable('NUGET_PACKAGES','\$NUGET_PACKAGES', 'User')
+                        [Environment]::SetEnvironmentVariable('NUGET_HTTP_CACHE_PATH','\$NUGET_HTTP_CACHE_PATH', 'User')
+                        [Environment]::SetEnvironmentVariable('NUGET_PLUGINS_CACHE_PATH','\$NUGET_PLUGINS_CACHE_PATH', 'User')
+                        [Environment]::SetEnvironmentVariable('SONAR_USER_HOME',"\$SONAR_USER_HOME", 'User')
+                """
+
+                steps.sh """
+                    scp ${steps.WORKSPACE}/~ido-cluster.ps1 127.0.0.1:/c:/
+                    ssh 127.0.0.1 "c:/~ido-cluster.ps1"
                 """
             }
         }
@@ -119,16 +132,7 @@ if (\$workloadsStr.Length -ne 0)
         String branch = Utils.getBranchName(steps)
         steps.container('builder') {
             steps.sh """
-                ssh 127.0.0.1 << EOF
-                    [Environment]::SetEnvironmentVariable('DOTNET_CLI_TELEMETRY_OPTOUT','true', 'User')
-                    [Environment]::SetEnvironmentVariable('CI_PRODUCTNAME','$config.productName', 'User')
-                    [Environment]::SetEnvironmentVariable('CI_VERSION','$config.version', 'User')
-                    [Environment]::SetEnvironmentVariable('CI_BRANCH','$branch', 'User')
-                    [Environment]::SetEnvironmentVariable('CI_CONFIGURATION','$config.dotnet.configuration', 'User')
-                    [Environment]::SetEnvironmentVariable('WORKSPACE','$vmWorkspace', 'User')
-                    [Environment]::SetEnvironmentVariable('NUGET_PACKAGES','\$NUGET_PACKAGES', 'User')
-                    [Environment]::SetEnvironmentVariable('NUGET_HTTP_CACHE_PATH','\$NUGET_HTTP_CACHE_PATH', 'User')
-                    [Environment]::SetEnvironmentVariable('NUGET_PLUGINS_CACHE_PATH','\$NUGET_PLUGINS_CACHE_PATH', 'User')
+                ssh 127.0.0.1 "[Environment]::SetEnvironmentVariable('CI_VERSION','$config.version', 'User')"
             """
         }
 
@@ -137,15 +141,29 @@ if (\$workloadsStr.Length -ne 0)
     @Override
     def afterScm() {
         steps.container('builder') {
+            String cmd = """
+\$ErrorActionPreference = "Stop"
+\$ProgressPreference = "SilentlyContinue"
+Set-PSDebug -Strict -Trace 0
+
+net use R: ${smbServerAddress}
+
+cd "${vmWorkspace}/${config.srcRootPath}"
+./${config.customerBuildScript.afterScm}
+"""
+            steps.writeFile(file: '~ido-cluster.ps1', text: cmd, encoding: "UTF-8")
+
             steps.sh """
-                ssh 127.0.0.1 << EOF
-                    cd "${vmWorkspace}/${config.srcRootPath}"
-                    "./${config.customerBuildScript.afterScm}"
+                scp ${steps.WORKSPACE}/~ido-cluster.ps1 127.0.0.1:/c:/
+                ssh 127.0.0.1 "c:/~ido-cluster.ps1"
             """
 
             config.version = steps.readFile(file: "${config.srcRootPath}/ido-cluster/_version", encoding: "UTF-8").trim()
 
-            steps.sh "ssh 127.0.0.1 \"[Environment]::SetEnvironmentVariable('CI_VERSION','$config.version', 'User')\""
+            steps.sh """
+                ssh 127.0.0.1 "[Environment]::SetEnvironmentVariable('CI_VERSION','$config.version', 'User')"
+            """
+
         }
     }
 
@@ -165,19 +183,23 @@ if (\$workloadsStr.Length -ne 0)
 \$ProgressPreference = "SilentlyContinue"
 Set-PSDebug -Strict -Trace 0
 
+net use R: ${smbServerAddress}
+
 \$Env:Path = "${config._system.dotnetSdkPath}/${config.dotnet.sdkVersion};\$Env:Path"
 
 cd "${vmWorkspace}/${config.srcRootPath}"
 
-dotnet build ${config.dotnet.ut.project} -c ${config.dotnet.configuration} -p:Version=${config.version} `
+dotnet publish ${config.dotnet.ut.project} -c ${config.dotnet.configuration} -p:Version=${config.version} `
     --source ${config._system.nugetSource} --no-cache --nologo
 
-dotnet test ${config.dotnet.ut.project} -c ${config.dotnet.configuration} --no-build --nologo --collect:"XPlat Code Coverage" --results-directory "${config.srcRootPath}/TestResults"
+dotnet test ${config.dotnet.ut.project} -c ${config.dotnet.configuration} --no-build --nologo `
+    --collect:"XPlat Code Coverage" --results-directory "${config.srcRootPath}/TestResults"
 """
 
             steps.writeFile(file: '~ido-cluster.ps1', text: cmd, encoding: "UTF-8")
             steps.sh """
-                ssh 127.0.0.1 "${vmWorkspace}/~ido-cluster.ps1"
+                scp ${steps.WORKSPACE}/~ido-cluster.ps1 127.0.0.1:/c:/
+                ssh 127.0.0.1 "c:/~ido-cluster.ps1"
             """
 
             def files
@@ -200,21 +222,45 @@ dotnet test ${config.dotnet.ut.project} -c ${config.dotnet.configuration} --no-b
             return
         }
 
-        steps.container('sonar-scanner') {
-            steps.withSonarQubeEnv(config.dotnet.sonarqubeServerName) {
-                steps.sh """
-                    cd "${config.srcRootPath}"
-                    sonar-scanner -Dsonar.projectKey=${config.productName} -Dsonar.sourceEncoding=UTF-8
-                """
-            }
-        }
-
-        if (config.ios.qualityGateEnabled) {
-            steps.timeout(time: config.ios.sonarqubeTimeoutMinutes, unit: 'MINUTES') {
-                def qg = steps.waitForQualityGate()
-                if (qg.status != 'OK') {
-                    steps.error "Quality gate failure: ${qg.status}"
+        steps.container('builder') {
+            String cmd = ""
+            steps.withSonarQubeEnv(config.nodejs.sonarqubeServerName) {
+                String qualityGate = ""
+                int timeoutSecond = config.dotnet.sonarqubeTimeoutMinutes * 60
+                if (config.dotnet.qualityGateEnabled) {
+                    qualityGate = "/d:sonar.qualitygate.wait=true /d:sonar.qualitygate.timeout=${timeoutSecond}"
                 }
+
+                cmd = """
+\$ErrorActionPreference = "Stop"
+\$ProgressPreference = "SilentlyContinue"
+Set-PSDebug -Strict -Trace 0
+
+net use R: ${smbServerAddress}
+
+\$Env:Path = "${config._system.dotnetSdkPath}/${config.dotnet.sdkVersion};${config._system.dotnetSdkPath}/tools;\$Env:Path"
+
+dotnet tool install dotnet-sonarscanner --add-source ${config._system.nugetSource} --ignore-failed-sources `
+    --tool-path "${config._system.dotnetSdkPath}/tools" --no-cache
+
+cd "${vmWorkspace}/${config.srcRootPath}"
+
+dotnet sonarscanner begin /k:"${config.productName}" /d:sonar.login="${steps.env.SONAR_AUTH_TOKEN}" `
+    /d:sonar.host.url="${steps.env.SONAR_HOST_URL}" ${qualityGate}
+dotnet build ${config.dotnet.buildFile} -c ${config.dotnet.configuration} -p:Version=${config.version} `
+    --source ${config._system.nugetSource} --no-cache --nologo
+dotnet sonarscanner end /d:sonar.login="${steps.env.SONAR_AUTH_TOKEN}"
+if (-not\$?)
+{
+    throw 'Code analysis failure'
+}
+"""
+
+                steps.writeFile(file: '~ido-cluster.ps1', text: cmd, encoding: "UTF-8")
+                steps.sh """
+                    scp ${steps.WORKSPACE}/~ido-cluster.ps1 127.0.0.1:/c:/
+                    ssh 127.0.0.1 "c:/~ido-cluster.ps1"
+                """
             }
         }
     }
@@ -223,10 +269,22 @@ dotnet test ${config.dotnet.ut.project} -c ${config.dotnet.configuration} --no-b
     def beforeBuild() {
         steps.container('builder') {
             String branch = Utils.getBranchName(steps)
+
+            String cmd = """
+\$ErrorActionPreference = "Stop"
+\$ProgressPreference = "SilentlyContinue"
+Set-PSDebug -Strict -Trace 0
+
+net use R: ${smbServerAddress}
+
+cd "${vmWorkspace}/${config.srcRootPath}"
+./${config.customerBuildScript.beforeBuild}
+"""
+            steps.writeFile(file: '~ido-cluster.ps1', text: cmd, encoding: "UTF-8")
+
             steps.sh """
-                ssh 127.0.0.1 << EOF
-                    cd "${vmWorkspace}/${config.srcRootPath}"
-                    "./${config.customerBuildScript.beforeBuild}"
+                scp ${steps.WORKSPACE}/~ido-cluster.ps1 127.0.0.1:/c:/
+                ssh 127.0.0.1 "c:/~ido-cluster.ps1"
             """
         }
     }
@@ -237,10 +295,22 @@ dotnet test ${config.dotnet.ut.project} -c ${config.dotnet.configuration} --no-b
             if (steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${config.customerBuildScript.build}")) {
                 steps.echo "Execute customer build script: ${config.customerBuildScript.build}"
                 String branch = Utils.getBranchName(steps)
+
+                String cmd = """
+\$ErrorActionPreference = "Stop"
+\$ProgressPreference = "SilentlyContinue"
+Set-PSDebug -Strict -Trace 0
+
+net use R: ${smbServerAddress}
+
+cd "${vmWorkspace}/${config.srcRootPath}"
+./${config.customerBuildScript.build}
+"""
+                steps.writeFile(file: '~ido-cluster.ps1', text: cmd, encoding: "UTF-8")
+
                 steps.sh """
-                    ssh 127.0.0.1 << EOF
-                        cd "${vmWorkspace}/${config.srcRootPath}"
-                        "./${config.customerBuildScript.build}"
+                    scp ${steps.WORKSPACE}/~ido-cluster.ps1 127.0.0.1:/c:/
+                    ssh 127.0.0.1 "c:/~ido-cluster.ps1"
                 """
             }
         }
@@ -264,16 +334,14 @@ dotnet test ${config.dotnet.ut.project} -c ${config.dotnet.configuration} --no-b
 \$ProgressPreference = "SilentlyContinue"
 Set-PSDebug -Strict -Trace 0
 
+net use R: ${smbServerAddress}
+
 \$Env:Path = "${config._system.dotnetSdkPath}/${config.dotnet.sdkVersion};\$Env:Path"
 
 cd "${vmWorkspace}/${config.srcRootPath}"
 
 dotnet publish ${config.dotnet.buildFile} -c ${config.dotnet.configuration} -p:Version=${config.version} `
     --source ${config._system.nugetSource} ${cmdRuntime} --no-cache --nologo
-
-\$Env:WIX_ROOT_FOLDER = Join-Path \$Env:Temp \$(New-Guid)
-New-Item -ItemType Directory -Force -Path \$Env:WIX_ROOT_FOLDER
-Copy-Item -Path "${config.dotnet.publishPath}/*" -Destination "\$Env:WIX_ROOT_FOLDER" -Recurse
 
 envsubst -i "${config.dotnet.msiConfig}" -o "${config.dotnet.msiConfig}.final" -no-unset -no-empty
 if (-not\$?)
@@ -282,13 +350,13 @@ if (-not\$?)
 }
 
 New-Item -ItemType Directory -Force -Path "ido-cluster/outputs"
-wixc.ps1 -config "${config.dotnet.msiConfig}.final" -output "\$Env:Temp\\${newFileName}.msi"
-Copy-Item -Path "\$Env:Temp\\${newFileName}.msi" -Destination "ido-cluster/outputs/${newFileName}.msi"
+wixc.ps1 -config "${config.dotnet.msiConfig}.final" -output "ido-cluster/outputs/${newFileName}.msi"
 """
-
             steps.writeFile(file: '~ido-cluster.ps1', text: cmd, encoding: "UTF-8")
+
             steps.sh """
-                ssh 127.0.0.1 "${vmWorkspace}/~ido-cluster.ps1"
+                scp ${steps.WORKSPACE}/~ido-cluster.ps1 127.0.0.1:/c:/
+                ssh 127.0.0.1 "c:/~ido-cluster.ps1"
             """
         }
     }
@@ -297,10 +365,22 @@ Copy-Item -Path "\$Env:Temp\\${newFileName}.msi" -Destination "ido-cluster/outpu
     def afterBuild() {
         steps.container('builder') {
             String branch = Utils.getBranchName(steps)
+
+            String cmd = """
+\$ErrorActionPreference = "Stop"
+\$ProgressPreference = "SilentlyContinue"
+Set-PSDebug -Strict -Trace 0
+
+net use R: ${smbServerAddress}
+
+cd "${vmWorkspace}/${config.srcRootPath}"
+./${config.customerBuildScript.afterBuild}
+"""
+            steps.writeFile(file: '~ido-cluster.ps1', text: cmd, encoding: "UTF-8")
+
             steps.sh """
-                ssh 127.0.0.1 << EOF
-                    cd "${vmWorkspace}/${config.srcRootPath}"
-                    "./${config.customerBuildScript.afterBuild}"
+                scp ${steps.WORKSPACE}/~ido-cluster.ps1 127.0.0.1:/c:/
+                ssh 127.0.0.1 "c:/~ido-cluster.ps1"
             """
         }
     }

@@ -28,19 +28,6 @@ spec:
         - mountPath: /home/jenkins/win-image
           name: win-image-folder
   containers:
-    - name: sonar-scanner
-      image: "docker.io/sonarsource/sonar-scanner-cli"
-      imagePullPolicy: IfNotPresent
-      command:
-        - sleep
-      args:
-        - <keepBuilderPodMaxMinutes>m
-      volumeMounts:
-        - mountPath: /home/jenkins/agent
-          name: workspace-volume
-      env:
-        - name: SONAR_USER_HOME
-          value: /home/jenkins/agent/sonar
     - name: builder
       image: <builderImage>
       imagePullPolicy: IfNotPresent
@@ -107,18 +94,23 @@ spec:
           value: "jenkins"
         - name: "PASSWORD"
           value: "Jenkins"
-        - name: "SHARED_DIR"
-          value: "/home/jenkins/agent"
         - name: "WIN_COMMANDS"
           value: "powershell -command \"New-ItemProperty -Path 'HKLM:\\SOFTWARE\\OpenSSH' -Name DefaultShell -Value 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe' -PropertyType String -Force; Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope CurrentUser\""
         - name: "EXTRA"
           value: "-snapshot"
         - name: "NUGET_PACKAGES"
-          value: "z:\\nuget\\packages"
+          value: "R:\\nuget\\packages"
         - name: "NUGET_HTTP_CACHE_PATH"
-          value: "z:\\nuget\\v3-cache"
+          value: "R:\\nuget\\v3-cache"
         - name: "NUGET_PLUGINS_CACHE_PATH"
-          value: "z:\\nuget\\plugins-cache"
+          value: "R:\\nuget\\plugins-cache"
+        - name: SONAR_USER_HOME
+          value: "R:\\sonar"
+    - name: jnlp
+      image: "<inboundAgentImage>"
+      env:
+        - name: "JENKINS_AGENT_CACHEDIR"
+          value: "/home/jenkins/agent/remoting/jarCache"
   imagePullSecrets:
     - name: <imagePullSecret>
   securityContext:

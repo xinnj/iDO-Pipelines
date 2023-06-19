@@ -17,6 +17,8 @@ workspaceVolume:
   nfsServerPath: ""
   pvcName: "jenkins-agent-data"
 
+inboundAgentImage: "docker.io/xinnj/inbound-agent:4.11-1-alpine-jdk11-nolog"
+
 # Android command line tools download url
 androidCmdLineToolsUrl: "https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip"
 
@@ -26,5 +28,11 @@ cocoapodsRepoUrl: "https://mirrors.tuna.tsinghua.edu.cn/git/CocoaPods/Specs.git"
 # Keep the builder pod in minutes maximally
 keepBuilderPodMaxMinutes: 1440
 
-dotnetSdkPath: "z:/dotnet"
+dotnetSdkPath: "R:/dotnet"
 nugetSource: "https://nuget.cdn.azure.cn/v3/index.json"
+
+smbServer:
+  internal: "\\\\samba-server.jenkins.svc.cluster.local\\data"
+  external: ""
+  user: "uploader"
+  password: "PleaseUploadHere"
