@@ -37,6 +37,7 @@ class IosAppPipeline extends AppPipeline {
         }
 
         if (config.nodeType == "k8s") {
+            String smbServerAddress = "//${config._system.smbServer.user}:${config._system.smbServer.password}@${config._system.smbServer.internal}/${config._system.smbServer.shareName}"
             steps.container('builder') {
                 steps.sh """
                     if [ \$(grep -E -c '(svm|vmx)' /proc/cpuinfo) -le 0 ]; then
@@ -45,9 +46,13 @@ class IosAppPipeline extends AppPipeline {
                     fi
                     
                     ssh 127.0.0.1 /bin/sh << EOF
-                        set -euaxo pipefail
-                        sudo mkdir -p \${SPM_CACHE_DIR}
-                        sudo mkdir -p \${CP_HOME_DIR}
+                        set -euao pipefail
+                        rm -rf /Users/jenkins/agent
+                        mkdir -p /Users/jenkins/agent
+                        /sbin/mount -t smbfs ${smbServerAddress} /Users/jenkins/agent
+
+                        mkdir -p \${SPM_CACHE_DIR}
+                        mkdir -p \${CP_HOME_DIR}
                 """
             }
 
@@ -319,16 +324,13 @@ class IosAppPipeline extends AppPipeline {
     
                                 mkdir -p ido-cluster/outputs/files
                                 rm -f ido-cluster/outputs/files/*
-                                
-                                rm -rf ~/build.tmp
-                                mkdir -p ~/build.tmp
             
                                 xcodebuild archive \
                                   -packageCachePath \${SPM_CACHE_DIR} \
                                   ${cmdBuildFile} \
                                   -scheme ${it.scheme} \
                                   -configuration ${it.configuration} \
-                                  -archivePath ~/build.tmp/${it.name}/${config.productName}.xcarchive \
+                                  -archivePath ./build/${it.name}/${config.productName}.xcarchive \
                                   -destination 'generic/platform=iOS' \
                                   ${cmdXcconfig} \
                                   ${cmdAuth} -quiet
@@ -352,19 +354,19 @@ class IosAppPipeline extends AppPipeline {
             
                                 xcodebuild -exportArchive \
                                   -packageCachePath \${SPM_CACHE_DIR} \
-                                  -archivePath ~/build.tmp/${buildTypes.get(buildType)}/${config.productName}.xcarchive \
+                                  -archivePath ./build/${buildTypes.get(buildType)}/${config.productName}.xcarchive \
                                   -exportOptionsPlist ${it.exportOptionsPlist} \
-                                  -exportPath ~/build.tmp/${buildTypes.get(buildType)} \
+                                  -exportPath ./build/${buildTypes.get(buildType)} \
                                   ${cmdXcconfig} \
                                   ${cmdAuth} -quiet
                                   
-                                mv -f ~/build.tmp/${buildTypes.get(buildType)}/*.ipa ido-cluster/outputs/files/${newFileName}-${it.name}.ipa
+                                mv -f ./build/${buildTypes.get(buildType)}/*.ipa ido-cluster/outputs/files/${newFileName}-${it.name}.ipa
                                 echo "${it.name} ipa exported."
     
                                 xcodebuild ${cmdBuildFile} ${cmdXcconfig} -showBuildSettings \
                                   | awk -F ' = ' '/PRODUCT_BUNDLE_IDENTIFIER/ { print \\\$2 }' > ido-cluster/_PRODUCT_BUNDLE_IDENTIFIER
                                 
-                                plutil -p ~/build.tmp/${buildTypes.get(buildType)}/${config.productName}.xcarchive/Info.plist \
+                                plutil -p ./build/${buildTypes.get(buildType)}/${config.productName}.xcarchive/Info.plist \
                                   | awk -F '"' '/CFBundleShortVersionString/ { print \\\$4 }' > ido-cluster/_BUNDLE_VERSION
                         """
                 }
