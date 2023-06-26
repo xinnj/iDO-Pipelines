@@ -191,7 +191,7 @@ android:
 
 ## iOS app config
 ios:
-  builderImage: "nexus-nexus-repository-manager-docker-5000.nexus:5000/docker-osx:naked"
+  builderImage: "nexus-nexus-repository-manager-docker-5000.nexus:5000/docker-osx-slim"
   macosImage: "monterey-v1.img"
   # The password to unlock keychain
   keychainCredentialId: "mac-keychain"

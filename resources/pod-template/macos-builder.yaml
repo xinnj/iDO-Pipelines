@@ -48,63 +48,9 @@ spec:
         - /bin/sh
         - -c
         - |
+          set -euaxo pipefail
           cd /home/arch/OSX-KVM
-          echo "Disk is being copied between layers... Please wait a minute..."
-          sudo touch /dev/kvm /dev/snd "${IMAGE_PATH}" "${BOOTDISK}" "${ENV}" 2>/dev/null || true
-          sudo chown -R $(id -u):$(id -g) /dev/kvm /dev/snd "${IMAGE_PATH}" "${BOOTDISK}" "${ENV}" 2>/dev/null || true
-          
-          sed -i '/^.*InstallMedia.*/d' Launch.sh
-          export BOOTDISK="${BOOTDISK:=/home/arch/OSX-KVM/OpenCore/OpenCore-nopicker.qcow2}"
-          
-          [[ -s "${ENV:=/env}" ]] && [[ -s "${BOOTDISK}" ]] || {
-            echo "Generate unique machine value."
-            ./Docker-OSX/osx-serial-generator/generate-unique-machine-values.sh \
-              --master-plist="./config-custom.plist" \
-              --count 1 \
-              --bootdisks \
-              --output-bootdisk "${BOOTDISK}" \
-              --output-env "${ENV:=/env}"
-          }
-          cat "${ENV:=/env}"
-          source "${ENV:=/env}"
-          
-          nohup Xvfb :99 -screen 0 1920x1080x16 & until [[ "$(xrandr --query 2>/dev/null)" ]]; do sleep 1 ; done
-
-          stat "${IMAGE_PATH}"
-          echo "Large image is being copied between layers, please wait a minute..."
-          [[ -s "${SSH_KEY}" ]] || {
-            /usr/bin/ssh-keygen -t rsa -f "${SSH_KEY}" -q -N ""
-            chmod 600 "${SSH_KEY}"
-          }
-          sed -i -e 's/-netdev user,id=net0/-netdev user,id=net0,dnssearch=default.svc.cluster.local,dnssearch=svc.cluster.local/' ./Launch.sh
-          /bin/bash -c ./Launch.sh & echo "Booting Docker-OSX in the background. Please wait..."
-          for i in {1..5}; do
-            sshpass -p${PASSWORD:=Jenkins} ssh-copy-id -f -i "${SSH_KEY}.pub" -p 10022 ${USERNAME:=jenkins}@127.0.0.1 > /dev/null
-            if [[ "$?" == '0' ]]; then
-              break
-            else
-              echo "Disk is being copied between layers. Repeating until able to copy SSH key into OSX..."
-              if [[ "$i" == '5' ]]; then
-                echo "Connect macos vm failed!"
-                while killall -15 qemu-system-x86_64; do
-                  echo 'Shutting down macos...'
-                  sleep 1
-                done
-                echo 'Shutdown macos finished, exit.'
-                exit 1
-              fi
-              sleep 1
-            fi
-          done
-          echo > ~/.ssh/config
-          tee -a ~/.ssh/config <<< 'Host 127.0.0.1'
-          tee -a ~/.ssh/config <<< "    User ${USERNAME:=jenkins}"
-          tee -a ~/.ssh/config <<< '    Port 10022'
-          tee -a ~/.ssh/config <<< "    IdentityFile ${SSH_KEY}"
-          tee -a ~/.ssh/config <<< '    StrictHostKeyChecking no'
-          tee -a ~/.ssh/config <<< '    UserKnownHostsFile=~/.ssh/known_hosts'
-
-          ssh 127.0.0.1 "${OSX_COMMANDS}"
+          ./Start.sh
           touch /home/arch/vm-started
           echo "Sleep for <keepBuilderPodMaxMinutes>m"
           sleep <keepBuilderPodMaxMinutes>m
@@ -147,6 +93,8 @@ spec:
                 done
                 echo 'Shutdown macos finished.' > /proc/1/fd/1
       env:
+        - name: "HEADLESS"
+          value: "true"
         - name: "IMAGE_PATH"
           value: "/home/arch/macos-image/<macosImage>"
         - name: "BOOTDISK"
