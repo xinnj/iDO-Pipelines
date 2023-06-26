@@ -32,7 +32,8 @@ dotnetSdkPath: "R:/dotnet"
 nugetSource: "https://nuget.cdn.azure.cn/v3/index.json"
 
 smbServer:
-  internal: "\\\\samba-server.jenkins.svc.cluster.local\\data"
+  internal: "samba-server.jenkins.svc.cluster.local"
   external: ""
+  shareName: "data"
   user: "uploader"
   password: "PleaseUploadHere"

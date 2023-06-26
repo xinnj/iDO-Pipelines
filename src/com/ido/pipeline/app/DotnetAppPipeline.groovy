@@ -49,10 +49,9 @@ class DotnetAppPipeline extends AppPipeline {
 
         if (config.nodeType == "k8s") {
             vmWorkspace = (steps.WORKSPACE as String).replace("/home/jenkins/agent", "R:").replace("/", "\\")
-            smbServerAddress = "${config._system.smbServer.internal} ${config._system.smbServer.password} /user:${config._system.smbServer.user}"
+            smbServerAddress = "\\\\${config._system.smbServer.internal}\\${config._system.smbServer.shareName} ${config._system.smbServer.password} /user:${config._system.smbServer.user}"
 
             steps.container('builder') {
-
                 String workloads = ''
                 if (config.dotnet.workloads) {
                     workloads = config.dotnet.workloads.join(',')
