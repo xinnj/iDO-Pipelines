@@ -25,7 +25,7 @@ class DotnetAppPipeline extends AppPipeline {
                 .replaceAll('<winImage>', config.dotnet.winImage)
         config.podTemplate = builder
 
-        return super.runPipeline(config)
+        return super.runBasePipeline(config)
     }
 
     @Override
@@ -104,7 +104,7 @@ if (\$workloadsStr.Length -ne 0)
                         exit 1
                     fi
 
-                    ssh 127.0.0.1 << EOF
+                    ssh 127.0.0.1 <<EOF
                         [Environment]::SetEnvironmentVariable('DOTNET_CLI_TELEMETRY_OPTOUT','true', 'User')
                         [Environment]::SetEnvironmentVariable('CI_PRODUCTNAME','$config.productName', 'User')
                         [Environment]::SetEnvironmentVariable('CI_BRANCH','$branch', 'User')
@@ -114,6 +114,7 @@ if (\$workloadsStr.Length -ne 0)
                         [Environment]::SetEnvironmentVariable('NUGET_HTTP_CACHE_PATH','\$NUGET_HTTP_CACHE_PATH', 'User')
                         [Environment]::SetEnvironmentVariable('NUGET_PLUGINS_CACHE_PATH','\$NUGET_PLUGINS_CACHE_PATH', 'User')
                         [Environment]::SetEnvironmentVariable('SONAR_USER_HOME',"\$SONAR_USER_HOME", 'User')
+EOF
                 """
 
                 steps.sh """

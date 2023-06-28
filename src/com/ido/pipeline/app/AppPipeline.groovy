@@ -12,7 +12,7 @@ abstract class AppPipeline extends BasePipeline {
 
     @Override
     Map runPipeline(Map config) {
-        def result = super.runPipeline(config)
+        def result = super.runBasePipeline(config)
         return result
     }
 

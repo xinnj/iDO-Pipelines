@@ -20,7 +20,7 @@ abstract class BasePipeline implements Pipeline, Serializable {
         this.steps = steps
     }
 
-    Map runPipeline(Map config) {
+    Map runBasePipeline(Map config) {
         this.config = config
         def result = [:]
 

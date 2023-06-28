@@ -19,7 +19,7 @@ class VueImagePipeline extends ImagePipeline {
         vueBuilder = vueBuilder.replaceAll('<builderImage>', config.vue.builderBaseImage)
         config.podTemplate = vueBuilder
 
-        return super.runPipeline(config)
+        return super.runBasePipeline(config)
     }
 
     @Override

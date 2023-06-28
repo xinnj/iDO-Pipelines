@@ -11,9 +11,10 @@ spec:
         - /bin/sh
         - -c
         - |
-          set -euaxo pipefail
+          set -euao pipefail
           if ! [ -f "/home/jenkins/win-image/<winImage>" ]; then
             date
+            echo "Copy <winImage> to local..."
             cp -f /home/jenkins/agent/win-image/<winImage> /home/jenkins/win-image/<winImage>.download
             mv /home/jenkins/win-image/<winImage>.download /home/jenkins/win-image/<winImage>
             chown -R 1000:1000 /home/jenkins/win-image

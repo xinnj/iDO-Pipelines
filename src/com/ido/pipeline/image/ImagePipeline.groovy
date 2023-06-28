@@ -13,7 +13,7 @@ abstract class ImagePipeline extends BasePipeline {
 
     @Override
     Map runPipeline(Map config) {
-        def result = super.runPipeline(config)
+        def result = super.runBasePipeline(config)
         result.put("imageTag", config.version)
         return result
     }

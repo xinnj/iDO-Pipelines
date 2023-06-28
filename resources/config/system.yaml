@@ -33,7 +33,11 @@ nugetSource: "https://nuget.cdn.azure.cn/v3/index.json"
 
 smbServer:
   internal: "samba-server.jenkins.svc.cluster.local"
-  external: ""
+  external: "10.184.101.50:30445"
   shareName: "data"
   user: "uploader"
   password: "PleaseUploadHere"
+
+macos:
+  builderImage: "nexus-nexus-repository-manager-docker-5000.nexus:5000/docker-osx-slim"
+  remoteBuilderImage: "docker.io/xinnj/ssh-client"

@@ -16,12 +16,36 @@ class IosAppPipeline extends AppPipeline {
         config.nodeType = "k8s"
         config.parallelUtAnalysis = true
 
-        String builder = steps.libraryResource(resource: 'pod-template/macos-builder.yaml', encoding: 'UTF-8')
-        builder = builder.replaceAll('<builderImage>', config.ios.builderImage)
-                .replaceAll('<macosImage>', config.ios.macosImage)
-        config.podTemplate = builder
+        steps.withCredentials([steps.usernamePassword(credentialsId: config.ios.loginCredentialId, passwordVariable: 'password', usernameVariable: 'username')]) {
+            if (config.ios.useRemoteBuilder) {
+                steps.lock(label: "macos-builder", quantity: 1, resourceSelectStrategy: "random", variable: "builder") {
+                    String remoteHost = steps.env.builder0_host
+                    String remotePort = steps.env.builder0_port
+                    String username = steps.env.username
+                    String password = steps.env.password
+                    steps.echo "Locked remote builder: " + steps.env.builder
 
-        return super.runPipeline(config)
+                    config.podTemplate = steps.libraryResource(resource: "pod-template/macos-remote-builder.yaml", encoding: 'UTF-8')
+                            .replaceAll('<builderImage>', config._system.macos.remoteBuilderImage)
+                            .replaceAll('<REMOTE_HOST>', remoteHost)
+                            .replaceAll('<REMOTE_PORT>', remotePort)
+                            .replaceAll('<USERNAME>', username)
+                            .replaceAll('<PASSWORD>', password)
+
+                    return super.runBasePipeline(config)
+                }
+            } else {
+                String username = steps.env.username
+                String password = steps.env.password
+                config.podTemplate = steps.libraryResource(resource: "pod-template/macos-builder.yaml", encoding: 'UTF-8')
+                        .replaceAll('<builderImage>', config._system.macos.builderImage)
+                        .replaceAll('<macosImage>', config.ios.macosImage)
+                        .replaceAll('<USERNAME>', username)
+                        .replaceAll('<PASSWORD>', password)
+
+                return super.runBasePipeline(config)
+            }
+        }
     }
 
     @Override
@@ -37,22 +61,40 @@ class IosAppPipeline extends AppPipeline {
         }
 
         if (config.nodeType == "k8s") {
-            String smbServerAddress = "//${config._system.smbServer.user}:${config._system.smbServer.password}@${config._system.smbServer.internal}/${config._system.smbServer.shareName}"
+            String smbServerAddress
             steps.container('builder') {
+                if (config.ios.useRemoteBuilder) {
+                    smbServerAddress = "//${config._system.smbServer.user}:${config._system.smbServer.password}@${config._system.smbServer.external}/${config._system.smbServer.shareName}"
+                    steps.sh """
+                        currentHome=\$HOME
+                        sudo -- sh -c "cat \${currentHome}/hosts >> /etc/hosts"
+                    """
+                } else {
+                    smbServerAddress = "//${config._system.smbServer.user}:${config._system.smbServer.password}@${config._system.smbServer.internal}/${config._system.smbServer.shareName}"
+                    steps.sh """
+                        if [[ \$(grep -E -c '(svm|vmx)' /proc/cpuinfo) -le 0 ]]; then
+                            echo KVM not possible on this host
+                            exit 1
+                        fi
+                        
+                        sudo -- sh -c "echo '127.0.0.1 remote-host' >> /etc/hosts"
+                    """
+                }
+
                 steps.sh """
-                    if [ \$(grep -E -c '(svm|vmx)' /proc/cpuinfo) -le 0 ]; then
-                        echo KVM not possible on this host
-                        exit 1
-                    fi
-                    
-                    ssh 127.0.0.1 /bin/sh << EOF
+                    ssh -q remote-host /bin/sh <<EOF
                         set -euao pipefail
-                        rm -rf /Users/jenkins/agent
-                        mkdir -p /Users/jenkins/agent
-                        /sbin/mount -t smbfs ${smbServerAddress} /Users/jenkins/agent
+
+                        if [[ ! -d "~/agent/workspace" ]]; then
+                            mkdir -p ~/agent
+                            mount -t smbfs ${smbServerAddress} ~/agent
+                        fi
 
                         mkdir -p \${SPM_CACHE_DIR}
                         mkdir -p \${CP_HOME_DIR}
+                        
+                        sudo xcode-select -s "${config.ios.xcodePath}/Contents/Developer"
+EOF
                 """
             }
 
@@ -64,17 +106,16 @@ class IosAppPipeline extends AppPipeline {
         super.scm()
 
         steps.container('builder') {
-            steps.withCredentials([steps.string(credentialsId: config.ios.keychainCredentialId, variable: 'macKeychain'),
+            steps.withCredentials([steps.usernamePassword(credentialsId: config.ios.loginCredentialId, passwordVariable: 'password', usernameVariable: 'username'),
                                    steps.certificate(credentialsId: config.ios.distributionCertCredentialId, keystoreVariable: 'keyStore', passwordVariable: 'keyPass')]) {
                 String useCocoapods = (config.ios.useCocoapods as Boolean).toString().toLowerCase()
                 steps.sh """
-                    ssh 127.0.0.1 /bin/sh << EOF
+                    ssh remote-host /bin/sh <<EOF
                         set -euao pipefail
-                        sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
                         cd "${steps.WORKSPACE}/${config.srcRootPath}"
-                        security unlock-keychain -p \${macKeychain}
+                        security unlock-keychain -p \${password}
                         security import "\${keyStore}" -A -f pkcs12 -P \${keyPass}
-                        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k \${macKeychain} login.keychain > /dev/null
+                        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k \${password} login.keychain > /dev/null
                         
                         set -x
                         export LANG=en_US.UTF-8
@@ -89,16 +130,18 @@ class IosAppPipeline extends AppPipeline {
                             fi
                             /usr/local/bin/pod install
                         fi
+EOF
                 """
             }
 
             config.ios.profilesImport.each {
                 steps.sh """
-                    ssh 127.0.0.1 /bin/sh << EOF
+                    ssh remote-host /bin/sh <<EOF
                         set -euao pipefail
                         cd "${steps.WORKSPACE}/${config.srcRootPath}"
                         uuid=`grep UUID -A1 -a ${it} | grep -io "[-A-F0-9]\\{36\\}"`
                         cp -f ${it} ~/Library/MobileDevice/Provisioning\\ Profiles/\${uuid}.mobileprovision
+EOF
                 """
             }
         }
@@ -111,12 +154,13 @@ class IosAppPipeline extends AppPipeline {
         String branch = Utils.getBranchName(steps)
         steps.container('builder') {
             steps.sh """
-                ssh 127.0.0.1 /bin/sh << EOF
+                ssh remote-host /bin/sh <<EOF
                     rm -f ./~ido-cluster-env.sh
                     touch ./~ido-cluster-env.sh
                     echo "export CI_PRODUCTNAME=${config.productName}" >> ./~ido-cluster-env.sh
                     echo "export CI_VERSION=${config.version}" >> ./~ido-cluster-env.sh
                     echo "export CI_BRANCH=${branch}" >> ./~ido-cluster-env.sh
+EOF
             """
         }
 
@@ -125,23 +169,25 @@ class IosAppPipeline extends AppPipeline {
     @Override
     def afterScm() {
         steps.container('builder') {
-            steps.withCredentials([steps.string(credentialsId: config.ios.keychainCredentialId, variable: 'macKeychain')]) {
+            steps.withCredentials([steps.usernamePassword(credentialsId: config.ios.loginCredentialId, passwordVariable: 'password', usernameVariable: 'username')]) {
                 steps.sh """
-                    ssh 127.0.0.1 /bin/sh << EOF
+                    ssh remote-host /bin/sh <<EOF
                         set -euao pipefail
-                        security unlock-keychain -p \${macKeychain}
+                        security unlock-keychain -p \${password}
                         security set-keychain-settings -lut 21600 login.keychain
                         set -x
     
                         cd "${steps.WORKSPACE}/${config.srcRootPath}"
                         sh "${config.customerBuildScript.afterScm}"
+EOF
                 """
 
                 config.version = steps.readFile(file: "${config.srcRootPath}/ido-cluster/_version", encoding: "UTF-8").trim()
 
                 steps.sh """
-                    ssh 127.0.0.1 /bin/sh << EOF
+                    ssh remote-host /bin/sh <<EOF
                         sed -i -e "s/export CI_VERSION=.*/export CI_VERSION=${config.version}/" ./~ido-cluster-env.sh
+EOF
                     """
             }
         }
@@ -180,13 +226,13 @@ class IosAppPipeline extends AppPipeline {
                 cmdXcconfig = "-xcconfig ${config.ios.ut.xcconfig}"
             }
 
-            steps.withCredentials([steps.string(credentialsId: config.ios.keychainCredentialId, variable: 'macKeychain'),
+            steps.withCredentials([steps.usernamePassword(credentialsId: config.ios.loginCredentialId, passwordVariable: 'password', usernameVariable: 'username'),
                                    steps.file(credentialsId: config.ios.authenticationKey.keyFileCredentialId,
                                            variable: 'authKeyPath')]) {
                 steps.sh """
-                    ssh 127.0.0.1 /bin/sh << EOF
+                    ssh remote-host /bin/sh <<EOF
                         set -euao pipefail
-                        security unlock-keychain -p \${macKeychain}
+                        security unlock-keychain -p \${password}
                         security set-keychain-settings -lut 21600 login.keychain
                         set -x
     
@@ -198,6 +244,7 @@ class IosAppPipeline extends AppPipeline {
                           -scheme ${config.ios.ut.scheme} \
                           ${cmdXcconfig} \
                           ${cmdAuth} -quiet
+EOF
                 """
             }
         }
@@ -232,17 +279,18 @@ class IosAppPipeline extends AppPipeline {
     def beforeBuild() {
         steps.container('builder') {
             String branch = Utils.getBranchName(steps)
-            steps.withCredentials([steps.string(credentialsId: config.ios.keychainCredentialId, variable: 'macKeychain')]) {
+            steps.withCredentials([steps.usernamePassword(credentialsId: config.ios.loginCredentialId, passwordVariable: 'password', usernameVariable: 'username')]) {
                 steps.sh """
-                    ssh 127.0.0.1 /bin/sh << EOF
+                    ssh remote-host /bin/sh <<EOF
                         set -euao pipefail
                         . ./~ido-cluster-env.sh
-                        security unlock-keychain -p \${macKeychain}
+                        security unlock-keychain -p \${password}
                         security set-keychain-settings -lut 21600 login.keychain
                         set -x
     
                         cd "${steps.WORKSPACE}/${config.srcRootPath}"
                         sh "./${config.customerBuildScript.beforeBuild}"
+EOF
                 """
             }
         }
@@ -254,17 +302,18 @@ class IosAppPipeline extends AppPipeline {
             if (steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${config.customerBuildScript.build}")) {
                 steps.echo "Execute customer build script: ${config.customerBuildScript.build}"
                 String branch = Utils.getBranchName(steps)
-                steps.withCredentials([steps.string(credentialsId: config.ios.keychainCredentialId, variable: 'macKeychain')]) {
+                steps.withCredentials([steps.usernamePassword(credentialsId: config.ios.loginCredentialId, passwordVariable: 'password', usernameVariable: 'username')]) {
                     steps.sh """
-                        ssh 127.0.0.1 /bin/sh << EOF
+                        ssh remote-host /bin/sh <<EOF
                             set -euao pipefail
                             . ./~ido-cluster-env.sh
-                            security unlock-keychain -p \${macKeychain}
+                            security unlock-keychain -p \${password}
                             security set-keychain-settings -lut 21600 login.keychain
                             set -x
         
                             cd "${steps.WORKSPACE}/${config.srcRootPath}"
                             sh "./${config.customerBuildScript.build}"
+EOF
                     """
                 }
             }
@@ -310,13 +359,13 @@ class IosAppPipeline extends AppPipeline {
 
                 // Archive if not executed
                 if (!buildTypes.containsKey(buildType)) {
-                    steps.withCredentials([steps.string(credentialsId: config.ios.keychainCredentialId, variable: 'macKeychain'),
+                    steps.withCredentials([steps.usernamePassword(credentialsId: config.ios.loginCredentialId, passwordVariable: 'password', usernameVariable: 'username'),
                                            steps.file(credentialsId: config.ios.authenticationKey.keyFileCredentialId,
                                                    variable: 'authKeyPath')]) {
                         steps.sh """
-                            ssh 127.0.0.1 /bin/sh << EOF
+                            ssh remote-host /bin/sh <<EOF
                                 set -euao pipefail
-                                security unlock-keychain -p \${macKeychain}
+                                security unlock-keychain -p \${password}
                                 security set-keychain-settings -lut 21600 login.keychain
                                 set -x
     
@@ -334,19 +383,20 @@ class IosAppPipeline extends AppPipeline {
                                   -destination 'generic/platform=iOS' \
                                   ${cmdXcconfig} \
                                   ${cmdAuth} -quiet
+EOF
                         """
                     }
                     buildTypes.put(buildType, it.name)
                 }
 
                 // Export ipa
-                steps.withCredentials([steps.string(credentialsId: config.ios.keychainCredentialId, variable: 'macKeychain'),
+                steps.withCredentials([steps.usernamePassword(credentialsId: config.ios.loginCredentialId, passwordVariable: 'password', usernameVariable: 'username'),
                                        steps.file(credentialsId: config.ios.authenticationKey.keyFileCredentialId,
                                                variable: 'authKeyPath')]) {
                     steps.sh """
-                            ssh 127.0.0.1 /bin/sh << EOF
+                            ssh remote-host /bin/sh <<EOF
                                 set -euao pipefail
-                                security unlock-keychain -p \${macKeychain}
+                                security unlock-keychain -p \${password}
                                 security set-keychain-settings -lut 21600 login.keychain
                                 set -x
     
@@ -368,6 +418,7 @@ class IosAppPipeline extends AppPipeline {
                                 
                                 plutil -p ./build/${buildTypes.get(buildType)}/${config.productName}.xcarchive/Info.plist \
                                   | awk -F '"' '/CFBundleShortVersionString/ { print \\\$4 }' > ido-cluster/_BUNDLE_VERSION
+EOF
                         """
                 }
             }
@@ -378,17 +429,18 @@ class IosAppPipeline extends AppPipeline {
     def afterBuild() {
         steps.container('builder') {
             String branch = Utils.getBranchName(steps)
-            steps.withCredentials([steps.string(credentialsId: config.ios.keychainCredentialId, variable: 'macKeychain')]) {
+            steps.withCredentials([steps.usernamePassword(credentialsId: config.ios.loginCredentialId, passwordVariable: 'password', usernameVariable: 'username')]) {
                 steps.sh """
-                    ssh 127.0.0.1 /bin/sh << EOF
+                    ssh remote-host /bin/sh <<EOF
                         set -euao pipefail
                         . ./~ido-cluster-env.sh
-                        security unlock-keychain -p \${macKeychain}
+                        security unlock-keychain -p \${password}
                         security set-keychain-settings -lut 21600 login.keychain
                         set -x
     
                         cd "${steps.WORKSPACE}/${config.srcRootPath}"
                         sh "./${config.customerBuildScript.afterBuild}"
+EOF
                 """
             }
         }

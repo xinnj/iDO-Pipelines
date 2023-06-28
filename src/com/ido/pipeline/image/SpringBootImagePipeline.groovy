@@ -17,7 +17,7 @@ class SpringBootImagePipeline extends ImagePipeline {
         javaBuilder = javaBuilder.replaceAll('<builderImage>', config.java.builderImage)
         config.podTemplate = javaBuilder
 
-        return super.runPipeline(config)
+        return super.runBasePipeline(config)
     }
 
     @Override

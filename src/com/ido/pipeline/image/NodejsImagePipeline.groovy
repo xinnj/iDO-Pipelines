@@ -19,7 +19,7 @@ class NodejsImagePipeline extends ImagePipeline {
         nodejsBuilder = nodejsBuilder.replaceAll('<builderImage>', config.nodejs.baseImage)
         config.podTemplate = nodejsBuilder
 
-        return super.runPipeline(config)
+        return super.runBasePipeline(config)
     }
 
     @Override

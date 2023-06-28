@@ -11,9 +11,10 @@ spec:
         - /bin/sh
         - -c
         - |
-          set -euaxo pipefail
+          set -euao pipefail
           if ! [ -f "/home/arch/macos-image/<macosImage>" ]; then
             date
+            echo "Copy <macosImage> to local..."
             cp -f /Users/jenkins/agent/macos-image/<macosImage> /home/arch/macos-image/<macosImage>.download
             mv /home/arch/macos-image/<macosImage>.download /home/arch/macos-image/<macosImage>
             chown -R 1000:1000 /home/arch/macos-image
@@ -85,7 +86,7 @@ spec:
               - |
                 pid=$(pgrep -f qemu-system-x86_64)
                 if pwdx $pid > /dev/null 2>&1; then
-                  ssh 127.0.0.1 'sudo shutdown -h now' > /proc/1/fd/1
+                  ssh macos-host 'sudo shutdown -h now' > /proc/1/fd/1
                 fi
                 while pwdx $pid > /dev/null 2>&1; do
                   echo 'Shutting down macos...' > /proc/1/fd/1
@@ -98,11 +99,9 @@ spec:
         - name: "IMAGE_PATH"
           value: "/home/arch/macos-image/<macosImage>"
         - name: "BOOTDISK"
-          value: "/home/arch/macos-image/OpenCore-nopicker.qcow2"
+          value: "/home/arch/macos-image/<macosImage>.boot"
         - name: "ENV"
-          value: "/home/arch/macos-image/OpenCore-nopicker.env"
-        - name: "SSH_KEY"
-          value: "/home/arch/macos-image/id_docker_osx"
+          value: "/home/arch/macos-image/<macosImage>.env"
         - name: "RAM"
           value: "8"
         - name: "SMP"
@@ -110,9 +109,9 @@ spec:
         - name: "CORES"
           value: "16"
         - name: "USERNAME"
-          value: "jenkins"
+          value: "<USERNAME>"
         - name: "PASSWORD"
-          value: "Jenkins"
+          value: "<PASSWORD>"
         - name: "OSX_COMMANDS"
           value: "/bin/bash -c \"ioreg -l | grep IOPlatformSerialNumber\""
         - name: "CP_HOME_DIR"
