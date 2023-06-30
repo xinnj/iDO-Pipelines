@@ -34,7 +34,7 @@ abstract class BasePipeline implements Pipeline, Serializable {
         }
 
         steps.lock(resource: "lock_${steps.currentBuild.fullProjectName}") {
-            steps.node('built-in') {}
+            steps.node('master || built-in') {}
 
             switch (config.nodeType) {
                 case "standalone":

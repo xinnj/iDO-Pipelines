@@ -20,12 +20,36 @@ class DotnetAppPipeline extends AppPipeline {
         config.nodeType = "k8s"
         config.parallelUtAnalysis = false
 
-        String builder = steps.libraryResource(resource: 'pod-template/win-builder.yaml', encoding: 'UTF-8')
-        builder = builder.replaceAll('<builderImage>', config.dotnet.builderImage)
-                .replaceAll('<winImage>', config.dotnet.winImage)
-        config.podTemplate = builder
+        steps.withCredentials([steps.usernamePassword(credentialsId: config.dotnet.loginCredentialId, passwordVariable: 'password', usernameVariable: 'username')]) {
+            if (config.dotnet.useRemoteBuilder) {
+                steps.lock(label: "win-builder", quantity: 1, resourceSelectStrategy: "random", variable: "builder") {
+                    String remoteHost = steps.env.builder0_host
+                    String remotePort = steps.env.builder0_port
+                    String username = steps.env.username
+                    String password = steps.env.password
+                    steps.echo "Locked remote builder: " + steps.env.builder
 
-        return super.runBasePipeline(config)
+                    config.podTemplate = steps.libraryResource(resource: "pod-template/win-remote-builder.yaml", encoding: 'UTF-8')
+                            .replaceAll('<builderImage>', config._system.win.remoteBuilderImage)
+                            .replaceAll('<REMOTE_HOST>', remoteHost)
+                            .replaceAll('<REMOTE_PORT>', remotePort)
+                            .replaceAll('<USERNAME>', username)
+                            .replaceAll('<PASSWORD>', password)
+
+                    return super.runBasePipeline(config)
+                }
+            } else {
+                String username = steps.env.username
+                String password = steps.env.password
+                config.podTemplate = steps.libraryResource(resource: "pod-template/win-builder.yaml", encoding: 'UTF-8')
+                        .replaceAll('<builderImage>', config._system.win.builderImage)
+                        .replaceAll('<winImage>', config.dotnet.winImage)
+                        .replaceAll('<USERNAME>', username)
+                        .replaceAll('<PASSWORD>', password)
+
+                return super.runBasePipeline(config)
+            }
+        }
     }
 
     @Override
@@ -49,7 +73,6 @@ class DotnetAppPipeline extends AppPipeline {
 
         if (config.nodeType == "k8s") {
             vmWorkspace = (steps.WORKSPACE as String).replace("/home/jenkins/agent", "R:").replace("/", "\\")
-            smbServerAddress = "\\\\${config._system.smbServer.internal}\\${config._system.smbServer.shareName} ${config._system.smbServer.password} /user:${config._system.smbServer.user}"
 
             steps.container('builder') {
                 String workloads = ''
@@ -57,12 +80,81 @@ class DotnetAppPipeline extends AppPipeline {
                     workloads = config.dotnet.workloads.join(',')
                 }
 
-                String cmd = """
+                String cmd
+                if (config.dotnet.useRemoteBuilder) {
+                    smbServerAddress = "\\\\127.0.0.1\\${config._system.smbServer.shareName} ${config._system.smbServer.password} /user:${config._system.smbServer.user}"
+
+                    String host = (config._system.smbServer.external as String).split(':')[0]
+                    String port = (config._system.smbServer.external as String).split(':')[1]
+                    cmd = """
+\$ProgressPreference = "SilentlyContinue"
+Set-PSDebug -Strict -Trace 0
+
+netsh interface portproxy delete v4tov4 listenport=445 | out-null
+\$ErrorActionPreference = "Stop"
+netsh interface portproxy add v4tov4 listenport=445 connectaddress=${host} connectport=${port}
+"""
+                    steps.writeFile(file: '~ido-cluster.ps1', text: cmd, encoding: "UTF-8")
+                    steps.sh """
+                        currentHome=\$HOME
+                        sudo -- sh -c "cat \${currentHome}/hosts >> /etc/hosts"
+                        
+                        scp ${steps.WORKSPACE}/~ido-cluster.ps1 remote-host:/c:/
+                        ssh remote-host "c:/~ido-cluster.ps1"
+                    """
+                } else {
+                    smbServerAddress = "\\\\${config._system.smbServer.internal}\\${config._system.smbServer.shareName} ${config._system.smbServer.password} /user:${config._system.smbServer.user}"
+                    steps.sh """
+                        if [[ \$(grep -E -c '(svm|vmx)' /proc/cpuinfo) -le 0 ]]; then
+                            echo KVM not possible on this host
+                            exit 1
+                        fi
+                        
+                        sudo -- sh -c "echo '127.0.0.1 remote-host' >> /etc/hosts"
+                    """
+                }
+
+                cmd = """
+powershell -command \"New-ItemProperty -Path 'HKLM:\\SOFTWARE\\OpenSSH' -Name DefaultShell -Value 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe' -PropertyType String -Force; Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope CurrentUser\"
+"""
+                steps.writeFile(file: '~ido-cluster.ps1', text: cmd, encoding: "UTF-8")
+                steps.sh """
+                    scp ${steps.WORKSPACE}/~ido-cluster.ps1 remote-host:/c:/
+                    ssh remote-host "c:/~ido-cluster.ps1"
+                """
+
+                String branch = Utils.getBranchName(steps)
+                cmd = """
 \$ErrorActionPreference = "Stop"
 \$ProgressPreference = "SilentlyContinue"
 Set-PSDebug -Strict -Trace 0
 
-net use R: ${smbServerAddress}
+[Environment]::SetEnvironmentVariable('DOTNET_CLI_TELEMETRY_OPTOUT','true', 'User')
+[Environment]::SetEnvironmentVariable('CI_PRODUCTNAME','$config.productName', 'User')
+[Environment]::SetEnvironmentVariable('CI_BRANCH','$branch', 'User')
+[Environment]::SetEnvironmentVariable('CI_CONFIGURATION','$config.dotnet.configuration', 'User')
+[Environment]::SetEnvironmentVariable('WORKSPACE','$vmWorkspace', 'User')
+[Environment]::SetEnvironmentVariable('NUGET_PACKAGES','\$NUGET_PACKAGES', 'User')
+[Environment]::SetEnvironmentVariable('NUGET_HTTP_CACHE_PATH','\$NUGET_HTTP_CACHE_PATH', 'User')
+[Environment]::SetEnvironmentVariable('NUGET_PLUGINS_CACHE_PATH','\$NUGET_PLUGINS_CACHE_PATH', 'User')
+[Environment]::SetEnvironmentVariable('SONAR_USER_HOME',"\$SONAR_USER_HOME", 'User')
+"""
+                steps.writeFile(file: '~ido-cluster.ps1.template', text: cmd, encoding: "UTF-8")
+                steps.sh """
+                    envsubst < ${steps.WORKSPACE}/~ido-cluster.ps1.template > ${steps.WORKSPACE}/~ido-cluster.ps1
+                    scp ${steps.WORKSPACE}/~ido-cluster.ps1 remote-host:/c:/
+                    ssh remote-host "c:/~ido-cluster.ps1"
+                """
+
+                cmd = """
+\$ErrorActionPreference = "Stop"
+\$ProgressPreference = "SilentlyContinue"
+Set-PSDebug -Strict -Trace 0
+
+if (-not(Test-Path -Path R:/workspace -PathType Container))
+{
+    net use R: ${smbServerAddress}
+}
 
 New-Item -ItemType Directory -Force -Path \$Env:NUGET_PACKAGES | out-null
 New-Item -ItemType Directory -Force -Path \$Env:NUGET_HTTP_CACHE_PATH | out-null
@@ -96,30 +188,10 @@ if (\$workloadsStr.Length -ne 0)
 }
 """
                 steps.writeFile(file: '~ido-cluster.ps1', text: cmd, encoding: "UTF-8")
-
-                String branch = Utils.getBranchName(steps)
                 steps.sh """
-                    if [ \$(grep -E -c '(svm|vmx)' /proc/cpuinfo) -le 0 ]; then
-                        echo KVM not possible on this host
-                        exit 1
-                    fi
-
-                    ssh 127.0.0.1 <<EOF
-                        [Environment]::SetEnvironmentVariable('DOTNET_CLI_TELEMETRY_OPTOUT','true', 'User')
-                        [Environment]::SetEnvironmentVariable('CI_PRODUCTNAME','$config.productName', 'User')
-                        [Environment]::SetEnvironmentVariable('CI_BRANCH','$branch', 'User')
-                        [Environment]::SetEnvironmentVariable('CI_CONFIGURATION','$config.dotnet.configuration', 'User')
-                        [Environment]::SetEnvironmentVariable('WORKSPACE','$vmWorkspace', 'User')
-                        [Environment]::SetEnvironmentVariable('NUGET_PACKAGES','\$NUGET_PACKAGES', 'User')
-                        [Environment]::SetEnvironmentVariable('NUGET_HTTP_CACHE_PATH','\$NUGET_HTTP_CACHE_PATH', 'User')
-                        [Environment]::SetEnvironmentVariable('NUGET_PLUGINS_CACHE_PATH','\$NUGET_PLUGINS_CACHE_PATH', 'User')
-                        [Environment]::SetEnvironmentVariable('SONAR_USER_HOME',"\$SONAR_USER_HOME", 'User')
-EOF
-                """
-
-                steps.sh """
-                    scp ${steps.WORKSPACE}/~ido-cluster.ps1 127.0.0.1:/c:/
-                    ssh 127.0.0.1 "c:/~ido-cluster.ps1"
+                    scp ${steps.WORKSPACE}/~ido-cluster.ps1 remote-host:/c:/
+                    # Win env only available from the next session
+                    ssh remote-host "c:/~ido-cluster.ps1"
                 """
             }
         }
@@ -132,7 +204,7 @@ EOF
         String branch = Utils.getBranchName(steps)
         steps.container('builder') {
             steps.sh """
-                ssh 127.0.0.1 "[Environment]::SetEnvironmentVariable('CI_VERSION','$config.version', 'User')"
+                ssh remote-host "[Environment]::SetEnvironmentVariable('CI_VERSION','$config.version', 'User')"
             """
         }
 
@@ -146,7 +218,10 @@ EOF
 \$ProgressPreference = "SilentlyContinue"
 Set-PSDebug -Strict -Trace 0
 
-net use R: ${smbServerAddress}
+if (-not(Test-Path -Path R:/workspace -PathType Container))
+{
+    net use R: ${smbServerAddress}
+}
 
 cd "${vmWorkspace}/${config.srcRootPath}"
 ./${config.customerBuildScript.afterScm}
@@ -154,14 +229,14 @@ cd "${vmWorkspace}/${config.srcRootPath}"
             steps.writeFile(file: '~ido-cluster.ps1', text: cmd, encoding: "UTF-8")
 
             steps.sh """
-                scp ${steps.WORKSPACE}/~ido-cluster.ps1 127.0.0.1:/c:/
-                ssh 127.0.0.1 "c:/~ido-cluster.ps1"
+                scp ${steps.WORKSPACE}/~ido-cluster.ps1 remote-host:/c:/
+                ssh remote-host "c:/~ido-cluster.ps1"
             """
 
             config.version = steps.readFile(file: "${config.srcRootPath}/ido-cluster/_version", encoding: "UTF-8").trim()
 
             steps.sh """
-                ssh 127.0.0.1 "[Environment]::SetEnvironmentVariable('CI_VERSION','$config.version', 'User')"
+                ssh remote-host "[Environment]::SetEnvironmentVariable('CI_VERSION','$config.version', 'User')"
             """
 
         }
@@ -183,7 +258,10 @@ cd "${vmWorkspace}/${config.srcRootPath}"
 \$ProgressPreference = "SilentlyContinue"
 Set-PSDebug -Strict -Trace 0
 
-net use R: ${smbServerAddress}
+if (-not(Test-Path -Path R:/workspace -PathType Container))
+{
+    net use R: ${smbServerAddress}
+}
 
 \$Env:Path = "${config._system.dotnetSdkPath}/${config.dotnet.sdkVersion};\$Env:Path"
 
@@ -198,8 +276,8 @@ dotnet test ${config.dotnet.ut.project} -c ${config.dotnet.configuration} --no-b
 
             steps.writeFile(file: '~ido-cluster.ps1', text: cmd, encoding: "UTF-8")
             steps.sh """
-                scp ${steps.WORKSPACE}/~ido-cluster.ps1 127.0.0.1:/c:/
-                ssh 127.0.0.1 "c:/~ido-cluster.ps1"
+                scp ${steps.WORKSPACE}/~ido-cluster.ps1 remote-host:/c:/
+                ssh remote-host "c:/~ido-cluster.ps1"
             """
 
             def files
@@ -236,7 +314,10 @@ dotnet test ${config.dotnet.ut.project} -c ${config.dotnet.configuration} --no-b
 \$ProgressPreference = "SilentlyContinue"
 Set-PSDebug -Strict -Trace 0
 
-net use R: ${smbServerAddress}
+if (-not(Test-Path -Path R:/workspace -PathType Container))
+{
+    net use R: ${smbServerAddress}
+}
 
 \$Env:Path = "${config._system.dotnetSdkPath}/${config.dotnet.sdkVersion};${config._system.dotnetSdkPath}/tools;\$Env:Path"
 
@@ -258,8 +339,8 @@ if (-not\$?)
 
                 steps.writeFile(file: '~ido-cluster.ps1', text: cmd, encoding: "UTF-8")
                 steps.sh """
-                    scp ${steps.WORKSPACE}/~ido-cluster.ps1 127.0.0.1:/c:/
-                    ssh 127.0.0.1 "c:/~ido-cluster.ps1"
+                    scp ${steps.WORKSPACE}/~ido-cluster.ps1 remote-host:/c:/
+                    ssh remote-host "c:/~ido-cluster.ps1"
                 """
             }
         }
@@ -275,7 +356,10 @@ if (-not\$?)
 \$ProgressPreference = "SilentlyContinue"
 Set-PSDebug -Strict -Trace 0
 
-net use R: ${smbServerAddress}
+if (-not(Test-Path -Path R:/workspace -PathType Container))
+{
+    net use R: ${smbServerAddress}
+}
 
 cd "${vmWorkspace}/${config.srcRootPath}"
 ./${config.customerBuildScript.beforeBuild}
@@ -283,8 +367,8 @@ cd "${vmWorkspace}/${config.srcRootPath}"
             steps.writeFile(file: '~ido-cluster.ps1', text: cmd, encoding: "UTF-8")
 
             steps.sh """
-                scp ${steps.WORKSPACE}/~ido-cluster.ps1 127.0.0.1:/c:/
-                ssh 127.0.0.1 "c:/~ido-cluster.ps1"
+                scp ${steps.WORKSPACE}/~ido-cluster.ps1 remote-host:/c:/
+                ssh remote-host "c:/~ido-cluster.ps1"
             """
         }
     }
@@ -301,7 +385,10 @@ cd "${vmWorkspace}/${config.srcRootPath}"
 \$ProgressPreference = "SilentlyContinue"
 Set-PSDebug -Strict -Trace 0
 
-net use R: ${smbServerAddress}
+if (-not(Test-Path -Path R:/workspace -PathType Container))
+{
+    net use R: ${smbServerAddress}
+}
 
 cd "${vmWorkspace}/${config.srcRootPath}"
 ./${config.customerBuildScript.build}
@@ -309,8 +396,8 @@ cd "${vmWorkspace}/${config.srcRootPath}"
                 steps.writeFile(file: '~ido-cluster.ps1', text: cmd, encoding: "UTF-8")
 
                 steps.sh """
-                    scp ${steps.WORKSPACE}/~ido-cluster.ps1 127.0.0.1:/c:/
-                    ssh 127.0.0.1 "c:/~ido-cluster.ps1"
+                    scp ${steps.WORKSPACE}/~ido-cluster.ps1 remote-host:/c:/
+                    ssh remote-host "c:/~ido-cluster.ps1"
                 """
             }
         }
@@ -334,7 +421,10 @@ cd "${vmWorkspace}/${config.srcRootPath}"
 \$ProgressPreference = "SilentlyContinue"
 Set-PSDebug -Strict -Trace 0
 
-net use R: ${smbServerAddress}
+if (-not(Test-Path -Path R:/workspace -PathType Container))
+{
+    net use R: ${smbServerAddress}
+}
 
 \$Env:Path = "${config._system.dotnetSdkPath}/${config.dotnet.sdkVersion};\$Env:Path"
 
@@ -355,8 +445,8 @@ wixc.ps1 -config "${config.dotnet.msiConfig}.final" -output "ido-cluster/outputs
             steps.writeFile(file: '~ido-cluster.ps1', text: cmd, encoding: "UTF-8")
 
             steps.sh """
-                scp ${steps.WORKSPACE}/~ido-cluster.ps1 127.0.0.1:/c:/
-                ssh 127.0.0.1 "c:/~ido-cluster.ps1"
+                scp ${steps.WORKSPACE}/~ido-cluster.ps1 remote-host:/c:/
+                ssh remote-host "c:/~ido-cluster.ps1"
             """
         }
     }
@@ -371,7 +461,10 @@ wixc.ps1 -config "${config.dotnet.msiConfig}.final" -output "ido-cluster/outputs
 \$ProgressPreference = "SilentlyContinue"
 Set-PSDebug -Strict -Trace 0
 
-net use R: ${smbServerAddress}
+if (-not(Test-Path -Path R:/workspace -PathType Container))
+{
+    net use R: ${smbServerAddress}
+}
 
 cd "${vmWorkspace}/${config.srcRootPath}"
 ./${config.customerBuildScript.afterBuild}
@@ -379,8 +472,8 @@ cd "${vmWorkspace}/${config.srcRootPath}"
             steps.writeFile(file: '~ido-cluster.ps1', text: cmd, encoding: "UTF-8")
 
             steps.sh """
-                scp ${steps.WORKSPACE}/~ido-cluster.ps1 127.0.0.1:/c:/
-                ssh 127.0.0.1 "c:/~ido-cluster.ps1"
+                scp ${steps.WORKSPACE}/~ido-cluster.ps1 remote-host:/c:/
+                ssh remote-host "c:/~ido-cluster.ps1"
             """
         }
     }

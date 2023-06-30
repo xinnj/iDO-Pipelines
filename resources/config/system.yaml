@@ -41,3 +41,7 @@ smbServer:
 macos:
   builderImage: "nexus-nexus-repository-manager-docker-5000.nexus:5000/docker-osx-slim"
   remoteBuilderImage: "docker.io/xinnj/ssh-client"
+
+win:
+  builderImage: "nexus-nexus-repository-manager-docker-5000.nexus:5000/docker-win-vm"
+  remoteBuilderImage: "docker.io/xinnj/ssh-client"

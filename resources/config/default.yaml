@@ -250,7 +250,11 @@ ios:
 
 ## dotnet app config
 dotnet:
-  builderImage: "nexus-nexus-repository-manager-docker-5000.nexus:5000/docker-win-vm"
+  # Use dedicated remote machine as the builder or not
+  useRemoteBuilder: false
+  # Credential ID of login account of builder machine
+  loginCredentialId: "win-builder-login"
+  # The vm file if using internal vm as the builder
   winImage: "win11-v1.img"
   sdkVersion: ""
   # Workloads to be installed by dotnet command

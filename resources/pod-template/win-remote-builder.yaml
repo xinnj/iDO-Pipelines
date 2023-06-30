@@ -1,0 +1,75 @@
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+    - name: builder
+      image: <builderImage>
+      imagePullPolicy: IfNotPresent
+      command:
+        - /bin/sh
+        - -ec
+        - |
+          set -euao pipefail
+          cd /home/jenkins
+          ./Start.sh
+          touch /home/jenkins/vm-started
+          echo "Sleep for <keepBuilderPodMaxMinutes>m"
+          #sleep <keepBuilderPodMaxMinutes>m
+          times=$(expr <keepBuilderPodMaxMinutes> \* 60 / 5)
+          i=0
+          while [ $i -lt $times ]; do
+            sleep 5
+            i=$(expr $i + 1)
+          done
+      volumeMounts:
+        - mountPath: /home/jenkins/agent
+          name: workspace-volume
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+      readinessProbe:
+        exec:
+          command:
+            - /bin/sh
+            - -c
+            - ls /home/jenkins/vm-started
+        initialDelaySeconds: 5
+        periodSeconds: 5
+      env:
+        - name: "REMOTE_HOST"
+          value: "<REMOTE_HOST>"
+        - name: "REMOTE_PORT"
+          value: "<REMOTE_PORT>"
+        - name: "REMOTE_TYPE"
+          value: "windows"
+        - name: "USERNAME"
+          value: "<USERNAME>"
+        - name: "PASSWORD"
+          value: "<PASSWORD>"
+        - name: "NUGET_PACKAGES"
+          value: "R:\\nuget\\packages"
+        - name: "NUGET_HTTP_CACHE_PATH"
+          value: "R:\\nuget\\v3-cache"
+        - name: "NUGET_PLUGINS_CACHE_PATH"
+          value: "R:\\nuget\\plugins-cache"
+        - name: SONAR_USER_HOME
+          value: "R:\\sonar"
+    - name: jnlp
+      image: "<inboundAgentImage>"
+      env:
+        - name: "JENKINS_AGENT_CACHEDIR"
+          value: "/home/jenkins/agent/remoting/jarCache"
+  imagePullSecrets:
+    - name: <imagePullSecret>
+  securityContext:
+    runAsGroup: 1000
+    runAsUser: 1000
+  affinity:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 1
+          preference:
+            matchExpressions:
+              - key: vm-agent
+                operator: DoesNotExist
