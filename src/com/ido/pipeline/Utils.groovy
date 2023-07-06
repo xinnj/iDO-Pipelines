@@ -12,8 +12,9 @@ public class Utils {
     static Map setDefault(Map config, steps) {
         Map defaults = steps.readYaml(text: steps.libraryResource('config/default.yaml'))
         Map system = steps.readYaml(text: steps.libraryResource('config/system.yaml'))
-        defaults._system = system
-        return deepMerge(defaults, config)
+        Map merged = deepMerge(defaults, config)
+        merged._system = system
+        return merged
     }
 
     // Refer to: https://e.printstacktrace.blog/how-to-merge-two-maps-in-groovy/

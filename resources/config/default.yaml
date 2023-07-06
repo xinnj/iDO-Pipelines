@@ -109,21 +109,21 @@ registryPull:
   credentialsId: ""
 # Push registry info
 registryPush:
-  url: "nexus-nexus-repository-manager-docker-5000.nexus:5000"
+  url: "nexus-docker-5000:5000"
   credentialsId: "uploader"
 
 ## Helm chart config
 helm:
   buildChart: true
   chartPath: "helm"
-  repo: "https://devops.bizconf.cn/nexus/repository/helm-hosted/"
+  repo: "http://nexus:8081/abc/nexus/repository/helm-hosted/"
   uploadCredentialId: "uploader"
   chartVersion: ""
 
 ## File server config
 fileServer:
-  uploadUrl: "http://file-server.files/upload"
-  downloadUrl: "http://10.184.101.50/download"
+  uploadUrl: "http://file-server/upload"
+  downloadUrl: "http://10.184.101.50/abc/download"
   # must end with '/'
   uploadRootPath: "/"
 
@@ -230,8 +230,8 @@ ios:
     keyFileCredentialId: "apple-auth-key"
   useCocoapods: false
   downloadDisplayImages:
-    standard: "http://10.184.101.50/download/ios-install-images/Install.png"
-    fullSize: "http://10.184.101.50/download/ios-install-images/Install-large.png"
+    standard: "http://10.184.101.50/abc/download/ios-install-images/Install.png"
+    fullSize: "http://10.184.101.50/abc/download/ios-install-images/Install-large.png"
   # Execute UT
   ut:
     enabled: false
