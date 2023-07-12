@@ -159,5 +159,7 @@ spec:
       requiredDuringSchedulingIgnoredDuringExecution:
         nodeSelectorTerms:
           - matchExpressions:
-              - key: vm-agent
-                operator: Exists
+            - key: vm-agent
+              operator: In
+              values:
+                - 'true'

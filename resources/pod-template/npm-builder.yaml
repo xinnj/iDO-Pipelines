@@ -78,4 +78,6 @@ spec:
           preference:
             matchExpressions:
               - key: vm-agent
-                operator: DoesNotExist
+                operator: NotIn
+                values:
+                  - 'true'
