@@ -136,4 +136,4 @@ spec:
             - key: vm-agent
               operator: In
               values:
-                - 'true'
+                - 'True'
