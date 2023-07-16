@@ -274,7 +274,7 @@ class SpringBootImagePipeline extends ImagePipeline {
                 steps.sh """
                         export MAVEN_OPTS="-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
                         cd "${config.srcRootPath}"
-                        sh ./mvnw compile com.google.cloud.tools:jib-maven-plugin:3.3.1:build \
+                        sh ./mvnw compile com.google.cloud.tools:jib-maven-plugin:3.3.2:build \
                             -Dmaven.test.skip=true \
                             ${updateDependenciesArgs} \
                             -s ./default-maven-settings.xml \
@@ -295,7 +295,7 @@ class SpringBootImagePipeline extends ImagePipeline {
                     """
                 break
             case "gradle":
-                Utils.addGradlePlugin(steps, 'com.google.cloud.tools.jib', '3.3.1', "${config.srcRootPath}/${config.java.moduleName}")
+                Utils.addGradlePlugin(steps, 'com.google.cloud.tools.jib', '3.3.2', "${config.srcRootPath}/${config.java.moduleName}")
 
                 String updateDependenciesArgs = ""
                 if (config.java.forceUpdateDependencies) {

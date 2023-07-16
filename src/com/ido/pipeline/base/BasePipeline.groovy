@@ -97,7 +97,6 @@ abstract class BasePipeline implements Pipeline, Serializable {
                             .replaceAll('<inboundAgentImage>', config._system.inboundAgentImage as String)
 
                     steps.podTemplate(yaml: config.podTemplate,
-                            namespace: "jenkins",
                             idleMinutes: config.keepBuilderPodMinutes,
                             workspaceVolume: workspaceVolumeType(config._system.workspaceVolume.type),
                             slaveConnectTimeout: "3600",

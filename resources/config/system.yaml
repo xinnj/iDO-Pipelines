@@ -1,8 +1,8 @@
 # Use mirror to pull builder images
-imagePullMirror: true
+imagePullMirror: false
 
 # Builder image pull secret
-# kubectl create secret docker-registry builder-pull-secret --docker-server=<你的镜像仓库服务器> --docker-username=<你的用户名> --docker-password=<你的密码>
+# kubectl create secret docker-registry builder-pull-secret --docker-server=<你的镜像仓库服务器> --docker-username=<你的用户名> --docker-password=<你的密码> -n <namespace>
 imagePullSecret: "builder-pull-secret"
 
 # Image format: "oci", "docker"

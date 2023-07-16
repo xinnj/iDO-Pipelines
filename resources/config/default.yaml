@@ -131,7 +131,7 @@ fileServer:
 springBoot:
   mainClass: ""
   appRoot: "/app"
-  baseImage: "docker.io/eclipse-temurin:11-jre"
+  baseImage: "eclipse-temurin:11-jre"
   jvmFlages: "-Duser.timezone=PRC -Dfile.encoding=UTF-8"
   environment: "TZ='Asia/Shanghai'"
   # Execute UT
