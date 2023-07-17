@@ -100,6 +100,7 @@ abstract class BasePipeline implements Pipeline, Serializable {
                             idleMinutes: config.keepBuilderPodMinutes,
                             workspaceVolume: workspaceVolumeType(config._system.workspaceVolume.type),
                             slaveConnectTimeout: "3600",
+                            showRawYaml: config._system.showRawYaml
                     ) {
                         steps.node(steps.POD_LABEL) {
                             try {

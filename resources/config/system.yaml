@@ -17,6 +17,8 @@ workspaceVolume:
   nfsServerPath: ""
   pvcName: "jenkins-agent-data"
 
+showRawYaml: false
+
 inboundAgentImage: "docker.io/xinnj/inbound-agent:4.11-1-alpine-jdk11-nolog"
 
 # Android command line tools download url
