@@ -88,7 +88,7 @@ abstract class BasePipeline implements Pipeline, Serializable {
                     }
 
                     if (config._system.imagePullMirror) {
-                        config.podTemplate = Utils.replaceImageMirror(config.podTemplate)
+                        config.podTemplate = Utils.replaceImageMirror(config._system.imageMirrors, config.podTemplate)
                     }
 
                     config.podTemplate = (config.podTemplate as String)

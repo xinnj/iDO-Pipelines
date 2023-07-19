@@ -236,8 +236,9 @@ class SpringBootImagePipeline extends ImagePipeline {
 
     private runScript() {
         if (config._system.imagePullMirror) {
-            config.springBoot.baseImage = Utils.replaceImageMirror(config.springBoot.baseImage)
+            config.springBoot.baseImage = Utils.replaceImageMirror(config._system.imageMirrors, config.springBoot.baseImage)
         }
+        config.springBoot.baseImage = (config.springBoot.baseImage as String).replaceAll("^docker.io/", "")
 
         String jib_from_auth = ""
         if (config.registryPull && config.registryPull.credentialsId) {

@@ -132,7 +132,7 @@ class NodejsImagePipeline extends ImagePipeline {
                     .replaceAll('<startCmd>', config.nodejs.StartCmd as String)
 
             if (config._system.imagePullMirror) {
-                dockerfile = Utils.replaceImageMirror(dockerfile)
+                dockerfile = Utils.replaceImageMirror(config._system.imageMirrors, dockerfile)
             }
 
             steps.writeFile(file: "${config.srcRootPath}/Dockerfile", text: dockerfile, encoding: 'UTF-8')

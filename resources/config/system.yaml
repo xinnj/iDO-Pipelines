@@ -1,5 +1,18 @@
 # Use mirror to pull builder images
-imagePullMirror: false
+imagePullMirror: true
+imageMirrors:
+  "cr.l5d.io": "l5d.m.daocloud.io"
+  "docker.elastic.co": "elastic.m.daocloud.io"
+  "docker.io": "docker.m.daocloud.io"
+  "gcr.io": "gcr.m.daocloud.io"
+  "ghcr.io": "ghcr.m.daocloud.io"
+  "k8s.gcr.io": "k8s-gcr.m.daocloud.io"
+  "registry.k8s.io": "k8s.m.daocloud.io"
+  "mcr.microsoft.com": "mcr.m.daocloud.io"
+  "nvcr.io": "nvcr.m.daocloud.io"
+  "quay.io": "quay.m.daocloud.io"
+  "registry.jujucharms.com": "jujucharms.m.daocloud.io"
+  "rocks.canonical.com": "rocks-canonical.m.daocloud.io"
 
 # Builder image pull secret
 # kubectl create secret docker-registry builder-pull-secret --docker-server=<你的镜像仓库服务器> --docker-username=<你的用户名> --docker-password=<你的密码> -n <namespace>
