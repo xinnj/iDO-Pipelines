@@ -34,8 +34,6 @@ abstract class BasePipeline implements Pipeline, Serializable {
         }
 
         steps.lock(resource: "lock_${steps.currentBuild.fullProjectName}") {
-            steps.node('master || built-in') {}
-
             switch (config.nodeType) {
                 case "standalone":
                     steps.node(config.nodeName) {
@@ -62,6 +60,8 @@ abstract class BasePipeline implements Pipeline, Serializable {
                     }
                     break
                 case "k8s":
+                    steps.node('Workspace') {}
+
                     def podRetentionType = { Boolean k ->
                         if (k) {
                             steps.always()
