@@ -4,6 +4,7 @@ LABEL maintainer='xinnj@hotmail.com'
 ARG VERSION
 
 RUN apk add --no-cache git
+RUN wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq && chmod +x /usr/bin/yq
 
 COPY resources /jenkins-lib/resources/
 COPY src /jenkins-lib/src/
