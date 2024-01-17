@@ -10,6 +10,7 @@ COPY resources /jenkins-lib/resources/
 COPY src /jenkins-lib/src/
 COPY vars /jenkins-lib/vars/
 COPY LICENSE /jenkins-lib/
+COPY additional-settings /additional-settings/
 RUN cd /jenkins-lib \
     && git init \
     && git branch -m main \

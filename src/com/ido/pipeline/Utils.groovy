@@ -10,7 +10,7 @@ import java.util.TimeZone.*
 public class Utils {
     @SuppressWarnings('GroovyAssignabilityCheck')
     static Map setDefault(Map config, steps) {
-        Map defaults = steps.readYaml(text: steps.libraryResource('config/default.yaml'))
+        Map defaults = steps.readYaml(text: steps.libraryResource('config/team.yaml'))
         Map system = steps.readYaml(text: steps.libraryResource('config/system.yaml'))
         Map merged = deepMerge(defaults, config)
         merged._system = system
