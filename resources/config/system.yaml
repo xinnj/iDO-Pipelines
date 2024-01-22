@@ -32,7 +32,7 @@ workspaceVolume:
 
 showRawYaml: false
 
-inboundAgentImage: "docker.io/xinnj/inbound-agent:4.11-1-alpine-jdk11-nolog"
+inboundAgentImage: "docker.io/xinnj/inbound-agent:4.13.3-1-alpine-jdk11-nolog"
 
 # Android command line tools download url
 androidCmdLineToolsUrl: "https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip"
@@ -48,7 +48,7 @@ nugetSource: "https://nuget.cdn.azure.cn/v3/index.json"
 
 smbServer:
   internal: "samba-server"
-  external: "10.184.101.50:30445"
+  external: "${IDO_CLUSTER_HOSTNAME}:${IDO_SMB_NODE_PORT}"
   shareName: "data"
   user: "uploader"
   password: "PleaseUploadHere"

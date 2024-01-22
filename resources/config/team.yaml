@@ -36,7 +36,7 @@ customerBuildScript:
 
 ## Node config
 # "standalone", "k8s"
-nodeType: "standalone"
+nodeType: "k8s"
 nodeName: ""
 podTemplate: ""
 keepBuilderPodMinutes: 0
@@ -123,7 +123,7 @@ helm:
 ## File server config
 fileServer:
   uploadUrl: "http://file-server/upload"
-  downloadUrl: "http://10.184.101.50/abc/download"
+  downloadUrl: "${IDO_FILE_URL}"
   # must end with '/'
   uploadRootPath: "/"
 
@@ -230,8 +230,8 @@ ios:
     keyFileCredentialId: "apple-auth-key"
   useCocoapods: false
   downloadDisplayImages:
-    standard: "http://10.184.101.50/abc/download/ios-install-images/Install.png"
-    fullSize: "http://10.184.101.50/abc/download/ios-install-images/Install-large.png"
+    standard: "${IDO_FILE_URL}/ios-install-images/Install.png"
+    fullSize: "${IDO_FILE_URL}/ios-install-images/Install-large.png"
   # Execute UT
   ut:
     enabled: false
