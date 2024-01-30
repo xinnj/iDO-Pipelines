@@ -43,8 +43,9 @@ cocoapodsRepoUrl: "https://mirrors.tuna.tsinghua.edu.cn/git/CocoaPods/Specs.git"
 # Keep the builder pod in minutes maximally
 keepBuilderPodMaxMinutes: 1440
 
-dotnetSdkPath: "R:/dotnet"
-nugetSource: "https://nuget.cdn.azure.cn/v3/index.json"
+dotnet:
+  sdkPath: "R:/dotnet"
+  nugetSource: "https://nuget.cdn.azure.cn/v3/index.json"
 
 smbServer:
   internal: "samba-server"

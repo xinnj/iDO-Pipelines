@@ -160,7 +160,7 @@ New-Item -ItemType Directory -Force -Path \$Env:NUGET_PACKAGES | out-null
 New-Item -ItemType Directory -Force -Path \$Env:NUGET_HTTP_CACHE_PATH | out-null
 New-Item -ItemType Directory -Force -Path \$Env:NUGET_PLUGINS_CACHE_PATH | out-null
 
-\$InstallDir = "${config._system.dotnetSdkPath}"
+\$InstallDir = "${config._system.dotnet.sdkPath}"
 \$SdkVersion = "${config.dotnet.sdkVersion}"
 
 New-Item -Type "directory" -Path \$InstallDir -force | out-null
@@ -183,7 +183,7 @@ if (\$workloadsStr.Length -ne 0)
     foreach (\$wl in \$workloads)
     {
         Write-Host "Installing workload: \$wl ..."
-        dotnet workload install \$wl --source ${config._system.nugetSource}
+        dotnet workload install \$wl --source ${config._system.dotnet.nugetSource}
     }
 }
 """
@@ -263,12 +263,12 @@ if (-not(Test-Path -Path R:/workspace -PathType Container))
     net use R: ${smbServerAddress}
 }
 
-\$Env:Path = "${config._system.dotnetSdkPath}/${config.dotnet.sdkVersion};\$Env:Path"
+\$Env:Path = "${config._system.dotnet.sdkPath}/${config.dotnet.sdkVersion};\$Env:Path"
 
 cd "${vmWorkspace}/${config.srcRootPath}"
 
 dotnet publish ${config.dotnet.ut.project} -c ${config.dotnet.configuration} -p:Version=${config.version} `
-    --source ${config._system.nugetSource} --no-cache --nologo
+    --source ${config._system.dotnet.nugetSource} --no-cache --nologo
 
 dotnet test ${config.dotnet.ut.project} -c ${config.dotnet.configuration} --no-build --nologo `
     --collect:"XPlat Code Coverage" --results-directory "${config.srcRootPath}/TestResults"
@@ -319,17 +319,17 @@ if (-not(Test-Path -Path R:/workspace -PathType Container))
     net use R: ${smbServerAddress}
 }
 
-\$Env:Path = "${config._system.dotnetSdkPath}/${config.dotnet.sdkVersion};${config._system.dotnetSdkPath}/tools;\$Env:Path"
+\$Env:Path = "${config._system.dotnet.sdkPath}/${config.dotnet.sdkVersion};${config._system.dotnet.sdkPath}/tools;\$Env:Path"
 
-dotnet tool install dotnet-sonarscanner --add-source ${config._system.nugetSource} --ignore-failed-sources `
-    --tool-path "${config._system.dotnetSdkPath}/tools" --no-cache
+dotnet tool install dotnet-sonarscanner --add-source ${config._system.dotnet.nugetSource} --ignore-failed-sources `
+    --tool-path "${config._system.dotnet.sdkPath}/tools" --no-cache
 
 cd "${vmWorkspace}/${config.srcRootPath}"
 
 dotnet sonarscanner begin /k:"${config.productName}" /d:sonar.login="${steps.env.SONAR_AUTH_TOKEN}" `
     /d:sonar.host.url="${steps.env.SONAR_HOST_URL}" ${qualityGate}
 dotnet build ${config.dotnet.buildFile} -c ${config.dotnet.configuration} -p:Version=${config.version} `
-    --source ${config._system.nugetSource} --no-cache --nologo
+    --source ${config._system.dotnet.nugetSource} --no-cache --nologo
 dotnet sonarscanner end /d:sonar.login="${steps.env.SONAR_AUTH_TOKEN}"
 if (-not\$?)
 {
@@ -426,12 +426,12 @@ if (-not(Test-Path -Path R:/workspace -PathType Container))
     net use R: ${smbServerAddress}
 }
 
-\$Env:Path = "${config._system.dotnetSdkPath}/${config.dotnet.sdkVersion};\$Env:Path"
+\$Env:Path = "${config._system.dotnet.sdkPath}/${config.dotnet.sdkVersion};\$Env:Path"
 
 cd "${vmWorkspace}/${config.srcRootPath}"
 
 dotnet publish ${config.dotnet.buildFile} -c ${config.dotnet.configuration} -p:Version=${config.version} `
-    --source ${config._system.nugetSource} ${cmdRuntime} --no-cache --nologo
+    --source ${config._system.dotnet.nugetSource} ${cmdRuntime} --no-cache --nologo
 
 envsubst -i "${config.dotnet.msiConfig}" -o "${config.dotnet.msiConfig}.final" -no-unset -no-empty
 if (-not\$?)
