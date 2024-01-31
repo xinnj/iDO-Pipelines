@@ -61,3 +61,7 @@ macos:
 win:
   builderImage: "nexus-docker-5000:5000/docker-win-vm:1.0.0"
   remoteBuilderImage: "docker.io/xinnj/ssh-client:1.0.0"
+
+java:
+  mavenDownloadUrl: "https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/<maven-version>"
+  gradleDownloadUrl: "https://services.gradle.org/distributions"

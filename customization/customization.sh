@@ -12,7 +12,7 @@ cd /home/jenkins/lib/active
 
 if [ -e /var/jenkins_home/customization/config/system.yaml ]; then
   cp -f /var/jenkins_home/customization/config/system.yaml /var/jenkins_home/customization/config/system.yaml.bak
-  yq '. *= load("/var/jenkins_home/customization/config/system.yaml.bak")' /jenkins-lib/resources/config/system.yaml >/var/jenkins_home/customization/config/system.yaml
+  yq --header-preprocess=false '. *= load("/var/jenkins_home/customization/config/system.yaml.bak")' /jenkins-lib/resources/config/system.yaml >/var/jenkins_home/customization/config/system.yaml
   envsubst < "/var/jenkins_home/customization/config/system.yaml" > "./resources/config/system.yaml"
 else
   envsubst < "./resources/config/system.yaml" > "./resources/config/system.yaml.tmp"
@@ -21,7 +21,7 @@ fi
 
 if [ -e /var/jenkins_home/customization/config/team.yaml ]; then
   cp -f /var/jenkins_home/customization/config/team.yaml /var/jenkins_home/customization/config/team.yaml.bak
-  yq '. *= load("/var/jenkins_home/customization/config/team.yaml.bak")' /jenkins-lib/resources/config/team.yaml >/var/jenkins_home/customization/config/team.yaml
+  yq --header-preprocess=false '. *= load("/var/jenkins_home/customization/config/team.yaml.bak")' /jenkins-lib/resources/config/team.yaml >/var/jenkins_home/customization/config/team.yaml
   envsubst < "/var/jenkins_home/customization/config/team.yaml" > "./resources/config/team.yaml"
 else
   envsubst < "./resources/config/team.yaml" > "./resources/config/team.yaml.tmp"
