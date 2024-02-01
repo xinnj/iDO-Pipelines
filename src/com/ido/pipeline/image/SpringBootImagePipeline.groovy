@@ -27,9 +27,9 @@ class SpringBootImagePipeline extends ImagePipeline {
     }
 
     @Override
-    def afterScm() {
-        LanguageJava.afterScm(config, steps)
-        super.afterScm()
+    def scm() {
+        super.scm()
+        LanguageJava.scm(config, steps)
     }
 
     @Override

@@ -1,6 +1,7 @@
 package com.ido.pipeline.image
 
 import com.ido.pipeline.Utils
+import com.ido.pipeline.languageBase.LanguageNodejs
 
 /**
  * @author xinnj
@@ -12,13 +13,7 @@ class NodejsImagePipeline extends ImagePipeline {
 
     @Override
     Map runPipeline(Map config) {
-        config.nodeType = "k8s"
-        config.parallelUtAnalysis = true
-
-        String nodejsBuilder = steps.libraryResource(resource: 'pod-template/npm-builder.yaml', encoding: 'UTF-8')
-        nodejsBuilder = nodejsBuilder.replaceAll('<builderImage>', config.nodejs.baseImage)
-        config.podTemplate = nodejsBuilder
-
+        LanguageNodejs.runPipeline(config, steps)
         return super.runBasePipeline(config)
     }
 
@@ -34,21 +29,7 @@ class NodejsImagePipeline extends ImagePipeline {
     @Override
     def scm() {
         super.scm()
-
-        if (config.nodejs.useDefaultNpmrc) {
-            String npmrc = steps.libraryResource(resource: 'builder/default-npmrc', encoding: 'UTF-8')
-            steps.writeFile(file: "${config.srcRootPath}/.npmrc", text: npmrc, encoding: "UTF-8")
-        }
-
-        steps.container('builder') {
-            steps.sh """
-                cd "${config.srcRootPath}"
-                echo "npm version:"
-                npm -v
-                echo "node version:"
-                node -v
-            """
-        }
+        LanguageNodejs.scm(config, steps)
     }
 
     @Override
@@ -57,28 +38,7 @@ class NodejsImagePipeline extends ImagePipeline {
             return
         }
 
-        steps.container('builder') {
-            steps.sh """
-                cd "${config.srcRootPath}"
-                npm pkg set jest.coverageReporters[]=text
-                npm pkg set jest.coverageReporters[]=cobertura
-                # npm pkg set jest.coverageReporters[]=lcov
-                # npm pkg set jest.coverageThreshold.global.line=${config.nodejs.lineCoverageThreshold}
-                npm install-test
-            """
-
-            steps.cobertura(coberturaReportFile: "${config.srcRootPath}/coverage/cobertura-coverage.xml", enableNewApi: true,
-                    lineCoverageTargets: "${config.nodejs.lineCoverageThreshold}, ${config.nodejs.lineCoverageThreshold}, ${config.nodejs.lineCoverageThreshold}")
-
-//            steps.publishCoverage(adapters: [steps.istanbulCoberturaAdapter("${config.srcRootPath}/coverage/cobertura-coverage.xml")],
-//                    checksName: '', failNoReports: true, failUnhealthy: true, failUnstable: true,
-//                    globalThresholds: [[failUnhealthy: true, thresholdTarget: 'Line', unhealthyThreshold: config.nodejs.lineCoverageThreshold, unstableThreshold: config.nodejs.lineCoverageThreshold]],
-//                    sourceCodeEncoding: 'UTF-8', sourceFileResolver: steps.sourceFiles('NEVER_STORE'))
-
-//            steps.publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, escapeUnderscores: false, keepAll: false,
-//                               reportDir   : "${config.srcRootPath}/coverage/lcov-report", reportFiles: 'index.html',
-//                               reportName  : 'Coverage Report', reportTitles: ''])
-        }
+        LanguageNodejs.ut(config, steps)
     }
 
     @Override
@@ -87,23 +47,7 @@ class NodejsImagePipeline extends ImagePipeline {
             return
         }
 
-        steps.container('sonar-scanner') {
-            steps.withSonarQubeEnv(config.nodejs.sonarqubeServerName) {
-                steps.sh """
-                    cd "${config.srcRootPath}"
-                    sonar-scanner -Dsonar.projectKey=${config.productName} -Dsonar.sourceEncoding=UTF-8
-                """
-            }
-        }
-
-        if (config.nodejs.qualityGateEnabled) {
-            steps.timeout(time: config.nodejs.sonarqubeTimeoutMinutes, unit: 'MINUTES') {
-                def qg = steps.waitForQualityGate()
-                if (qg.status != 'OK') {
-                    steps.error "Quality gate failure: ${qg.status}"
-                }
-            }
-        }
+        LanguageNodejs.codeAnalysis(config, steps)
     }
 
     @Override
@@ -112,14 +56,7 @@ class NodejsImagePipeline extends ImagePipeline {
             return
         }
 
-        steps.container('builder') {
-            steps.sh """
-                export NODE_ENV=production
-                cd "${config.srcRootPath}"
-
-                npm ci --omit=dev
-            """
-        }
+        LanguageNodejs.build(config, steps)
 
         if (!steps.fileExists("${config.srcRootPath}/.dockerignore")) {
             String dockerignore = steps.libraryResource(resource: 'builder/default-dockerignore', encoding: 'UTF-8')

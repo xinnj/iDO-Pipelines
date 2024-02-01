@@ -13,7 +13,7 @@ public class LanguageJava {
         config.podTemplate = javaBuilder
     }
 
-    static afterScm(Map config, Object steps) {
+    static scm(Map config, Object steps) {
         switch (config.java.buildTool) {
             case "maven":
                 if (!steps.fileExists("${config.srcRootPath}/mvnw")) {
