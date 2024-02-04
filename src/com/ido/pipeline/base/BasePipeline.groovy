@@ -20,7 +20,7 @@ abstract class BasePipeline implements Pipeline, Serializable {
         this.steps = steps
     }
 
-    Map runBasePipeline(Map config) {
+    Map runPipeline(Map config) {
         this.config = config
         def result = [:]
 
@@ -132,6 +132,9 @@ abstract class BasePipeline implements Pipeline, Serializable {
                     steps.error "Node type: ${config.nodeType} is not supported!"
             }
         }
+
+        result.put("imageTag", config.version)
+
         return result
     }
 
@@ -146,9 +149,115 @@ abstract class BasePipeline implements Pipeline, Serializable {
             this.scm()
         }
 
+        if (steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${config.customerBuildScript.afterScm}")) {
+            steps.stage('afterScm') {
+                steps.echo "########## Stage: After Scm ##########"
+                this.afterScm()
+            }
+        }
+
         steps.stage('Versioning') {
             steps.echo "########## Stage: Versioning ##########"
             this.versioning()
+        }
+
+        if (steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${config.customerBuildScript.afterVersioning}")) {
+            steps.stage('afterVersioning') {
+                steps.echo "########## Stage: After Versioning ##########"
+                this.afterVersioning()
+            }
+        }
+
+        if (config.parallelUtAnalysis) {
+            steps.parallel 'UT': {
+                steps.stage('UT') {
+                    steps.echo "########## Stage: UT ##########"
+                    this.ut()
+                }
+            }, 'Code Analysis': {
+                steps.stage('Code Analysis') {
+                    steps.echo "########## Stage: Code Analysis ##########"
+                    this.codeAnalysis()
+                }
+            }, failFast: true
+        } else {
+            steps.stage('UT') {
+                steps.echo "########## Stage: UT ##########"
+                this.ut()
+            }
+
+            steps.stage('Code Analysis') {
+                steps.echo "########## Stage: Code Analysis ##########"
+                this.codeAnalysis()
+            }
+        }
+
+        if (steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${config.customerBuildScript.beforeBuild}")) {
+            steps.stage('beforeBuild') {
+                steps.echo "########## Stage: Before Build ##########"
+                this.beforeBuild()
+            }
+        }
+
+        if (config.parallelBuildArchive) {
+            steps.parallel 'Build': {
+                steps.stage('Build') {
+                    steps.echo "########## Stage: Build ##########"
+                    if (!this.customerBuild()) {
+                        this.build()
+                    }
+                }
+
+                if (steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${config.customerBuildScript.afterBuild}")) {
+                    steps.stage('afterBuild') {
+                        steps.echo "########## Stage: After Build ##########"
+                        this.afterBuild()
+                    }
+                }
+            }, 'Archive': {
+                steps.stage('Archive') {
+                    steps.echo "########## Stage: Archive ##########"
+                    this.archive()
+                }
+
+                if (steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${config.customerBuildScript.afterArchive}")) {
+                    steps.stage('afterArchive') {
+                        steps.echo "########## Stage: After Archive ##########"
+                        this.afterArchive()
+                    }
+                }
+            }, failFast: true
+        } else {
+            steps.stage('Build') {
+                steps.echo "########## Stage: Build ##########"
+                if (!this.customerBuild()) {
+                    this.build()
+                }
+            }
+
+            if (steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${config.customerBuildScript.afterBuild}")) {
+                steps.stage('afterBuild') {
+                    steps.echo "########## Stage: After Build ##########"
+                    this.afterBuild()
+                }
+            }
+
+            steps.stage('Archive') {
+                steps.echo "########## Stage: Archive ##########"
+                this.archive()
+            }
+
+            if (steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${config.customerBuildScript.afterArchive}")) {
+                steps.stage('afterArchive') {
+                    steps.echo "########## Stage: After Archive ##########"
+                    this.afterArchive()
+                }
+            }
+        }
+
+        if (config.jobsInvoked.size() != 0) {
+            steps.echo "########## Stage: Invoke ##########"
+            this.invoke(null)
         }
     }
 
@@ -309,6 +418,25 @@ abstract class BasePipeline implements Pipeline, Serializable {
         }
     }
 
+    def afterScm() {
+        steps.container('builder') {
+            steps.withEnv(["CI_PRODUCTNAME=$config.productName",
+                           "CI_BRANCH=" + Utils.getBranchName(steps)]) {
+                if (steps.isUnix()) {
+                    steps.sh """
+                        cd "${config.srcRootPath}"
+                        sh "${config.customerBuildScript.afterScm}"
+                    """
+                } else {
+                    steps.powershell """
+                        cd "${config.srcRootPath}"
+                        "Invoke-Command -ScriptBlock ([ScriptBlock]::Create((Get-Content ${config.customerBuildScript.afterScm})))"
+                    """
+                }
+            }
+        }
+    }
+
     def versioning() {
         if (!config.version) {
             Version verObj = new Version()
@@ -323,7 +451,7 @@ abstract class BasePipeline implements Pipeline, Serializable {
         """
     }
 
-    def afterScm() {
+    def afterVersioning() {
         steps.container('builder') {
             steps.withEnv(["CI_PRODUCTNAME=$config.productName",
                            "CI_VERSION=$config.version",
@@ -331,12 +459,12 @@ abstract class BasePipeline implements Pipeline, Serializable {
                 if (steps.isUnix()) {
                     steps.sh """
                         cd "${config.srcRootPath}"
-                        sh "${config.customerBuildScript.afterScm}"
+                        sh "${config.customerBuildScript.afterVersioning}"
                     """
                 } else {
                     steps.powershell """
                         cd "${config.srcRootPath}"
-                        "${config.customerBuildScript.afterScm}"
+                        "Invoke-Command -ScriptBlock ([ScriptBlock]::Create((Get-Content ${config.customerBuildScript.afterVersioning})))"
                     """
                 }
             }
@@ -344,6 +472,10 @@ abstract class BasePipeline implements Pipeline, Serializable {
             config.version = steps.readFile(file: "${config.srcRootPath}/ido-cluster/_version", encoding: "UTF-8").trim()
         }
     }
+
+    def abstract ut()
+
+    def abstract codeAnalysis()
 
     def beforeBuild() {
         steps.container('builder') {
@@ -358,12 +490,14 @@ abstract class BasePipeline implements Pipeline, Serializable {
                 } else {
                     steps.powershell """
                         cd "${config.srcRootPath}"
-                        "${config.customerBuildScript.beforeBuild}"
+                        "Invoke-Command -ScriptBlock ([ScriptBlock]::Create((Get-Content ${config.customerBuildScript.beforeBuild})))"
                     """
                 }
             }
         }
     }
+
+    def abstract build()
 
     Boolean customerBuild() {
         steps.container('builder') {
@@ -380,7 +514,7 @@ abstract class BasePipeline implements Pipeline, Serializable {
                     } else {
                         steps.powershell """
                             cd "${config.srcRootPath}"
-                            "${config.customerBuildScript.build}"
+                            "Invoke-Command -ScriptBlock ([ScriptBlock]::Create((Get-Content ${config.customerBuildScript.build})))"
                         """
                     }
                 }
@@ -404,7 +538,29 @@ abstract class BasePipeline implements Pipeline, Serializable {
                 } else {
                     steps.powershell """
                         cd "${config.srcRootPath}"
-                        "${config.customerBuildScript.afterBuild}"
+                        "Invoke-Command -ScriptBlock ([ScriptBlock]::Create((Get-Content ${config.customerBuildScript.afterBuild})))"
+                    """
+                }
+            }
+        }
+    }
+
+    def abstract archive()
+
+    def afterArchive() {
+        steps.container('builder') {
+            steps.withEnv(["CI_PRODUCTNAME=$config.productName",
+                           "CI_VERSION=$config.version",
+                           "CI_BRANCH=" + Utils.getBranchName(steps)]) {
+                if (steps.isUnix()) {
+                    steps.sh """
+                        cd "${config.srcRootPath}"
+                        sh "${config.customerBuildScript.afterArchive}"
+                    """
+                } else {
+                    steps.powershell """
+                        cd "${config.srcRootPath}"
+                        "Invoke-Command -ScriptBlock ([ScriptBlock]::Create((Get-Content ${config.customerBuildScript.afterArchive})))"
                     """
                 }
             }

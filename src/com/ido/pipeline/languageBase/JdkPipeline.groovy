@@ -1,19 +1,31 @@
 package com.ido.pipeline.languageBase
 
 import com.ido.pipeline.Utils
+import com.ido.pipeline.base.BasePipeline
 
 /**
  * @author xinnj
  */
-public class LanguageJava {
-    static runPipeline(Map config, Object steps) {
-        config.nodeType = "k8s"
-        String javaBuilder = steps.libraryResource(resource: 'pod-template/java-builder.yaml', encoding: 'UTF-8')
-        javaBuilder = javaBuilder.replaceAll('<builderImage>', config.java.builderImage)
-        config.podTemplate = javaBuilder
+abstract class JdkPipeline extends BasePipeline {
+    JdkPipeline(Object steps) {
+        super(steps)
     }
 
-    static scm(Map config, Object steps) {
+    @Override
+    Map runPipeline(Map config) {
+        config.parallelUtAnalysis = false
+
+        String javaBuilder = steps.libraryResource(resource: 'pod-template/jdk-builder.yaml', encoding: 'UTF-8')
+        javaBuilder = javaBuilder.replaceAll('<builderImage>', config.java.builderImage)
+        config.podTemplate = javaBuilder
+
+        return super.runPipeline(config)
+    }
+
+    @Override
+    def scm() {
+        super.scm()
+
         switch (config.java.buildTool) {
             case "maven":
                 if (!steps.fileExists("${config.srcRootPath}/mvnw")) {
@@ -70,7 +82,12 @@ public class LanguageJava {
         }
     }
 
-    static ut(Map config, Object steps, int lineCoverageThreshold) {
+    @Override
+    def ut() {
+        if (!config.context.utEnabled) {
+            return
+        }
+
         steps.container('builder') {
             switch (config.java.buildTool) {
                 case "maven":
@@ -127,15 +144,19 @@ EOF
             }
 
             steps.recordCoverage(tools: [[parser: 'JACOCO']], failOnError: true, sourceCodeRetention: 'NEVER',
-                    qualityGates: [[criticality: 'FAILURE', metric: 'LINE', threshold: lineCoverageThreshold]])
+                    qualityGates: [[criticality: 'FAILURE', metric: 'LINE', threshold: config.context.lineCoverageThreshold]])
             if (steps.currentBuild.result == 'FAILURE') {
                 steps.error "UT coverage failure!"
             }
         }
     }
 
-    static codeAnalysis(Map config, Object steps, String sonarqubeServerName, Boolean qualityGateEnabled,
-                        int sonarqubeTimeoutMinutes) {
+    @Override
+    def codeAnalysis() {
+        if (!config.context.codeAnalysisEnabled) {
+            return
+        }
+
         steps.container('builder') {
             switch (config.java.buildTool) {
                 case "maven":
@@ -144,7 +165,7 @@ EOF
                         updateDependenciesArgs = "-U"
                     }
 
-                    steps.withSonarQubeEnv(sonarqubeServerName) {
+                    steps.withSonarQubeEnv(config.context.sonarqubeServerName) {
                         steps.sh """
                             export MAVEN_OPTS="-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
                             cd "${config.srcRootPath}"
@@ -158,14 +179,15 @@ EOF
                     }
                     break
                 case "gradle":
-                    Utils.addGradlePlugin(steps, 'org.sonarqube', "4.4.1.3373", "${config.srcRootPath}/${config.java.moduleName}")
+                    Utils.addGradlePlugin(steps, 'org.sonarqube', "4.4.1.3373",
+                            "${config.srcRootPath}/${config.java.moduleName}")
 
                     String updateDependenciesArgs = ""
                     if (config.java.forceUpdateDependencies) {
                         updateDependenciesArgs = "--refresh-dependencies"
                     }
 
-                    steps.withSonarQubeEnv(sonarqubeServerName) {
+                    steps.withSonarQubeEnv(config.context.sonarqubeServerName) {
                         steps.sh """
                             cd "${config.srcRootPath}"
                             mv -f ${config.java.moduleName}/build.gradle ${config.java.moduleName}/build.gradle-original
@@ -185,8 +207,8 @@ EOF
                     break
             }
 
-            if (qualityGateEnabled) {
-                steps.timeout(time: sonarqubeTimeoutMinutes, unit: 'MINUTES') {
+            if (config.context.qualityGateEnabled) {
+                steps.timeout(time: config.context.sonarqubeTimeoutMinutes, unit: 'MINUTES') {
                     def qg = steps.waitForQualityGate()
                     if (qg.status != 'OK') {
                         steps.error "Quality gate failure: ${qg.status}"

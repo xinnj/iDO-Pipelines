@@ -5,7 +5,7 @@ import com.ido.pipeline.Utils
 /**
  * @author xinnj
  */
-class VueImagePipeline extends ImagePipeline {
+class VueImagePipeline extends ImageHelper {
     VueImagePipeline(Object steps) {
         super(steps)
     }
@@ -19,15 +19,15 @@ class VueImagePipeline extends ImagePipeline {
         vueBuilder = vueBuilder.replaceAll('<builderImage>', config.vue.builderBaseImage)
         config.podTemplate = vueBuilder
 
-        return super.runBasePipeline(config)
+        return super.runPipeline(config)
     }
 
     @Override
     def prepare() {
         super.prepare()
 
-        if (!config.vue.runtimeBaseImage) {
-            steps.error "vue.runtimeBaseImage is empty!"
+        if (!config.vue.baseImage) {
+            steps.error "vue.baseImage is empty!"
         }
     }
 
@@ -139,7 +139,7 @@ class VueImagePipeline extends ImagePipeline {
         if (!config.dockerFile) {
             String dockerfile = steps.libraryResource(resource: 'builder/default-vue-dockerfile', encoding: 'UTF-8')
             dockerfile = dockerfile
-                    .replaceAll('<baseImage>', config.vue.runtimeBaseImage as String)
+                    .replaceAll('<baseImage>', config.vue.baseImage as String)
                     .replaceAll('<nginxConfigFile>', config.vue.nginxConfigFile as String)
 
             if (config._system.imagePullMirror) {

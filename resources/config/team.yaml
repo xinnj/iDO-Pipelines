@@ -9,6 +9,9 @@ stopInvokedJob: true
 # Do UT and Code Analysis in parallel
 parallelUtAnalysis: false
 
+# Do Build and Archive in parallel
+parallelBuildArchive: false
+
 # Log more information
 debug: true
 
@@ -29,10 +32,12 @@ jobsInvoked: []
 
 # Customer build scripts
 customerBuildScript:
-  afterScm: "ido-cluster/after-scm.sh"
-  beforeBuild: "ido-cluster/before-build.sh"
+  afterScm: "ido-cluster/after-scm"
+  afterVersioning: "ido-cluster/after-versioning"
+  beforeBuild: "ido-cluster/before-build"
   build: "ido-cluster/build.sh"
-  afterBuild: "ido-cluster/after-build.sh"
+  afterBuild: "ido-cluster/after-build"
+  afterArchive: "ido-cluster/after-archive"
 
 ## Node config
 # "standalone", "k8s"
@@ -143,10 +148,15 @@ springBoot:
   qualityGateEnabled: false
   sonarqubeTimeoutMinutes: 10
 
+## NPM config
+npm:
+  builderImage: "docker.io/node:18.13.0-slim"
+  useDefaultNpmrc: true
+
 ## Node.js config
 nodejs:
-  baseImage: "docker.io/node:18.13.0-slim"
-  useDefaultNpmrc: true
+  # Same as npm.builderImage if empty
+  baseImage: ""
   StartCmd: "npm start"
   # Execute UT (Jest only)
   utEnabled: false
@@ -159,13 +169,11 @@ nodejs:
 
 ## Node.js config
 vue:
-  builderBaseImage: "docker.io/node:18.13.0-slim"
   # Must be nginx
-  runtimeBaseImage: "docker.io/nginx:stable"
+  baseImage: "docker.io/nginx:stable"
   # Nginx config file to be copied to runtime container. A relative path to "srcRootPath" property.
   # Empty to use default config
   nginxConfigFile: ""
-  useDefaultNpmrc: true
   # Execute UT (Vitest only)
   utEnabled: false
   lineCoverageThreshold: 0

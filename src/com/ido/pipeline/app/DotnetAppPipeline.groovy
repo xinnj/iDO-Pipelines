@@ -2,7 +2,6 @@ package com.ido.pipeline.app
 
 import com.ido.pipeline.Utils
 import com.ido.pipeline.base.Artifact
-import org.apache.ivy.core.module.descriptor.OverrideDependencyDescriptorMediator
 
 /**
  * @author xinnj
@@ -36,7 +35,7 @@ class DotnetAppPipeline extends AppPipeline {
                             .replaceAll('<USERNAME>', username)
                             .replaceAll('<PASSWORD>', password)
 
-                    return super.runBasePipeline(config)
+                    return super.runPipeline(config)
                 }
             } else {
                 String username = steps.env.username
@@ -47,7 +46,7 @@ class DotnetAppPipeline extends AppPipeline {
                         .replaceAll('<USERNAME>', username)
                         .replaceAll('<PASSWORD>', password)
 
-                return super.runBasePipeline(config)
+                return super.runPipeline(config)
             }
         }
     }

@@ -20,7 +20,7 @@ class AndroidAppPipeline extends AppPipeline {
                 .replaceAll('<androidCmdLineToolsUrl>', config._system.androidCmdLineToolsUrl)
         config.podTemplate = builder
 
-        return super.runBasePipeline(config)
+        return super.runPipeline(config)
     }
 
     @Override

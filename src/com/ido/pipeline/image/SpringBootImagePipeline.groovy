@@ -1,20 +1,14 @@
 package com.ido.pipeline.image
 
 import com.ido.pipeline.Utils
-import com.ido.pipeline.languageBase.LanguageJava
+import com.ido.pipeline.languageBase.JdkPipeline
 
 /**
  * @author xinnj
  */
-class SpringBootImagePipeline extends ImagePipeline {
+class SpringBootImagePipeline extends JdkPipeline {
     SpringBootImagePipeline(Object steps) {
         super(steps)
-    }
-
-    @Override
-    Map runPipeline(Map config) {
-        LanguageJava.runPipeline(config, steps)
-        return super.runBasePipeline(config)
     }
 
     @Override
@@ -24,31 +18,9 @@ class SpringBootImagePipeline extends ImagePipeline {
         if (!config.springBoot.baseImage) {
             steps.error "springBoot.baseImage is empty!"
         }
-    }
 
-    @Override
-    def scm() {
-        super.scm()
-        LanguageJava.scm(config, steps)
-    }
-
-    @Override
-    def ut() {
-        if (!config.springBoot.utEnabled) {
-            return
-        }
-
-        LanguageJava.ut(config, steps, config.springBoot.lineCoverageThreshold)
-    }
-
-    @Override
-    def codeAnalysis() {
-        if (!config.springBoot.codeAnalysisEnabled) {
-            return
-        }
-
-        LanguageJava.codeAnalysis(config, steps, config.springBoot.sonarqubeServerName,
-                config.springBoot.qualityGateEnabled, config.springBoot.sonarqubeTimeoutMinutes)
+        config.put("context", config.springBoot)
+        config.parallelBuildArchive = true
     }
 
     @Override
@@ -173,5 +145,10 @@ class SpringBootImagePipeline extends ImagePipeline {
                     """
                 break
         }
+    }
+
+    @Override
+    def archive() {
+        new ImageHelper(steps, config).buildHelm()
     }
 }

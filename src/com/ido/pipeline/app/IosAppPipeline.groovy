@@ -32,7 +32,7 @@ class IosAppPipeline extends AppPipeline {
                             .replaceAll('<USERNAME>', username)
                             .replaceAll('<PASSWORD>', password)
 
-                    return super.runBasePipeline(config)
+                    return super.runPipeline(config)
                 }
             } else {
                 String username = steps.env.username
@@ -43,7 +43,7 @@ class IosAppPipeline extends AppPipeline {
                         .replaceAll('<USERNAME>', username)
                         .replaceAll('<PASSWORD>', password)
 
-                return super.runBasePipeline(config)
+                return super.runPipeline(config)
             }
         }
     }
