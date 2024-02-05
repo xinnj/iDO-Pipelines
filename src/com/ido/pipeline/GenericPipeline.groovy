@@ -10,15 +10,38 @@ class GenericPipeline extends BasePipeline {
         super(steps)
     }
 
+    @Override
+    def ut() {
+        return null
+    }
+
+    @Override
+    def codeAnalysis() {
+        return null
+    }
+
     def build() {
-        if (steps.isUnix()) {
-            steps.sh '''
-                echo "hello world"
-            '''
-        } else {
-            steps.powershell '''
-                echo "hello world"
-            '''
+        steps.container('builder') {
+            steps.withEnv(["CI_PRODUCTNAME=$config.productName",
+                           "CI_VERSION=$config.version",
+                           "CI_BRANCH=" + Utils.getBranchName(steps)]) {
+                if (steps.isUnix()) {
+                    steps.sh """
+                        cd "${config.srcRootPath}"
+                        sh build.sh
+                    """
+                } else {
+                    steps.powershell """
+                        cd "${config.srcRootPath}"
+                        build.ps1
+                    """
+                }
+            }
         }
+    }
+
+    @Override
+    def archive() {
+        return null
     }
 }
