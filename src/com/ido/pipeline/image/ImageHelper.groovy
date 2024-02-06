@@ -1,7 +1,6 @@
 package com.ido.pipeline.image
 
 import com.ido.pipeline.Utils
-import com.ido.pipeline.base.HelmChart
 
 /**
  * @author xinnj
@@ -104,7 +103,20 @@ public class ImageHelper {
             """
             }
 
-            new HelmChart().upload(steps, config)
+            uploadHelm()
+        }
+    }
+
+    private uploadHelm() {
+        Map chart = steps.readYaml(file: "${config.helm.chartPath}/Chart.yaml")
+        String chartName = chart.name
+
+        steps.withCredentials([steps.usernameColonPassword(credentialsId: config.helm.uploadCredentialId, variable: 'USERPASS')]) {
+            steps.container('helm') {
+                steps.sh """
+                    curl -u "\${USERPASS}" "${config.helm.repo}" -v --upload-file "${chartName}-${config.helm.chartVersion}.tgz"
+                """
+            }
         }
     }
 }

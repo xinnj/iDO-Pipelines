@@ -125,7 +125,7 @@ EOF
                                 /usr/local/bin/pod --version
                                 mkdir -p "\${CP_HOME_DIR}/repos"
                                 cd "\${CP_HOME_DIR}/repos"
-                                git clone ${config._system.cocoapodsRepoUrl} trunk
+                                git clone ${config._system.macos.cocoapodsRepoUrl} trunk
                                 /usr/local/bin/pod setup
                             fi
                             /usr/local/bin/pod install

@@ -15,9 +15,11 @@ abstract class JdkPipeline extends BasePipeline {
     Map runPipeline(Map config) {
         config.parallelUtAnalysis = false
 
-        String javaBuilder = steps.libraryResource(resource: 'pod-template/jdk-builder.yaml', encoding: 'UTF-8')
-        javaBuilder = javaBuilder.replaceAll('<builderImage>', config.java.builderImage)
-        config.podTemplate = javaBuilder
+        if (!config.podTemplate) {
+            String builder = steps.libraryResource(resource: 'pod-template/jdk-builder.yaml', encoding: 'UTF-8')
+            builder = builder.replaceAll('<builderImage>', config.java.builderImage)
+            config.podTemplate = builder
+        }
 
         return super.runPipeline(config)
     }

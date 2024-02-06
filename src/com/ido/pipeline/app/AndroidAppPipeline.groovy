@@ -1,23 +1,23 @@
 package com.ido.pipeline.app
 
 import com.ido.pipeline.Utils
-import com.ido.pipeline.base.Artifact
+import com.ido.pipeline.languageBase.JdkPipeline
 
 /**
  * @author xinnj
  */
-class AndroidAppPipeline extends AppPipeline {
+class AndroidAppPipeline extends JdkPipeline {
+    FileHelper fileHelper
+
     AndroidAppPipeline(Object steps) {
         super(steps)
     }
 
     @Override
     Map runPipeline(Map config) {
-        config.nodeType = "k8s"
-
         String builder = steps.libraryResource(resource: 'pod-template/android-builder.yaml', encoding: 'UTF-8')
         builder = builder.replaceAll('<builderImage>', config.java.builderImage)
-                .replaceAll('<androidCmdLineToolsUrl>', config._system.androidCmdLineToolsUrl)
+                .replaceAll('<androidCmdLineToolsUrl>', config._system.android.cmdLineToolsUrl)
         config.podTemplate = builder
 
         return super.runPipeline(config)
@@ -27,137 +27,49 @@ class AndroidAppPipeline extends AppPipeline {
     def prepare() {
         super.prepare()
 
+        fileHelper = new FileHelper(steps, config)
+
         if (!config.android.sdkPackagesRequired) {
             steps.error "sdkPackagesRequired is empty!"
         }
 
-        String sdkPackages = ""
-        (config.android.sdkPackagesRequired as List).each {
-            sdkPackages = sdkPackages + "\"$it\" "
-        }
+        config.java.buildTool = "gradle"
+        config.put("context", config.android)
+        config.parallelBuildArchive = false
 
+        String proxy = ""
+        if (config._system.android.proxy.enable) {
+            proxy = "--no_https --proxy=http --proxy_host=${config._system.android.proxy.host} --proxy_port=${config._system.android.proxy.port}"
+        }
         steps.container('builder') {
-            steps.sh """
-                yes | \${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --licenses
-                yes | \${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --install $sdkPackages
-            """
-        }
-    }
+            List<String> sdkPackagesInstalled = steps.sh(returnStdout: true, encoding: "UTF-8",
+                    script: "\${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --list_installed | tail -n +4 | awk '{print \$1}'")
+                    .trim()
+                    .split(System.lineSeparator()) as List<String>
 
-    @Override
-    def scm() {
-        super.scm()
+            List<String> sdkPackagesToBeInstalled = (config.android.sdkPackagesRequired as List<String>)
+                    .findAll {!sdkPackagesInstalled.contains(it)}
 
-        if (!steps.fileExists("${config.srcRootPath}/gradlew")) {
-            String wrapperFile = steps.libraryResource(resource: 'builder/gradlew.zip', encoding: 'Base64')
-            steps.writeFile(file: "${config.srcRootPath}/gradlew.zip", text: wrapperFile, encoding: 'Base64')
-            steps.unzip(zipFile: "${config.srcRootPath}/gradlew.zip", dir: "${config.srcRootPath}")
-            String wrapperProperties = steps.readFile(file: "${config.srcRootPath}/gradle/wrapper/gradle-wrapper.properties", encoding: "UTF-8")
-            wrapperProperties = wrapperProperties.replaceAll('<gradle-version>', config.java.gradleVersion)
-            steps.writeFile(file: "${config.srcRootPath}/gradle/wrapper/gradle-wrapper.properties", text: wrapperProperties, encoding: "UTF-8")
-        }
-
-        if (config.java.useDefaultGradleInitScript) {
-            String initScript = steps.libraryResource(resource: 'builder/default-gradle-init.gradle', encoding: 'UTF-8')
-            steps.writeFile(file: "${config.srcRootPath}/default-gradle-init.gradle", text: initScript, encoding: "UTF-8")
-        }
-
-        steps.container('builder') {
-            steps.sh """
-                cd "${config.srcRootPath}"
-                rm -f ./gradlew.zip
-                sh ./gradlew -v
-            """
-        }
-    }
-
-    @Override
-    def ut() {
-        if (!config.android.utEnabled) {
-            return
-        }
-
-        steps.container('builder') {
-            Utils.addGradlePlugin(steps, 'jacoco', null, "${config.srcRootPath}/${config.java.moduleName}")
-
-            String updateDependenciesArgs = ""
-            if (config.java.forceUpdateDependencies) {
-                updateDependenciesArgs = "--refresh-dependencies"
+            String sdkPackages = ""
+            sdkPackagesToBeInstalled.each {
+                sdkPackages = sdkPackages + "\"$it\" "
             }
 
             steps.sh """
-                cd "${config.srcRootPath}"
-                mv -f ${config.java.moduleName}/build.gradle ${config.java.moduleName}/build.gradle-original
-                cp -f ${config.java.moduleName}/build.gradle-jacoco ${config.java.moduleName}/build.gradle
-                
-                sh ./gradlew test \
-                    --no-daemon \
-                    ${updateDependenciesArgs} \
-                    -I "${steps.env.WORKSPACE}/${config.srcRootPath}/default-gradle-init.gradle" \
-                    -Dfile.encoding=UTF-8 \
-                    "-Dorg.gradle.jvmargs=-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" \
-                    -p ${config.java.moduleName}
-
-                cp -f ${config.java.moduleName}/build.gradle-original ${config.java.moduleName}/build.gradle
+                if [ ! -e \${ANDROID_HOME}/licenses-agreed ]; then
+                    yes | \${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager ${proxy} --licenses
+                    touch \${ANDROID_HOME}/licenses-agreed
+                fi
+                if [ -n "${sdkPackages}" ]; then
+                    yes | \${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager ${proxy} --install $sdkPackages
+                fi
             """
-
-            steps.jacoco(changeBuildStatus: true, minimumLineCoverage: "${config.android.lineCoverageThreshold}",
-                    maximumLineCoverage: "${config.android.lineCoverageThreshold}")
-            if (steps.currentBuild.result == 'FAILURE') {
-                steps.error "UT coverage failure!"
-            }
-        }
-    }
-
-    @Override
-    def codeAnalysis() {
-        if (!config.android.codeAnalysisEnabled) {
-            return
-        }
-        steps.container('builder') {
-            Utils.addGradlePlugin(steps, 'org.sonarqube', "4.0.0.2929", "${config.srcRootPath}/${config.java.moduleName}")
-
-            String updateDependenciesArgs = ""
-            if (config.java.forceUpdateDependencies) {
-                updateDependenciesArgs = "--refresh-dependencies"
-            }
-
-            steps.withSonarQubeEnv(config.android.sonarqubeServerName) {
-                steps.sh """
-                    cd "${config.srcRootPath}"
-                    mv -f ${config.java.moduleName}/build.gradle ${config.java.moduleName}/build.gradle-original
-                    cp -f ${config.java.moduleName}/build.gradle-org.sonarqube ${config.java.moduleName}/build.gradle
-                    
-                    sh ./gradlew sonar \
-                        --no-daemon \
-                        ${updateDependenciesArgs} \
-                        -I "${steps.env.WORKSPACE}/${config.srcRootPath}/default-gradle-init.gradle" \
-                        -Dfile.encoding=UTF-8 \
-                        "-Dorg.gradle.jvmargs=-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" \
-                        -p ${config.java.moduleName}
-    
-                    cp -f ${config.java.moduleName}/build.gradle-original ${config.java.moduleName}/build.gradle
-                """
-            }
-
-            if (config.android.qualityGateEnabled) {
-                steps.timeout(time: config.android.sonarqubeTimeoutMinutes, unit: 'MINUTES') {
-                    def qg = steps.waitForQualityGate()
-                    if (qg.status != 'OK') {
-                        steps.error "Quality gate failure: ${qg.status}"
-                    }
-                }
-            }
         }
     }
 
     @Override
     def build() {
-        if (this.customerBuild()) {
-            return
-        }
-
-        String newFileName = this.getFileName()
+        String newFileName = fileHelper.getFileName()
         steps.container('builder') {
             String updateDependenciesArgs = ""
             if (config.java.forceUpdateDependencies) {
@@ -217,7 +129,7 @@ class AndroidAppPipeline extends AppPipeline {
 
     @Override
     def archive() {
-        String newFileName = this.getFileName()
+        String newFileName = fileHelper.getFileName()
         steps.container('uploader') {
             String uploadUrl = "${config.fileServer.uploadUrl}${config.fileServer.uploadRootPath}${config.productName}/" +
                     Utils.getBranchName(steps) + "/android"
@@ -260,13 +172,7 @@ class AndroidAppPipeline extends AppPipeline {
                 fi
             """
 
-            Artifact artifact = new Artifact()
-            artifact.uploadToFileServer(steps, uploadUrl, "${config.srcRootPath}/ido-cluster/outputs")
+            fileHelper.upload(uploadUrl, "${config.srcRootPath}/ido-cluster/outputs")
         }
-    }
-
-    String getFileName() {
-        String branch = Utils.getBranchName(steps)
-        return "${config.productName}-${branch}-${config.version}"
     }
 }
