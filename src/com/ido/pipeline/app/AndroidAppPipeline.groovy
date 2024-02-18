@@ -146,6 +146,7 @@ class AndroidAppPipeline extends JdkPipeline {
                 echo "<meta http-equiv='Content-Type' content='text/html; charset=utf-8' />" >> ${newFileName}.html
                 
                 if [ "${config.android.buildDebug}" = "true" ]; then
+                    echo "debugDownloadUrl: ${debugDownloadUrl}"
                     qrencode --output qrcode.png "${debugDownloadUrl}"
                     if [ ! -f qrcode.png ]; then
                         echo QR code is not generated!
@@ -159,6 +160,7 @@ class AndroidAppPipeline extends JdkPipeline {
                 fi
                 
                 if [ "${config.android.buildRelease}" = "true" ]; then
+                    echo "releaseDownloadUrl: ${releaseDownloadUrl}"
                     qrencode --output qrcode.png "${releaseDownloadUrl}"
                     if [ ! -f qrcode.png ]; then
                         echo QR code is not generated!

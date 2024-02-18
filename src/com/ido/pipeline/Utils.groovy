@@ -4,6 +4,7 @@ import jenkins.model.*
 import java.util.Date.*
 import java.util.TimeZone.*
 
+
 /**
  * @author xinnj
  */
@@ -43,7 +44,7 @@ public class Utils {
 
     static String getGitCommitVersion(steps) {
         if (steps.isUnix()) {
-            steps.sh """
+            steps.sh """#!/bin/sh +x
                 git describe --always --long > _gitDesc
             """
         } else {

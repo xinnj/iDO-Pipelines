@@ -1,5 +1,7 @@
 package com.ido.pipeline.base
 
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurperClassic
 import jenkins.model.*
 import org.jenkinsci.plugins.workflow.steps.FlowInterruptedException
 import java.util.TimeZone.*
@@ -20,8 +22,8 @@ abstract class BasePipeline implements Pipeline, Serializable {
         this.steps = steps
     }
 
-    Map runPipeline(Map config) {
-        this.config = config
+    Map runPipeline(Map originConf) {
+        this.config = originConf
         def result = [:]
 
         if (config.stopSameJob) {
@@ -60,7 +62,24 @@ abstract class BasePipeline implements Pipeline, Serializable {
                     }
                     break
                 case "k8s":
-                    steps.node('Workspace') {}
+                    steps.node('Workspace') {
+                        String json = JsonOutput.toJson(config)
+
+                        Map packagesEnv = [:]
+                        String output = steps.sh(returnStdout: true, encoding: "UTF-8", script: """#!/bin/sh +x
+bash -c "export -p | awk '{print \\\$3'} | grep \\"^IDO_\\" | tr -d '\\"'"
+""")
+                        output.trim()
+                                .split(System.lineSeparator())
+                                .each { item ->
+                                    def object = item.split("=")
+                                    packagesEnv.put(object[0], object[1])
+                                }
+
+                        def jsonSlurperClassic = new JsonSlurperClassic()
+                        config = jsonSlurperClassic.parseText(SubstEnv(json, packagesEnv)) as Map
+                        // steps.echo config.toMapString()
+                    }
 
                     def podRetentionType = { Boolean k ->
                         if (k) {
@@ -134,6 +153,17 @@ abstract class BasePipeline implements Pipeline, Serializable {
         }
 
         result.put("imageTag", config.version)
+
+        return result
+    }
+
+    String SubstEnv(String str, Map env) {
+        String result = str
+
+        def matcher = str =~ /\$\{(IDO_.+?)\}/
+        matcher.each {
+            result = result.replace(it[0], env["${it[1]}"])
+        }
 
         return result
     }
@@ -388,7 +418,7 @@ abstract class BasePipeline implements Pipeline, Serializable {
 
     def configGit() {
         if (steps.isUnix()) {
-            steps.sh """
+            steps.sh """#!/bin/sh +x
                 git config --global core.abbrev 8
                 git config --global http.connecttimeout 120
                 git config --global core.longpaths true
@@ -402,7 +432,7 @@ abstract class BasePipeline implements Pipeline, Serializable {
         } else {
             steps.powershell """
                 \$ErrorActionPreference = 'Stop'
-                Set-PSDebug -Trace 1
+                Set-PSDebug -Trace 0
                 
                 git config --global core.abbrev 8
                 git config --global http.connecttimeout 120
@@ -445,7 +475,7 @@ abstract class BasePipeline implements Pipeline, Serializable {
             config.version = ver
         }
         steps.currentBuild.displayName = config.version
-        steps.sh """
+        steps.sh """#!/bin/sh +x
             mkdir -p "${config.srcRootPath}/ido-cluster"
             echo ${config.version} > "${config.srcRootPath}/ido-cluster/_version"
         """
