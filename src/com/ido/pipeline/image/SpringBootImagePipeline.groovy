@@ -86,7 +86,7 @@ class SpringBootImagePipeline extends JdkPipeline {
                     updateDependenciesArgs = "-U"
                 }
 
-                steps.sh """
+                steps.sh """${config.debugSh}
                         export MAVEN_OPTS="-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
                         cd "${config.srcRootPath}"
                         sh ./mvnw compile com.google.cloud.tools:jib-maven-plugin:3.4.0:build \
@@ -116,7 +116,7 @@ class SpringBootImagePipeline extends JdkPipeline {
                 if (config.java.forceUpdateDependencies) {
                     updateDependenciesArgs = "--refresh-dependencies"
                 }
-                steps.sh """
+                steps.sh """${config.debugSh}
                         cd "${config.srcRootPath}"
                         mv -f ${config.java.moduleName}/build.gradle ${config.java.moduleName}/build.gradle-original
                         cp -f ${config.java.moduleName}/build.gradle-com.google.cloud.tools.jib ${config.java.moduleName}/build.gradle

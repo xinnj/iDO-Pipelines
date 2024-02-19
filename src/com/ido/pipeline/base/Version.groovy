@@ -10,9 +10,13 @@ class Version {
                 String versionFull
                 steps.dir(config.versionRootPath) {
                     if (steps.isUnix()) {
-                        versionFull = steps.sh(returnStdout: true, script: "git describe --always --long")
+                        versionFull = steps.sh(returnStdout: true, script: """${config.debugSh}
+git describe --always --long
+""")
                     } else {
-                        versionFull = steps.powershell(returnStdout: true, script: "git describe --always --long")
+                        versionFull = steps.powershell(returnStdout: true, script: """${config.debugPowershell}
+git describe --always --long
+""")
                     }
                 }
                 steps.echo "versionFull: " +  versionFull

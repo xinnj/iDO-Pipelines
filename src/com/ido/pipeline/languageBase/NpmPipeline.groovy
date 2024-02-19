@@ -31,7 +31,7 @@ abstract class NpmPipeline extends BasePipeline {
         }
 
         steps.container('builder') {
-            steps.sh """
+            steps.sh """${config.debugSh}
                 cd "${config.srcRootPath}"
                 echo "npm version:"
                 npm -v
@@ -50,7 +50,7 @@ abstract class NpmPipeline extends BasePipeline {
         steps.container('builder') {
             switch (config.utTool) {
                 case "jest":
-                    steps.sh """
+                    steps.sh """${config.debugSh}
                         cd "${config.srcRootPath}"
                         npm pkg set jest.coverageReporters[]=text
                         npm pkg set jest.coverageReporters[]=cobertura
@@ -68,7 +68,7 @@ abstract class NpmPipeline extends BasePipeline {
                     }
 
                     */
-                    steps.sh """
+                    steps.sh """${config.debugSh}
                         cd "${config.srcRootPath}"
                         npm i -D @vitest/coverage-istanbul
                         npm install-test
@@ -95,7 +95,7 @@ abstract class NpmPipeline extends BasePipeline {
 
         steps.container('sonar-scanner') {
             steps.withSonarQubeEnv(config.context.sonarqubeServerName) {
-                steps.sh """
+                steps.sh """${config.debugSh}
                     cd "${config.srcRootPath}"
                     sonar-scanner -Dsonar.projectKey=${config.productName} -Dsonar.sourceEncoding=UTF-8
                 """

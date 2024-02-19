@@ -43,7 +43,9 @@ class AndroidAppPipeline extends JdkPipeline {
         }
         steps.container('builder') {
             List<String> sdkPackagesInstalled = steps.sh(returnStdout: true, encoding: "UTF-8",
-                    script: "\${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --list_installed | tail -n +4 | awk '{print \$1}'")
+                    script: """${config.debugSh}
+\${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --list_installed | tail -n +4 | awk '{print \$1}'
+""")
                     .trim()
                     .split(System.lineSeparator()) as List<String>
 
@@ -55,7 +57,7 @@ class AndroidAppPipeline extends JdkPipeline {
                 sdkPackages = sdkPackages + "\"$it\" "
             }
 
-            steps.sh """
+            steps.sh """${config.debugSh}
                 if [ ! -e \${ANDROID_HOME}/licenses-agreed ]; then
                     yes | \${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager ${proxy} --licenses
                     touch \${ANDROID_HOME}/licenses-agreed
@@ -76,7 +78,7 @@ class AndroidAppPipeline extends JdkPipeline {
                 updateDependenciesArgs = "--refresh-dependencies"
             }
 
-            steps.sh """
+            steps.sh """${config.debugSh}
                 cd "${config.srcRootPath}"
                 mkdir -p ido-cluster/outputs/files
                 rm -f ido-cluster/outputs/files/*
@@ -139,7 +141,7 @@ class AndroidAppPipeline extends JdkPipeline {
                     Utils.getBranchName(steps) + "/android/files/${newFileName}-release.apk"
 
 
-            steps.sh """
+            steps.sh """${config.debugSh}
                 cd "${config.srcRootPath}/ido-cluster/outputs"
                 touch ${newFileName}.html
                 echo "<html>" >> ${newFileName}.html

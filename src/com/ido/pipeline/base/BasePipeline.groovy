@@ -26,6 +26,16 @@ abstract class BasePipeline implements Pipeline, Serializable {
         this.config = originConf
         def result = [:]
 
+        if (config.debug) {
+            config.put("debugSh", "#!/bin/sh -x")
+            config.put("debugBash", "#!/bin/bash -x")
+            config.put("debugPowershell", "Set-PSDebug -Trace 1")
+        } else {
+            config.put("debugSh", "#!/bin/sh +x")
+            config.put("debugBash", "#!/bin/bash +x")
+            config.put("debugPowershell", "Set-PSDebug -Trace 0")
+        }
+
         if (config.stopSameJob) {
             // Stop all running build of the same job
             this.stopSameJob()
@@ -66,7 +76,7 @@ abstract class BasePipeline implements Pipeline, Serializable {
                         String json = JsonOutput.toJson(config)
 
                         Map packagesEnv = [:]
-                        String output = steps.sh(returnStdout: true, encoding: "UTF-8", script: """#!/bin/sh +x
+                        String output = steps.sh(returnStdout: true, encoding: "UTF-8", script: """${config.debugSh}
 bash -c "export -p | awk '{print \\\$3'} | grep \\"^IDO_\\" | tr -d '\\"'"
 """)
                         output.trim()
@@ -418,7 +428,7 @@ bash -c "export -p | awk '{print \\\$3'} | grep \\"^IDO_\\" | tr -d '\\"'"
 
     def configGit() {
         if (steps.isUnix()) {
-            steps.sh """#!/bin/sh +x
+            steps.sh """${config.debugSh}
                 git config --global core.abbrev 8
                 git config --global http.connecttimeout 120
                 git config --global core.longpaths true
@@ -430,9 +440,8 @@ bash -c "export -p | awk '{print \\\$3'} | grep \\"^IDO_\\" | tr -d '\\"'"
                 rm -fr .git/rebase-merge > /dev/null 2>&1 || :
             """
         } else {
-            steps.powershell """
+            steps.powershell """${config.debugPowershell}
                 \$ErrorActionPreference = 'Stop'
-                Set-PSDebug -Trace 0
                 
                 git config --global core.abbrev 8
                 git config --global http.connecttimeout 120
@@ -475,7 +484,7 @@ bash -c "export -p | awk '{print \\\$3'} | grep \\"^IDO_\\" | tr -d '\\"'"
             config.version = ver
         }
         steps.currentBuild.displayName = config.version
-        steps.sh """#!/bin/sh +x
+        steps.sh """${config.debugSh}
             mkdir -p "${config.srcRootPath}/ido-cluster"
             echo ${config.version} > "${config.srcRootPath}/ido-cluster/_version"
         """

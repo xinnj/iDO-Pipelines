@@ -30,7 +30,7 @@ class VueImagePipeline extends NpmPipeline {
     @Override
     def build() {
         steps.container('builder') {
-            steps.sh """
+            steps.sh """${config.debugSh}
                 cd "${config.srcRootPath}"
         
                 npm install

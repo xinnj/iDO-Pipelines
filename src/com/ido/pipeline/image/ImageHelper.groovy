@@ -63,7 +63,7 @@ public class ImageHelper {
         }
 
         String pushImageFullName = "${config.registryPush.url}/${config.productName}:${config.version}"
-        steps.sh """
+        steps.sh """${config.debugSh}
             cd "${config.srcRootPath}"
             alias buildah="buildah --root /var/buildah-cache --runroot /tmp/containers"
             pushImageFullName=${config.registryPush.url}/${config.productName}:${config.version}
@@ -98,7 +98,7 @@ public class ImageHelper {
             steps.writeYaml(file: "${config.helm.chartPath}/values.yaml", data: values, charset: "UTF-8", overwrite: true)
 
             steps.container('helm') {
-                steps.sh """
+                steps.sh """${config.debugSh}
                 helm package --version ${config.helm.chartVersion} --app-version ${config.version} ${config.helm.chartPath}
             """
             }
@@ -113,7 +113,7 @@ public class ImageHelper {
 
         steps.withCredentials([steps.usernameColonPassword(credentialsId: config.helm.uploadCredentialId, variable: 'USERPASS')]) {
             steps.container('helm') {
-                steps.sh """
+                steps.sh """${config.debugSh}
                     curl -u "\${USERPASS}" "${config.helm.repo}" -v --upload-file "${chartName}-${config.helm.chartVersion}.tgz"
                 """
             }

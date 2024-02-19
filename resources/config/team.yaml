@@ -13,7 +13,7 @@ parallelUtAnalysis: false
 parallelBuildArchive: false
 
 # Log more information
-debug: true
+debug: false
 
 # Source code root path. A relative path to workspace root folder
 srcRootPath: "."

@@ -26,12 +26,12 @@ class GenericPipeline extends BasePipeline {
                            "CI_VERSION=$config.version",
                            "CI_BRANCH=" + Utils.getBranchName(steps)]) {
                 if (steps.isUnix()) {
-                    steps.sh """
+                    steps.sh """${config.debugSh}
                         cd "${config.srcRootPath}"
                         sh build.sh
                     """
                 } else {
-                    steps.powershell """
+                    steps.powershell """${config.debugPowershell}
                         cd "${config.srcRootPath}"
                         build.ps1
                     """

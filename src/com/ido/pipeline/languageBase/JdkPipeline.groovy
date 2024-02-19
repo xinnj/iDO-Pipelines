@@ -33,7 +33,7 @@ abstract class JdkPipeline extends BasePipeline {
                 if (!steps.fileExists("${config.srcRootPath}/mvnw")) {
                     String wrapperFile = steps.libraryResource(resource: 'builder/mvnw.zip', encoding: 'Base64')
                     steps.writeFile(file: "${config.srcRootPath}/mvnw.zip", text: wrapperFile, encoding: 'Base64')
-                    steps.unzip(zipFile: "${config.srcRootPath}/mvnw.zip", dir: "${config.srcRootPath}")
+                    steps.unzip(quiet: true, zipFile: "${config.srcRootPath}/mvnw.zip", dir: "${config.srcRootPath}")
                     String wrapperProperties = steps.readFile(file: "${config.srcRootPath}/.mvn/wrapper/maven-wrapper.properties", encoding: "UTF-8")
                     wrapperProperties = wrapperProperties
                             .replaceAll('<maven-download-url>', config._system.java.mavenDownloadUrl)
@@ -47,7 +47,7 @@ abstract class JdkPipeline extends BasePipeline {
                 }
 
                 steps.container('builder') {
-                    steps.sh """
+                    steps.sh """${config.debugSh}
                         cd "${config.srcRootPath}"
                         rm -f ./mvnw.zip
                         sh ./mvnw -v
@@ -58,7 +58,7 @@ abstract class JdkPipeline extends BasePipeline {
                 if (!steps.fileExists("${config.srcRootPath}/gradlew")) {
                     String wrapperFile = steps.libraryResource(resource: 'builder/gradlew.zip', encoding: 'Base64')
                     steps.writeFile(file: "${config.srcRootPath}/gradlew.zip", text: wrapperFile, encoding: 'Base64')
-                    steps.unzip(zipFile: "${config.srcRootPath}/gradlew.zip", dir: "${config.srcRootPath}")
+                    steps.unzip(quiet: true, zipFile: "${config.srcRootPath}/gradlew.zip", dir: "${config.srcRootPath}")
                     String wrapperProperties = steps.readFile(file: "${config.srcRootPath}/gradle/wrapper/gradle-wrapper.properties", encoding: "UTF-8")
                     wrapperProperties = wrapperProperties
                             .replaceAll('<gradle-download-url>', config._system.java.gradleDownloadUrl)
@@ -72,7 +72,7 @@ abstract class JdkPipeline extends BasePipeline {
                 }
 
                 steps.container('builder') {
-                    steps.sh """
+                    steps.sh """${config.debugSh}
                         cd "${config.srcRootPath}"
                         rm -f ./gradlew.zip
                         sh ./gradlew -v
@@ -98,7 +98,7 @@ abstract class JdkPipeline extends BasePipeline {
                         updateDependenciesArgs = "-U"
                     }
 
-                    steps.sh """
+                    steps.sh """${config.debugSh}
                         export MAVEN_OPTS="-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
                         cd "${config.srcRootPath}"
                         sh ./mvnw org.jacoco:jacoco-maven-plugin:0.8.11:prepare-agent verify org.jacoco:jacoco-maven-plugin:0.8.11:report \
@@ -117,7 +117,7 @@ abstract class JdkPipeline extends BasePipeline {
                         updateDependenciesArgs = "--refresh-dependencies"
                     }
 
-                    steps.sh """
+                    steps.sh """${config.debugSh}
                         cd "${config.srcRootPath}"
                         cat <<EOF >> ${config.java.moduleName}/build.gradle-jacoco
 jacocoTestReport {
@@ -168,7 +168,7 @@ EOF
                     }
 
                     steps.withSonarQubeEnv(config.context.sonarqubeServerName) {
-                        steps.sh """
+                        steps.sh """${config.debugSh}
                             export MAVEN_OPTS="-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
                             cd "${config.srcRootPath}"
                             sh ./mvnw compile org.sonarsource.scanner.maven:sonar-maven-plugin:3.10.0.2594:sonar \
@@ -190,7 +190,7 @@ EOF
                     }
 
                     steps.withSonarQubeEnv(config.context.sonarqubeServerName) {
-                        steps.sh """
+                        steps.sh """${config.debugSh}
                             cd "${config.srcRootPath}"
                             mv -f ${config.java.moduleName}/build.gradle ${config.java.moduleName}/build.gradle-original
                             cp -f ${config.java.moduleName}/build.gradle-org.sonarqube ${config.java.moduleName}/build.gradle

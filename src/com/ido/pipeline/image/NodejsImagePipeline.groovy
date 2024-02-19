@@ -33,7 +33,7 @@ class NodejsImagePipeline extends NpmPipeline {
     @Override
     def build() {
         steps.container('builder') {
-            steps.sh """
+            steps.sh """${config.debugSh}
                 export NODE_ENV=production
                 cd "${config.srcRootPath}"
 
