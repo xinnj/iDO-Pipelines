@@ -13,7 +13,7 @@ parallelUtAnalysis: false
 parallelBuildArchive: false
 
 # Log more information
-debug: false
+debug: true
 
 # Source code root path. A relative path to workspace root folder
 srcRootPath: "."
@@ -197,22 +197,36 @@ android:
   qualityGateEnabled: false
   sonarqubeTimeoutMinutes: 10
 
-## iOS app config
-ios:
+## Xcode config
+xcode:
   # Use dedicated remote machine as the builder or not
   useRemoteBuilder: false
   # Credential ID of login account of builder machine
   loginCredentialId: "macos-builder-login"
   # The vm file if using internal vm as the builder
   macosImage: "ventura-v1.img"
-  xcodePath: "/Applications/Xcode.app"
-  # Credential ID of distribution certificate to be used
+  path: "/Applications/Xcode.app"
+  # Apple connect API key, used by automatic code sign
+  authenticationKey:
+    IssuerID: "69a6de7e-1093-47e3-e053-5b8c7c11a4d1"
+    ID: "WP8BYJ39Z2"
+    # Secret file credential
+    keyFileCredentialId: "apple-auth-key"
+  useCocoapods: false
+
+## iOS app config
+ios:
+  # Credential IDs of code sign certificate if code sign style is Manual
   # The certificate file (p12 format) need be imported into Jenkins as certificate credential
-  distributionCertCredentialId: "apple_distribution"
+  # certificateCredentialIds:
+  #   - "apple_development"
+  #   - "apple_distribution"
+  certificateCredentialIds: []
+  # certCredentialIds: "apple_distribution"
   # Profiles to be imported if code sign style is Manual
-  # profilesImport:
+  # profiles:
   #   - "<mobileprovision file, relative path to srcRootPath>"
-  profilesImport: []
+  profiles: []
   # Workspace or project to be built, relative path to srcRootPath
   buildFile: ""
   # Export archive types
@@ -230,13 +244,6 @@ ios:
   #     xcconfig: "<path to xcconfig file, relative path to srcRootPath>"
   #     exportOptionsPlist: "<path to exportOptionsPlist file, relative path to srcRootPath>"
   buildOptions: []
-  # Apple connect API key, used by automatic code sign
-  authenticationKey:
-    IssuerID: "69a6de7e-1093-47e3-e053-5b8c7c11a4d1"
-    ID: "WP8BYJ39Z2"
-    # Secret file credential
-    keyFileCredentialId: "apple-auth-key"
-  useCocoapods: false
   downloadDisplayImages:
     standard: "${IDO_FILE_URL}/ios-install-images/Install.png"
     fullSize: "${IDO_FILE_URL}/ios-install-images/Install-large.png"

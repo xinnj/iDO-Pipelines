@@ -1,56 +1,23 @@
 package com.ido.pipeline.app
 
 import com.ido.pipeline.Utils
-import com.ido.pipeline.base.Artifact
+import com.ido.pipeline.languageBase.XcodePipeline
 
 /**
  * @author xinnj
  */
-class IosAppPipeline extends AppPipeline {
+class IosAppPipeline extends XcodePipeline {
+    FileHelper fileHelper
+
     IosAppPipeline(Object steps) {
         super(steps)
     }
 
     @Override
-    Map runPipeline(Map config) {
-        config.nodeType = "k8s"
-        config.parallelUtAnalysis = true
-
-        steps.withCredentials([steps.usernamePassword(credentialsId: config.ios.loginCredentialId, passwordVariable: 'password', usernameVariable: 'username')]) {
-            if (config.ios.useRemoteBuilder) {
-                steps.lock(label: "macos-builder", quantity: 1, resourceSelectStrategy: "random", variable: "builder") {
-                    String remoteHost = steps.env.builder0_host
-                    String remotePort = steps.env.builder0_port
-                    String username = steps.env.username
-                    String password = steps.env.password
-                    steps.echo "Locked remote builder: " + steps.env.builder
-
-                    config.podTemplate = steps.libraryResource(resource: "pod-template/macos-remote-builder.yaml", encoding: 'UTF-8')
-                            .replaceAll('<builderImage>', config._system.macos.remoteBuilderImage)
-                            .replaceAll('<REMOTE_HOST>', remoteHost)
-                            .replaceAll('<REMOTE_PORT>', remotePort)
-                            .replaceAll('<USERNAME>', username)
-                            .replaceAll('<PASSWORD>', password)
-
-                    return super.runPipeline(config)
-                }
-            } else {
-                String username = steps.env.username
-                String password = steps.env.password
-                config.podTemplate = steps.libraryResource(resource: "pod-template/macos-builder.yaml", encoding: 'UTF-8')
-                        .replaceAll('<builderImage>', config._system.macos.builderImage)
-                        .replaceAll('<macosImage>', config.ios.macosImage)
-                        .replaceAll('<USERNAME>', username)
-                        .replaceAll('<PASSWORD>', password)
-
-                return super.runPipeline(config)
-            }
-        }
-    }
-
-    @Override
     def prepare() {
         super.prepare()
+
+        fileHelper = new FileHelper(steps, config)
 
         if (!config.ios.buildFile) {
             steps.error "buildFile is empty!"
@@ -60,45 +27,8 @@ class IosAppPipeline extends AppPipeline {
             steps.error "buildOptions is empty!"
         }
 
-        if (config.nodeType == "k8s") {
-            String smbServerAddress
-            steps.container('builder') {
-                if (config.ios.useRemoteBuilder) {
-                    smbServerAddress = "//${config._system.smbServer.user}:${config._system.smbServer.password}@${config._system.smbServer.external}/${config._system.smbServer.shareName}"
-                    steps.sh """
-                        currentHome=\$HOME
-                        sudo -- sh -c "cat \${currentHome}/hosts >> /etc/hosts"
-                    """
-                } else {
-                    smbServerAddress = "//${config._system.smbServer.user}:${config._system.smbServer.password}@${config._system.smbServer.internal}/${config._system.smbServer.shareName}"
-                    steps.sh """
-                        if [[ \$(grep -E -c '(svm|vmx)' /proc/cpuinfo) -le 0 ]]; then
-                            echo KVM not possible on this host
-                            exit 1
-                        fi
-                        
-                        sudo -- sh -c "echo '127.0.0.1 remote-host' >> /etc/hosts"
-                    """
-                }
-
-                steps.sh """
-                    ssh -q remote-host /bin/sh <<EOF
-                        set -euao pipefail
-
-                        if [[ ! -d "~/agent/workspace" ]]; then
-                            mkdir -p ~/agent
-                            mount -t smbfs ${smbServerAddress} ~/agent
-                        fi
-
-                        mkdir -p \${SPM_CACHE_DIR}
-                        mkdir -p \${CP_HOME_DIR}
-                        
-                        sudo xcode-select -s "${config.ios.xcodePath}/Contents/Developer"
-EOF
-                """
-            }
-
-        }
+        config.put("context", config.ios)
+        config.parallelUtAnalysis = true
     }
 
     @Override
@@ -106,37 +36,26 @@ EOF
         super.scm()
 
         steps.container('builder') {
-            steps.withCredentials([steps.usernamePassword(credentialsId: config.ios.loginCredentialId, passwordVariable: 'password', usernameVariable: 'username'),
-                                   steps.certificate(credentialsId: config.ios.distributionCertCredentialId, keystoreVariable: 'keyStore', passwordVariable: 'keyPass')]) {
-                String useCocoapods = (config.ios.useCocoapods as Boolean).toString().toLowerCase()
-                steps.sh """
-                    ssh remote-host /bin/sh <<EOF
-                        set -euao pipefail
-                        cd "${steps.WORKSPACE}/${config.srcRootPath}"
-                        security unlock-keychain -p \${password}
-                        security import "\${keyStore}" -A -f pkcs12 -P \${keyPass}
-                        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k \${password} login.keychain > /dev/null
-                        
-                        set -x
-                        export LANG=en_US.UTF-8
-                        if [ "${useCocoapods}" = "true" ]; then
-                            export CP_HOME_DIR=\${CP_HOME_DIR}
-                            if [ ! -d "\${CP_HOME_DIR}/repos/trunk" ]; then
-                                /usr/local/bin/pod --version
-                                mkdir -p "\${CP_HOME_DIR}/repos"
-                                cd "\${CP_HOME_DIR}/repos"
-                                git clone ${config._system.macos.cocoapodsRepoUrl} trunk
-                                /usr/local/bin/pod setup
-                            fi
-                            /usr/local/bin/pod install
-                        fi
+            config.ios.certificateCredentialIds.each {
+                steps.withCredentials([steps.usernamePassword(credentialsId: config.xcode.loginCredentialId, passwordVariable: 'password', usernameVariable: 'username'),
+                                       steps.certificate(credentialsId: it, keystoreVariable: 'keyStore', passwordVariable: 'keyPass')]) {
+                    steps.sh """${config.debugSh}
+                        ssh remote-host /bin/sh <<EOF
+                            ${config.debugSh}
+                            set -euaox pipefail
+                            cd "${steps.WORKSPACE}/${config.srcRootPath}"
+                            security unlock-keychain -p \${password}
+                            security import "\${keyStore}" -A -f pkcs12 -P \${keyPass}
+                            security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k \${password} login.keychain > /dev/null
 EOF
-                """
+                    """
+                }
             }
 
-            config.ios.profilesImport.each {
-                steps.sh """
+            config.ios.profiles.each {
+                steps.sh """${config.debugSh}
                     ssh remote-host /bin/sh <<EOF
+                        ${config.debugSh}
                         set -euao pipefail
                         cd "${steps.WORKSPACE}/${config.srcRootPath}"
                         uuid=`grep UUID -A1 -a ${it} | grep -io "[-A-F0-9]\\{36\\}"`
@@ -148,185 +67,8 @@ EOF
     }
 
     @Override
-    def versioning() {
-        super.versioning()
-
-        String branch = Utils.getBranchName(steps)
-        steps.container('builder') {
-            steps.sh """
-                ssh remote-host /bin/sh <<EOF
-                    rm -f ./~ido-cluster-env.sh
-                    touch ./~ido-cluster-env.sh
-                    echo "export CI_PRODUCTNAME=${config.productName}" >> ./~ido-cluster-env.sh
-                    echo "export CI_VERSION=${config.version}" >> ./~ido-cluster-env.sh
-                    echo "export CI_BRANCH=${branch}" >> ./~ido-cluster-env.sh
-EOF
-            """
-        }
-
-    }
-
-    @Override
-    def afterScm() {
-        steps.container('builder') {
-            steps.withCredentials([steps.usernamePassword(credentialsId: config.ios.loginCredentialId, passwordVariable: 'password', usernameVariable: 'username')]) {
-                steps.sh """
-                    ssh remote-host /bin/sh <<EOF
-                        set -euao pipefail
-                        security unlock-keychain -p \${password}
-                        security set-keychain-settings -lut 21600 login.keychain
-                        set -x
-    
-                        cd "${steps.WORKSPACE}/${config.srcRootPath}"
-                        sh "${config.customerBuildScript.afterScm}"
-EOF
-                """
-
-                config.version = steps.readFile(file: "${config.srcRootPath}/ido-cluster/_version", encoding: "UTF-8").trim()
-
-                steps.sh """
-                    ssh remote-host /bin/sh <<EOF
-                        sed -i -e "s/export CI_VERSION=.*/export CI_VERSION=${config.version}/" ./~ido-cluster-env.sh
-EOF
-                    """
-            }
-        }
-    }
-
-    @Override
-    def ut() {
-        if (!config.ios.ut.enabled) {
-            return
-        }
-
-        if (!config.ios.ut.scheme) {
-            steps.error "ut.scheme is empty!"
-        }
-
-        steps.container('builder') {
-            String cmdBuildFile = ""
-            if (config.ios.buildFile.endsWith('.xcworkspace')) {
-                cmdBuildFile = "-workspace ${config.ios.buildFile}"
-            } else if (config.ios.buildFile.endsWith('.xcodeproj')) {
-                cmdBuildFile = "-project ${config.ios.buildFile}"
-            } else {
-                steps.error "Can't recognize type of: ${config.ios.buildFile}"
-            }
-
-            String cmdAuth = ""
-            if (config.ios.ut.signStyle.toLowerCase() == 'automatic') {
-                cmdAuth = "-authenticationKeyPath \${authKeyPath} \
-                           -authenticationKeyID ${config.ios.authenticationKey.ID} \
-                           -authenticationKeyIssuerID ${config.ios.authenticationKey.IssuerID} \
-                           -allowProvisioningUpdates"
-            }
-
-            String cmdXcconfig = ""
-            if (config.ios.ut.xcconfig) {
-                cmdXcconfig = "-xcconfig ${config.ios.ut.xcconfig}"
-            }
-
-            steps.withCredentials([steps.usernamePassword(credentialsId: config.ios.loginCredentialId, passwordVariable: 'password', usernameVariable: 'username'),
-                                   steps.file(credentialsId: config.ios.authenticationKey.keyFileCredentialId,
-                                           variable: 'authKeyPath')]) {
-                steps.sh """
-                    ssh remote-host /bin/sh <<EOF
-                        set -euao pipefail
-                        security unlock-keychain -p \${password}
-                        security set-keychain-settings -lut 21600 login.keychain
-                        set -x
-    
-                        cd "${steps.WORKSPACE}/${config.srcRootPath}"
-            
-                        xcodebuild test \
-                          -packageCachePath \${SPM_CACHE_DIR} \
-                          ${cmdBuildFile} \
-                          -scheme ${config.ios.ut.scheme} \
-                          ${cmdXcconfig} \
-                          ${cmdAuth} -quiet
-EOF
-                """
-            }
-        }
-    }
-
-    @Override
-    def codeAnalysis() {
-        if (!config.ios.codeAnalysisEnabled) {
-            return
-        }
-
-        steps.container('sonar-scanner') {
-            steps.withSonarQubeEnv(config.ios.sonarqubeServerName) {
-                steps.sh """
-                    cd "${config.srcRootPath}"
-                    sonar-scanner -Dsonar.projectKey=${config.productName} -Dsonar.sourceEncoding=UTF-8
-                """
-            }
-        }
-
-        if (config.ios.qualityGateEnabled) {
-            steps.timeout(time: config.ios.sonarqubeTimeoutMinutes, unit: 'MINUTES') {
-                def qg = steps.waitForQualityGate()
-                if (qg.status != 'OK') {
-                    steps.error "Quality gate failure: ${qg.status}"
-                }
-            }
-        }
-    }
-
-    @Override
-    def beforeBuild() {
-        steps.container('builder') {
-            String branch = Utils.getBranchName(steps)
-            steps.withCredentials([steps.usernamePassword(credentialsId: config.ios.loginCredentialId, passwordVariable: 'password', usernameVariable: 'username')]) {
-                steps.sh """
-                    ssh remote-host /bin/sh <<EOF
-                        set -euao pipefail
-                        . ./~ido-cluster-env.sh
-                        security unlock-keychain -p \${password}
-                        security set-keychain-settings -lut 21600 login.keychain
-                        set -x
-    
-                        cd "${steps.WORKSPACE}/${config.srcRootPath}"
-                        sh "./${config.customerBuildScript.beforeBuild}"
-EOF
-                """
-            }
-        }
-    }
-
-    @Override
-    Boolean customerBuild() {
-        steps.container('builder') {
-            if (steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${config.customerBuildScript.build}")) {
-                steps.echo "Execute customer build script: ${config.customerBuildScript.build}"
-                String branch = Utils.getBranchName(steps)
-                steps.withCredentials([steps.usernamePassword(credentialsId: config.ios.loginCredentialId, passwordVariable: 'password', usernameVariable: 'username')]) {
-                    steps.sh """
-                        ssh remote-host /bin/sh <<EOF
-                            set -euao pipefail
-                            . ./~ido-cluster-env.sh
-                            security unlock-keychain -p \${password}
-                            security set-keychain-settings -lut 21600 login.keychain
-                            set -x
-        
-                            cd "${steps.WORKSPACE}/${config.srcRootPath}"
-                            sh "./${config.customerBuildScript.build}"
-EOF
-                    """
-                }
-            }
-        }
-    }
-
-    @Override
     def build() {
-        if (this.customerBuild()) {
-            return
-        }
-
-        String newFileName = this.getFileName()
+        String newFileName = fileHelper.getFileName()
         steps.container('builder') {
             String cmdBuildFile = ""
             if (config.ios.buildFile.endsWith('.xcworkspace')) {
@@ -343,8 +85,8 @@ EOF
                 String cmdAuth = ""
                 if (it.signStyle.toLowerCase() == 'automatic') {
                     cmdAuth = "-authenticationKeyPath \${authKeyPath} \
-                               -authenticationKeyID ${config.ios.authenticationKey.ID} \
-                               -authenticationKeyIssuerID ${config.ios.authenticationKey.IssuerID} \
+                               -authenticationKeyID ${config.xcode.authenticationKey.ID} \
+                               -authenticationKeyIssuerID ${config.xcode.authenticationKey.IssuerID} \
                                -allowProvisioningUpdates"
                 }
 
@@ -359,15 +101,15 @@ EOF
 
                 // Archive if not executed
                 if (!buildTypes.containsKey(buildType)) {
-                    steps.withCredentials([steps.usernamePassword(credentialsId: config.ios.loginCredentialId, passwordVariable: 'password', usernameVariable: 'username'),
-                                           steps.file(credentialsId: config.ios.authenticationKey.keyFileCredentialId,
+                    steps.withCredentials([steps.usernamePassword(credentialsId: config.xcode.loginCredentialId, passwordVariable: 'password', usernameVariable: 'username'),
+                                           steps.file(credentialsId: config.xcode.authenticationKey.keyFileCredentialId,
                                                    variable: 'authKeyPath')]) {
-                        steps.sh """
+                        steps.sh """${config.debugSh}
                             ssh remote-host /bin/sh <<EOF
+                                ${config.debugSh}
                                 set -euao pipefail
                                 security unlock-keychain -p \${password}
                                 security set-keychain-settings -lut 21600 login.keychain
-                                set -x
     
                                 cd "${steps.WORKSPACE}/${config.srcRootPath}"
     
@@ -390,15 +132,15 @@ EOF
                 }
 
                 // Export ipa
-                steps.withCredentials([steps.usernamePassword(credentialsId: config.ios.loginCredentialId, passwordVariable: 'password', usernameVariable: 'username'),
-                                       steps.file(credentialsId: config.ios.authenticationKey.keyFileCredentialId,
+                steps.withCredentials([steps.usernamePassword(credentialsId: config.xcode.loginCredentialId, passwordVariable: 'password', usernameVariable: 'username'),
+                                       steps.file(credentialsId: config.xcode.authenticationKey.keyFileCredentialId,
                                                variable: 'authKeyPath')]) {
-                    steps.sh """
+                    steps.sh """${config.debugSh}
                             ssh remote-host /bin/sh <<EOF
+                                ${config.debugSh}
                                 set -euao pipefail
                                 security unlock-keychain -p \${password}
                                 security set-keychain-settings -lut 21600 login.keychain
-                                set -x
     
                                 cd "${steps.WORKSPACE}/${config.srcRootPath}"
             
@@ -426,34 +168,13 @@ EOF
     }
 
     @Override
-    def afterBuild() {
-        steps.container('builder') {
-            String branch = Utils.getBranchName(steps)
-            steps.withCredentials([steps.usernamePassword(credentialsId: config.ios.loginCredentialId, passwordVariable: 'password', usernameVariable: 'username')]) {
-                steps.sh """
-                    ssh remote-host /bin/sh <<EOF
-                        set -euao pipefail
-                        . ./~ido-cluster-env.sh
-                        security unlock-keychain -p \${password}
-                        security set-keychain-settings -lut 21600 login.keychain
-                        set -x
-    
-                        cd "${steps.WORKSPACE}/${config.srcRootPath}"
-                        sh "./${config.customerBuildScript.afterBuild}"
-EOF
-                """
-            }
-        }
-    }
-
-    @Override
     def archive() {
-        String newFileName = this.getFileName()
+        String newFileName = fileHelper.getFileName()
         steps.container('uploader') {
             String uploadUrl = "${config.fileServer.uploadUrl}${config.fileServer.uploadRootPath}${config.productName}/" +
                     Utils.getBranchName(steps) + "/ios"
 
-            steps.sh """
+            steps.sh """${config.debugSh}
                 cd "${config.srcRootPath}/ido-cluster/outputs"
                 touch ${newFileName}.html
                 echo "<html>" >> ${newFileName}.html
@@ -470,7 +191,7 @@ EOF
                         "url=${config.fileServer.downloadUrl}/${config.fileServer.uploadRootPath}${config.productName}/" +
                         Utils.getBranchName(steps) + "/ios/files/${newFileName}-manifest-${it.name}.plist"
 
-                steps.sh """
+                steps.sh """${config.debugSh}
                     cd "${config.srcRootPath}"
                     software_package=${downloadUrl}
                     display_image=${config.ios.downloadDisplayImages.standard}
@@ -490,6 +211,7 @@ EOF
 
                     cd "${config.srcRootPath}/ido-cluster/outputs"
 
+                    echo "plistUrl: ${plistUrl}"
                     qrencode --output qrcode.png "${plistUrl}"
                     if [ ! -f qrcode.png ]; then
                         echo QR code is not generated!
@@ -504,13 +226,7 @@ EOF
                 """
             }
 
-            Artifact artifact = new Artifact()
-            artifact.uploadToFileServer(steps, uploadUrl, "${config.srcRootPath}/ido-cluster/outputs")
+            fileHelper.upload(uploadUrl, "${config.srcRootPath}/ido-cluster/outputs")
         }
-    }
-
-    String getFileName() {
-        String branch = Utils.getBranchName(steps)
-        return "${config.productName}-${branch}-${config.version}" as String
     }
 }

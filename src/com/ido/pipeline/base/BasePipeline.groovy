@@ -27,12 +27,10 @@ abstract class BasePipeline implements Pipeline, Serializable {
         def result = [:]
 
         if (config.debug) {
-            config.put("debugSh", "#!/bin/sh -x")
-            config.put("debugBash", "#!/bin/bash -x")
+            config.put("debugSh", "set -x")
             config.put("debugPowershell", "Set-PSDebug -Trace 1")
         } else {
-            config.put("debugSh", "#!/bin/sh +x")
-            config.put("debugBash", "#!/bin/bash +x")
+            config.put("debugSh", "set +x")
             config.put("debugPowershell", "Set-PSDebug -Trace 0")
         }
 

@@ -74,4 +74,4 @@ spec:
               - key: vm-agent
                 operator: NotIn
                 values:
-                  - 'True'
+                  - "rue"
