@@ -1,15 +1,15 @@
-package com.ido.pipeline.image
+package com.ido.pipeline.archiver
 
 import com.ido.pipeline.Utils
 
 /**
  * @author xinnj
  */
-public class ImageHelper {
+public class ImageArchiver {
     def steps
     Map config
 
-    ImageHelper(Object steps, Map config) {
+    ImageArchiver(Object steps, Map config) {
         this.steps = steps
         this.config = config
     }

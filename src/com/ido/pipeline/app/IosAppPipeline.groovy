@@ -1,13 +1,14 @@
 package com.ido.pipeline.app
 
 import com.ido.pipeline.Utils
+import com.ido.pipeline.archiver.FileArchiver
 import com.ido.pipeline.languageBase.XcodePipeline
 
 /**
  * @author xinnj
  */
 class IosAppPipeline extends XcodePipeline {
-    FileHelper fileHelper
+    FileArchiver fileArchiver
 
     IosAppPipeline(Object steps) {
         super(steps)
@@ -17,7 +18,7 @@ class IosAppPipeline extends XcodePipeline {
     def prepare() {
         super.prepare()
 
-        fileHelper = new FileHelper(steps, config)
+        fileArchiver = new FileArchiver(steps, config)
 
         if (!config.ios.buildFile) {
             steps.error "buildFile is empty!"
@@ -42,7 +43,7 @@ class IosAppPipeline extends XcodePipeline {
                     steps.sh """${config.debugSh}
                         ssh remote-host /bin/sh <<EOF
                             ${config.debugSh}
-                            set -euaox pipefail
+                            set -euao pipefail
                             cd "${steps.WORKSPACE}/${config.srcRootPath}"
                             security unlock-keychain -p \${password}
                             security import "\${keyStore}" -A -f pkcs12 -P \${keyPass}
@@ -68,7 +69,7 @@ EOF
 
     @Override
     def build() {
-        String newFileName = fileHelper.getFileName()
+        String newFileName = fileArchiver.getFileName()
         steps.container('builder') {
             String cmdBuildFile = ""
             if (config.ios.buildFile.endsWith('.xcworkspace')) {
@@ -169,7 +170,7 @@ EOF
 
     @Override
     def archive() {
-        String newFileName = fileHelper.getFileName()
+        String newFileName = fileArchiver.getFileName()
         steps.container('uploader') {
             String uploadUrl = "${config.fileServer.uploadUrl}${config.fileServer.uploadRootPath}${config.productName}/" +
                     Utils.getBranchName(steps) + "/ios"
@@ -226,7 +227,7 @@ EOF
                 """
             }
 
-            fileHelper.upload(uploadUrl, "${config.srcRootPath}/ido-cluster/outputs")
+            fileArchiver.upload(uploadUrl, "${config.srcRootPath}/ido-cluster/outputs")
         }
     }
 }

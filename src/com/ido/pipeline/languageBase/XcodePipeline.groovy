@@ -73,7 +73,7 @@ abstract class XcodePipeline extends BasePipeline {
                     ${config.debugSh}
                     set -euao pipefail
 
-                    if [[ ! -d "~/agent/workspace" ]]; then
+                    if [[ ! -d ~/agent/workspace ]]; then
                         mkdir -p ~/agent
                         mount -t smbfs ${smbServerAddress} ~/agent
                     fi

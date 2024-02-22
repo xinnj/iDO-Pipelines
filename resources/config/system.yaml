@@ -1,5 +1,5 @@
 # Use mirror to pull builder images
-imagePullMirror: true
+imagePullMirror: false
 imageMirrors:
   "cr.l5d.io": "l5d.m.daocloud.io"
   "docker.elastic.co": "elastic.m.daocloud.io"
@@ -50,13 +50,13 @@ smbServer:
 
 macos:
   builderImage: "nexus-docker-5000:5000/docker-osx-slim:1.0.0"
-  remoteBuilderImage: "docker.io/xinnj/ssh-client:1.0.0"
+  remoteBuilderImage: "docker.io/xinnj/ssh-client"
   # CocoaPods repo url, e.g.: https://github.com/CocoaPods/Specs.git
   cocoapodsRepoUrl: "https://mirrors.tuna.tsinghua.edu.cn/git/CocoaPods/Specs.git"
 
 win:
   builderImage: "nexus-docker-5000:5000/docker-win-vm:1.0.0"
-  remoteBuilderImage: "docker.io/xinnj/ssh-client:1.0.0"
+  remoteBuilderImage: "docker.io/xinnj/ssh-client"
 
 java:
   mavenDownloadUrl: "https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/<maven-version>"

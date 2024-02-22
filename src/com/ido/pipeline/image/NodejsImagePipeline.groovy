@@ -1,12 +1,13 @@
 package com.ido.pipeline.image
 
+import com.ido.pipeline.archiver.ImageArchiver
 import com.ido.pipeline.languageBase.NpmPipeline
 
 /**
  * @author xinnj
  */
 class NodejsImagePipeline extends NpmPipeline {
-    ImageHelper imageHelper
+    ImageArchiver imageArchiver
 
     NodejsImagePipeline(Object steps) {
         super(steps)
@@ -16,7 +17,7 @@ class NodejsImagePipeline extends NpmPipeline {
     def prepare() {
         super.prepare()
 
-        imageHelper = new ImageHelper(steps, config)
+        imageArchiver = new ImageArchiver(steps, config)
 
         if (!config.npm.builderImage) {
             steps.error "npm.builderImage is empty!"
@@ -49,11 +50,11 @@ class NodejsImagePipeline extends NpmPipeline {
             config.put("defaultDockerfile", defaultDockerfile)
         }
 
-        imageHelper.buildImage()
+        imageArchiver.buildImage()
     }
 
     @Override
     def archive() {
-        imageHelper.buildHelm()
+        imageArchiver.buildHelm()
     }
 }

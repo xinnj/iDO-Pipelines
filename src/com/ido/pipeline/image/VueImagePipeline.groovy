@@ -1,12 +1,13 @@
 package com.ido.pipeline.image
 
+import com.ido.pipeline.archiver.ImageArchiver
 import com.ido.pipeline.languageBase.NpmPipeline
 
 /**
  * @author xinnj
  */
 class VueImagePipeline extends NpmPipeline {
-    ImageHelper imageHelper
+    ImageArchiver imageArchiver
 
     VueImagePipeline(Object steps) {
         super(steps)
@@ -16,7 +17,7 @@ class VueImagePipeline extends NpmPipeline {
     def prepare() {
         super.prepare()
 
-        imageHelper = new ImageHelper(steps, config)
+        imageArchiver = new ImageArchiver(steps, config)
 
         if (!config.vue.baseImage) {
             steps.error "vue.baseImage is empty!"
@@ -52,11 +53,11 @@ class VueImagePipeline extends NpmPipeline {
             config.put("defaultDockerfile", defaultDockerfile)
         }
 
-        imageHelper.buildImage()
+        imageArchiver.buildImage()
     }
 
     @Override
     def archive() {
-        imageHelper.buildHelm()
+        imageArchiver.buildHelm()
     }
 }

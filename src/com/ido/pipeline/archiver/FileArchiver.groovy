@@ -1,15 +1,15 @@
-package com.ido.pipeline.app
+package com.ido.pipeline.archiver
 
 import com.ido.pipeline.Utils
 
 /**
  * @author xinnj
  */
-public class FileHelper {
+public class FileArchiver {
     def steps
     Map config
 
-    FileHelper(Object steps, Map config) {
+    FileArchiver(Object steps, Map config) {
         this.steps = steps
         this.config = config
     }

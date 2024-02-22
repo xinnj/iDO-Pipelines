@@ -1,13 +1,14 @@
 package com.ido.pipeline.app
 
 import com.ido.pipeline.Utils
+import com.ido.pipeline.archiver.FileArchiver
 import com.ido.pipeline.languageBase.JdkPipeline
 
 /**
  * @author xinnj
  */
 class AndroidAppPipeline extends JdkPipeline {
-    FileHelper fileHelper
+    FileArchiver fileArchiver
 
     AndroidAppPipeline(Object steps) {
         super(steps)
@@ -27,7 +28,7 @@ class AndroidAppPipeline extends JdkPipeline {
     def prepare() {
         super.prepare()
 
-        fileHelper = new FileHelper(steps, config)
+        fileArchiver = new FileArchiver(steps, config)
 
         if (!config.android.sdkPackagesRequired) {
             steps.error "sdkPackagesRequired is empty!"
@@ -71,7 +72,7 @@ class AndroidAppPipeline extends JdkPipeline {
 
     @Override
     def build() {
-        String newFileName = fileHelper.getFileName()
+        String newFileName = fileArchiver.getFileName()
         steps.container('builder') {
             String updateDependenciesArgs = ""
             if (config.java.forceUpdateDependencies) {
@@ -131,7 +132,7 @@ class AndroidAppPipeline extends JdkPipeline {
 
     @Override
     def archive() {
-        String newFileName = fileHelper.getFileName()
+        String newFileName = fileArchiver.getFileName()
         steps.container('uploader') {
             String uploadUrl = "${config.fileServer.uploadUrl}${config.fileServer.uploadRootPath}${config.productName}/" +
                     Utils.getBranchName(steps) + "/android"
@@ -176,7 +177,7 @@ class AndroidAppPipeline extends JdkPipeline {
                 fi
             """
 
-            fileHelper.upload(uploadUrl, "${config.srcRootPath}/ido-cluster/outputs")
+            fileArchiver.upload(uploadUrl, "${config.srcRootPath}/ido-cluster/outputs")
         }
     }
 }

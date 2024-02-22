@@ -1,6 +1,7 @@
 package com.ido.pipeline.image
 
 import com.ido.pipeline.Utils
+import com.ido.pipeline.archiver.ImageArchiver
 import com.ido.pipeline.languageBase.JdkPipeline
 
 /**
@@ -149,6 +150,6 @@ class SpringBootImagePipeline extends JdkPipeline {
 
     @Override
     def archive() {
-        new ImageHelper(steps, config).buildHelm()
+        new ImageArchiver(steps, config).buildHelm()
     }
 }
