@@ -506,7 +506,9 @@ bash -c "export -p | awk '{print \\\$3'} | grep \\"^IDO_\\" | tr -d '\\"'"
                 }
             }
 
-            config.version = steps.readFile(file: "${config.srcRootPath}/ido-cluster/_version", encoding: "UTF-8").trim()
+            if (steps.fileExists("${config.srcRootPath}/ido-cluster/_version")) {
+                config.version = steps.readFile(file: "${config.srcRootPath}/ido-cluster/_version", encoding: "UTF-8").trim()
+            }
         }
     }
 
@@ -537,6 +539,7 @@ bash -c "export -p | awk '{print \\\$3'} | grep \\"^IDO_\\" | tr -d '\\"'"
     def abstract build()
 
     Boolean customerBuild() {
+        Boolean runCustomer
         steps.container('builder') {
             if (steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${config.customerBuildScript.build}")) {
                 steps.echo "Execute customer build script: ${config.customerBuildScript.build}"
@@ -555,11 +558,12 @@ bash -c "export -p | awk '{print \\\$3'} | grep \\"^IDO_\\" | tr -d '\\"'"
                         """
                     }
                 }
-                return true
+                runCustomer = true
             } else {
-                return false
+                runCustomer = false
             }
         }
+        return runCustomer
     }
 
     def afterBuild() {

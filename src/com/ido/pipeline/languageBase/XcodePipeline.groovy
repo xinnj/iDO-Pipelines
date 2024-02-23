@@ -158,14 +158,16 @@ EOF
 EOF
                 """
 
-                config.version = steps.readFile(file: "${config.srcRootPath}/ido-cluster/_version", encoding: "UTF-8").trim()
+                if (steps.fileExists("${config.srcRootPath}/ido-cluster/_version")) {
+                    config.version = steps.readFile(file: "${config.srcRootPath}/ido-cluster/_version", encoding: "UTF-8").trim()
 
-                steps.sh """${config.debugSh}
-                    ssh remote-host /bin/sh <<EOF
-                        ${config.debugSh}
-                        sed -i -e "s/export CI_VERSION=.*/export CI_VERSION=${config.version}/" ./~ido-cluster-env.sh
+                    steps.sh """${config.debugSh}
+                        ssh remote-host /bin/sh <<EOF
+                            ${config.debugSh}
+                            sed -i -e "s/export CI_VERSION=.*/export CI_VERSION=${config.version}/" ./~ido-cluster-env.sh
 EOF
                     """
+                }
             }
         }
     }
@@ -275,6 +277,7 @@ EOF
 
     @Override
     Boolean customerBuild() {
+        Boolean runCustomer
         steps.container('builder') {
             if (steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${config.customerBuildScript.build}")) {
                 steps.echo "Execute customer build script: ${config.customerBuildScript.build}"
@@ -293,11 +296,12 @@ EOF
 EOF
                     """
                 }
-                return true
+                runCustomer = true
             } else {
-                return false
+                runCustomer = false
             }
         }
+        return runCustomer
     }
 
     @Override
@@ -321,4 +325,24 @@ EOF
         }
     }
 
+    @Override
+    def afterArchive() {
+        steps.container('builder') {
+            steps.withCredentials([steps.usernamePassword(credentialsId: config.xcode.loginCredentialId, passwordVariable: 'password', usernameVariable: 'username')]) {
+                steps.sh """${config.debugSh}
+                    ssh remote-host /bin/sh <<EOF
+                        ${config.debugSh}
+                        set -euao pipefail
+                        . ./~ido-cluster-env.sh
+                        security unlock-keychain -p \${password}
+                        security set-keychain-settings -lut 21600 login.keychain
+
+                        set -x
+                        cd "${steps.WORKSPACE}/${config.srcRootPath}"
+                        sh "./${config.customerBuildScript.afterArchive}"
+EOF
+                """
+            }
+        }
+    }
 }
