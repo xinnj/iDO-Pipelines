@@ -49,13 +49,13 @@ smbServer:
   password: "PleaseUploadHere"
 
 macos:
-  builderImage: "nexus-docker-5000:5000/docker-osx-slim:1.0.0"
+  builderImage: "nexus-docker-5001:5001/docker-osx-slim:1.0.0"
   remoteBuilderImage: "docker.io/xinnj/ssh-client"
   # CocoaPods repo url, e.g.: https://github.com/CocoaPods/Specs.git
   cocoapodsRepoUrl: "https://mirrors.tuna.tsinghua.edu.cn/git/CocoaPods/Specs.git"
 
 win:
-  builderImage: "nexus-docker-5000:5000/docker-win-vm:1.0.0"
+  builderImage: "nexus-docker-5001:5001/docker-win-vm:1.0.0"
   remoteBuilderImage: "docker.io/xinnj/ssh-client"
 
 java:
