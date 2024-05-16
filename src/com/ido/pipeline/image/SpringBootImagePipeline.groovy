@@ -80,6 +80,20 @@ class SpringBootImagePipeline extends JdkPipeline {
             environment = "-Djib.container.environment=" + config.springBoot.environment
         }
 
+        for (Map path in config.springBoot.extraDirectories.paths) {
+            if (path.from) {
+                if (! path.into) {
+                    path.into = ""
+                }
+
+                steps.sh """${config.debugSh}
+                    cd "${config.srcRootPath}"
+                    mkdir -p "src/main/jib${path.into}"
+                    cp -a "${path.from}/." "src/main/jib${path.into}"
+                """
+            }
+        }
+
         switch (config.java.buildTool) {
             case "maven":
                 String updateDependenciesArgs = ""
@@ -97,6 +111,7 @@ class SpringBootImagePipeline extends JdkPipeline {
                             "-Dmaven.repo.local=\${MAVEN_USER_HOME}/repository" \
                             -Dfile.encoding=UTF-8 \
                             -pl ${config.java.moduleName} -am \
+                            -Djib.console=plain \
                             -Djib.container.appRoot=${config.springBoot.appRoot} \
                             -Djib.container.workingDirectory=${config.springBoot.appRoot} \
                             -Djib.container.creationTime=USE_CURRENT_TIMESTAMP \
@@ -130,6 +145,7 @@ class SpringBootImagePipeline extends JdkPipeline {
                             -Dfile.encoding=UTF-8 \
                             "-Dorg.gradle.jvmargs=-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" \
                             -p ${config.java.moduleName} \
+                            -Djib.console=plain \
                             -Djib.container.appRoot=${config.springBoot.appRoot} \
                             -Djib.container.workingDirectory=${config.springBoot.appRoot} \
                             -Djib.container.creationTime=USE_CURRENT_TIMESTAMP \

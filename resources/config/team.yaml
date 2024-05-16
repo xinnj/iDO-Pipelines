@@ -139,6 +139,14 @@ springBoot:
   baseImage: "docker.io/eclipse-temurin:11-jre"
   jvmFlages: "-Duser.timezone=PRC -Dfile.encoding=UTF-8"
   environment: "TZ='Asia/Shanghai'"
+  # Directories used to add arbitrary files to the image
+  extraDirectories: []
+  # extraDirectories:
+  #   paths:
+  #       # The source directory, relative to the project root.
+  #     - from:
+  #       # The absolute unix path on the container to copy the extra directory contents into.
+  #       into:
   # Execute UT
   utEnabled: false
   lineCoverageThreshold: 0
