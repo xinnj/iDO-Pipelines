@@ -1,12 +1,12 @@
 package com.ido.pipeline.languageBase
 
 import com.ido.pipeline.Utils
-import com.ido.pipeline.base.BasePipeline
+import com.ido.pipeline.base.BuildPipeline
 
 /**
  * @author xinnj
  */
-abstract class JdkPipeline extends BasePipeline {
+abstract class JdkPipeline extends BuildPipeline {
     JdkPipeline(Object steps) {
         super(steps)
     }

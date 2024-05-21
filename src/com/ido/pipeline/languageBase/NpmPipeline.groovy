@@ -1,11 +1,11 @@
 package com.ido.pipeline.languageBase
 
-import com.ido.pipeline.base.BasePipeline
+import com.ido.pipeline.base.BuildPipeline
 
 /**
  * @author xinnj
  */
-abstract class NpmPipeline extends BasePipeline {
+abstract class NpmPipeline extends BuildPipeline {
     NpmPipeline(Object steps) {
         super(steps)
     }

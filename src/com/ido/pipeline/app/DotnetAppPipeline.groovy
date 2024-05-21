@@ -2,12 +2,12 @@ package com.ido.pipeline.app
 
 import com.ido.pipeline.Utils
 import com.ido.pipeline.archiver.FileArchiver
-import com.ido.pipeline.base.BasePipeline
+import com.ido.pipeline.base.BuildPipeline
 
 /**
  * @author xinnj
  */
-class DotnetAppPipeline extends BasePipeline {
+class DotnetAppPipeline extends BuildPipeline {
     FileArchiver fileArchiver
     String vmWorkspace = ""
     String smbServerAddress = ""

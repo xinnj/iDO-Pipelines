@@ -47,7 +47,7 @@ spec:
         runAsGroup: 0
         privileged: true
     - name: helm
-      image: "docker.io/xinnj/helm"
+      image: "docker.io/xinnj/k8s-tools:1.0.0"
       imagePullPolicy: IfNotPresent
       command:
         - sleep

@@ -124,6 +124,26 @@ helm:
   repo: "http://nexus:8081/abc/nexus/repository/helm-hosted/"
   uploadCredentialId: "uploader"
   chartVersion: ""
+  deploy:
+    # dev, qa, prod
+    env: ""
+    # Credential of kubeconfig file
+    kubeconfigCredentialId: ""
+    # Secret used to pull images
+    imagePullSecret:
+      name: "image-pull"
+      registry: "registry.cn-zhangjiakou.aliyuncs.com/bizconf_devops"
+      # Credential of username/password to login registry
+      credentialId: "registry"
+    namespace: "default"
+    releases: []
+    #  - name: ""
+    #    chart: ""
+        # Helm chart value file.
+        # For dev env, the default is the value file inside chart.
+        # For qa & prod env, the default is "<chart>/values-<env>.yaml".
+    #    valueFile: ""
+    #    valueSet: "key1=val1,key2=val2"
 
 ## File server config
 fileServer:

@@ -1,11 +1,11 @@
 package com.ido.pipeline
 
-import com.ido.pipeline.base.BasePipeline
+import com.ido.pipeline.base.BuildPipeline
 
 /**
  * @author xinnj
  */
-class GenericPipeline extends BasePipeline {
+class GenericPipeline extends BuildPipeline {
     GenericPipeline(Object steps) {
         super(steps)
     }
