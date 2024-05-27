@@ -129,6 +129,8 @@ helm:
     env: ""
     # Credential of kubeconfig file
     kubeconfigCredentialId: ""
+    # Credential of AWS if the cluster is EKS
+    awsEksCredentialId: ""
     # Secret used to pull images
     imagePullSecret:
       name: "image-pull"

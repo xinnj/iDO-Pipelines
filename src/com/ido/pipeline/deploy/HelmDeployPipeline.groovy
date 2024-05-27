@@ -68,8 +68,13 @@ class HelmDeployPipeline extends DeployPipeline {
         steps.container('helm') {
             steps.withKubeConfig([credentialsId: config.helm.deploy.kubeconfigCredentialId, restrictKubeConfigAccess: true]) {
                 if (config.helm.deploy.imagePullSecret.credentialId) {
-                    steps.withCredentials([steps.usernamePassword(credentialsId: config.helm.deploy.imagePullSecret.credentialId,
-                            passwordVariable: 'passwordPull', usernameVariable: 'userNamePull')]) {
+                    def credentials = [steps.usernamePassword(credentialsId: config.helm.deploy.imagePullSecret.credentialId,
+                            passwordVariable: 'passwordPull', usernameVariable: 'userNamePull')]
+                    if (config.helm.deploy.awsEksCredentialId) {
+                        credentials.add(steps.aws(credentialsId: config.helm.deploy.awsEksCredentialId,
+                                accessKeyVariable: 'AWS_ACCESS_KEY_ID', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'))
+                    }
+                    steps.withCredentials(credentials) {
                         steps.sh """${config.debugSh}
                             kubectl create namespace ${config.helm.deploy.namespace} --dry-run=client -o yaml | kubectl apply -f -
                             kubectl delete -n ${config.helm.deploy.namespace} secret ${config.helm.deploy.imagePullSecret.name} --ignore-not-found=true
@@ -132,11 +137,22 @@ class HelmDeployPipeline extends DeployPipeline {
                     }
                 }
                 steps.echo "Execute parallel"
-                steps.parallel parallelRuns
+                if (config.helm.deploy.awsEksCredentialId) {
+                    steps.withCredentials([steps.aws(credentialsId: config.helm.deploy.awsEksCredentialId,
+                            accessKeyVariable: 'AWS_ACCESS_KEY_ID', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                        steps.parallel parallelRuns
 
-                steps.sh """${config.debugSh}
-                    helm list
-                """
+                        steps.sh """${config.debugSh}
+                            helm list
+                        """
+                    }
+                } else {
+                    steps.parallel parallelRuns
+
+                    steps.sh """${config.debugSh}
+                        helm list
+                    """
+                }
             }
         }
     }
