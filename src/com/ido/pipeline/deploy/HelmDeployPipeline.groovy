@@ -44,20 +44,33 @@ class HelmDeployPipeline extends DeployPipeline {
         }
 
         def releases = config.helm.deploy.releases as List
-        List parameters = []
+        Boolean firstRun = false
         for (release in releases) {
             String varName = "CHART_VERSION_" + release.name
-            def para = steps.string(name: varName, defaultValue: 'latest', description: "Helm chart version, can't be empty", trim: true)
+            if (!steps.params[varName]) {
+                firstRun = true
+                break
+            }
+        }
+
+        List parameters = [steps.text(name: 'USAGE', defaultValue: 'Please provide the chart version of each release.', description: '')]
+        for (release in releases) {
+            String varName = "CHART_VERSION_" + release.name
+            def para = steps.string(name: varName, defaultValue: 'latest', description: '', trim: true)
             parameters.add(para)
         }
         steps.properties([
                 steps.parameters(parameters)
         ])
+
+        if (firstRun) {
+            steps.error "Populating job parameters. Please run the job again."
+        }
+
         for (release in releases) {
             String varName = "CHART_VERSION_" + release.name
             if (!steps.params[varName]) {
-                fastStop = 'SUCCESS'
-                steps.error "Populating job parameters. Please run the job again."
+                steps.error "Chart version can't be empty."
             }
         }
 
@@ -95,7 +108,7 @@ class HelmDeployPipeline extends DeployPipeline {
                 def parallelRuns = [:]
                 for (int i = 0; i < releases.size(); i++) {
                     int j = i
-                    parallelRuns["Deploy: (releases.get(j) as Map).name"] = {
+                    parallelRuns["Deploy: " + (releases.get(j) as Map).name] = {
                         String releaseName = (releases.get(j) as Map).name
 
                         String chartName = (releases.get(j) as Map).chart

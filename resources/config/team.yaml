@@ -180,7 +180,7 @@ springBoot:
 
 ## NPM config
 npm:
-  builderImage: "docker.io/node:18.13.0-slim"
+  builderImage: "docker.io/node:20.13.1-slim"
   useDefaultNpmrc: true
 
 ## Node.js config

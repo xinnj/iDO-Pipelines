@@ -26,7 +26,7 @@ spec:
         - name: "SONAR_USER_HOME"
           value: "/home/jenkins/agent/sonar"
     - name: helm
-      image: "docker.io/xinnj/k8s-tools:1.0.0"
+      image: "docker.io/xinnj/k8s-tools:1.0.1"
       imagePullPolicy: IfNotPresent
       command:
         - sleep
