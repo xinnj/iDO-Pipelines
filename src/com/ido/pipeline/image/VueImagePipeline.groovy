@@ -24,7 +24,7 @@ class VueImagePipeline extends NpmPipeline {
         }
 
         config.put("context", config.vue)
-        config.parallelBuildArchive = true
+        config.parallelBuildArchive = false
         config.put("utTool", "vitest")
     }
 
@@ -38,7 +38,10 @@ class VueImagePipeline extends NpmPipeline {
                 npm run build
             """
         }
+    }
 
+    @Override
+    def archive() {
         if (!config.vue.nginxConfigFile) {
             String nginxConf = steps.libraryResource(resource: 'builder/default-nginx-config', encoding: 'UTF-8')
             steps.writeFile(file: "${config.srcRootPath}/nginx.conf", text: nginxConf, encoding: 'UTF-8')
@@ -54,10 +57,7 @@ class VueImagePipeline extends NpmPipeline {
         }
 
         imageArchiver.buildImage()
-    }
 
-    @Override
-    def archive() {
         imageArchiver.buildHelm()
     }
 }

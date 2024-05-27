@@ -27,7 +27,7 @@ class NodejsImagePipeline extends NpmPipeline {
         }
 
         config.put("context", config.nodejs)
-        config.parallelBuildArchive = true
+        config.parallelBuildArchive = false
         config.put("utTool", "jest")
     }
 
@@ -41,7 +41,10 @@ class NodejsImagePipeline extends NpmPipeline {
                 npm ci --omit=dev
             """
         }
+    }
 
+    @Override
+    def archive() {
         if (!config.dockerFile) {
             String defaultDockerfile = steps.libraryResource(resource: 'builder/default-nodejs-dockerfile', encoding: 'UTF-8')
             defaultDockerfile = defaultDockerfile
@@ -51,10 +54,7 @@ class NodejsImagePipeline extends NpmPipeline {
         }
 
         imageArchiver.buildImage()
-    }
 
-    @Override
-    def archive() {
         imageArchiver.buildHelm()
     }
 }

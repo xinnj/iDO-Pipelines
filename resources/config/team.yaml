@@ -35,7 +35,7 @@ customerBuildScript:
   afterScm: "ido-cluster/after-scm"
   afterVersioning: "ido-cluster/after-versioning"
   beforeBuild: "ido-cluster/before-build"
-  build: "ido-cluster/build.sh"
+  build: "ido-cluster/build"
   afterBuild: "ido-cluster/after-build"
   afterArchive: "ido-cluster/after-archive"
 
