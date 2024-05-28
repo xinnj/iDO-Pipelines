@@ -62,11 +62,11 @@ public class ImageArchiver {
             registry_login_push = "buildah login --tls-verify=false -u \${userNamePush}  -p \${passwordPush} " + config.registryPush.url
         }
 
-        String pushImageFullName = "${config.registryPush.url}/${config.productName}:${config.version}"
+        String repository = (config.productName as String).toLowerCase()
+        String pushImageFullName = "${config.registryPush.url}/${repository}:${config.version}"
         steps.sh """${config.debugSh}
             cd "${config.srcRootPath}"
             alias buildah="buildah --root /var/buildah-cache --runroot /tmp/containers"
-            pushImageFullName=${config.registryPush.url}/${config.productName}:${config.version}
             ${registry_login_pull}
             buildah build --format ${config._system.imageFormat} -f ${config.dockerFile} -t ${pushImageFullName} ./
 
