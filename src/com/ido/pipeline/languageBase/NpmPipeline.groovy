@@ -27,12 +27,15 @@ abstract class NpmPipeline extends BuildPipeline {
 
         if (config.npm.useDefaultNpmrc) {
             String npmrc = steps.libraryResource(resource: 'builder/default-npmrc', encoding: 'UTF-8')
-            steps.writeFile(file: "${config.srcRootPath}/.npmrc", text: npmrc, encoding: "UTF-8")
+            steps.writeFile(file: "${steps.WORKSPACE}/.default-npmrc", text: npmrc, encoding: "UTF-8")
         }
 
         steps.container('builder') {
             steps.sh """${config.debugSh}
-                cd "${config.srcRootPath}"
+                if [ -e "${steps.WORKSPACE}/.default-npmrc" ]; then
+                    echo "Set userconfig to: ${steps.WORKSPACE}/.default-npmrc"
+                    npm config set userconfig="${steps.WORKSPACE}/.default-npmrc"
+                fi
                 echo "npm version:"
                 npm -v
                 echo "node version:"
