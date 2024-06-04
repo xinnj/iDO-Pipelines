@@ -11,15 +11,33 @@ import java.util.TimeZone.*
 public class Utils {
     @SuppressWarnings('GroovyAssignabilityCheck')
     static Map setDefault(Map config, steps) {
-        Map defaults = steps.readYaml(text: steps.libraryResource('config/team.yaml'))
+        Map teamCustomer, systemCustomer
+        try {
+            teamCustomer = steps.readYaml(text: steps.libraryResource('customer/team.yaml'))
+        } catch(Exception ignored) {}
+        try {
+            systemCustomer = steps.readYaml(text: steps.libraryResource('customer/system.yaml'))
+        } catch(Exception ignored) {}
+
+        Map team = steps.readYaml(text: steps.libraryResource('config/team.yaml'))
         Map system = steps.readYaml(text: steps.libraryResource('config/system.yaml'))
-        Map merged = deepMerge(defaults, config)
-        merged._system = system
+
+
+        Map merged = deepMerge(team, teamCustomer)
+        merged = deepMerge(merged, config)
+        merged._system = deepMerge(system, systemCustomer)
         return merged
     }
 
     // Refer to: https://e.printstacktrace.blog/how-to-merge-two-maps-in-groovy/
     static Map deepMerge(Map lhs, Map rhs) {
+        if (lhs == null) {
+            return rhs
+        }
+        if (rhs == null) {
+            return lhs
+        }
+
         return rhs.inject(lhs.clone()) { map, entry ->
             if (map[entry.key] instanceof Map && entry.value instanceof Map) {
                 map[entry.key] = deepMerge(map[entry.key], entry.value)
