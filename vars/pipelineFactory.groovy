@@ -25,7 +25,14 @@ Map call(String configYaml) {
     }
     m = null
 
-    clsLoader.addClasspath(scriptDir + "/../src/com/ido/pipeline/" + classPath)
+    if (classPath.startsWith('customer/')) {
+        scriptDir = customer.getPath()
+        clsLoader.addClasspath(scriptDir + "/../src/" + classPath)
+    } else {
+        clsLoader.addClasspath(scriptDir + "/../src/com/ido/pipeline/" + classPath)
+    }
+    // echo "scriptDir: " + scriptDir
+
     pipeline = clsLoader.loadClass(className, true, false)?.newInstance(this)
     clsLoader = null
 

@@ -13,7 +13,7 @@ parallelUtAnalysis: false
 parallelBuildArchive: false
 
 # Log more information
-debug: true
+debug: false
 
 # Source code root path. A relative path to workspace root folder
 srcRootPath: "."
@@ -121,7 +121,7 @@ registryPush:
 helm:
   buildChart: true
   chartPath: "helm"
-  repo: "http://nexus:8081/abc/nexus/repository/helm-hosted/"
+  repo: "http://nexus:8081/nexus/repository/helm-hosted/"
   uploadCredentialId: "uploader"
   chartVersion: ""
   deploy:
@@ -134,7 +134,7 @@ helm:
     # Secret used to pull images
     imagePullSecret:
       name: "image-pull"
-      registry: "registry.cn-zhangjiakou.aliyuncs.com/bizconf_devops"
+      registry: ""
       # Credential of username/password to login registry
       credentialId: "registry"
     namespace: "default"
@@ -238,8 +238,8 @@ xcode:
   path: "/Applications/Xcode.app"
   # Apple connect API key, used by automatic code sign
   authenticationKey:
-    IssuerID: "69a6de7e-1093-47e3-e053-5b8c7c11a4d1"
-    ID: "WP8BYJ39Z2"
+    IssuerID: ""
+    ID: ""
     # Secret file credential
     keyFileCredentialId: "apple-auth-key"
   useCocoapods: false
