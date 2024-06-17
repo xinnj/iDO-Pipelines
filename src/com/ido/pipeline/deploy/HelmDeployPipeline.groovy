@@ -104,6 +104,40 @@ class HelmDeployPipeline extends DeployPipeline {
                 """
 
                 def releases = config.helm.deploy.releases as List
+                def versions = [:]
+
+                releases.each {
+                    String releaseName = (it as Map).name
+
+                    String chartName = (it as Map).chart
+                    if (!chartName) {
+                        chartName = releaseName
+                    }
+
+                    String varName = "CHART_VERSION_" + releaseName
+                    String chartVersion = steps.params[varName]
+
+                    if (chartVersion == "latest") {
+                        chartVersion = steps.sh(returnStdout: true, script: """${config.debugSh}
+helm search repo devops/${chartName} | awk 'NR==2{printf \$2}'
+""")
+                    }
+
+                    versions[chartName] = chartVersion
+                }
+
+                if (versions.size() == 1) {
+                    versions.each {
+                        steps.currentBuild.displayName = it.value
+                    }
+                }
+                if (versions.size() > 1) {
+                    String buildDescription = ""
+                    versions.each {
+                        buildDescription = buildDescription + it.key + ": " + it.value + "<p>"
+                    }
+                    steps.currentBuild.description = buildDescription
+                }
 
                 def parallelRuns = [:]
                 for (int i = 0; i < releases.size(); i++) {
@@ -116,13 +150,8 @@ class HelmDeployPipeline extends DeployPipeline {
                             chartName = releaseName
                         }
 
-                        String varName = "CHART_VERSION_" + releaseName
-                        String chartVersion = steps.params[varName]
-
-                        String versionParam = ""
-                        if (chartVersion != "latest") {
-                            versionParam = " --version " + chartVersion
-                        }
+                        String chartVersion = versions[chartName]
+                        String versionParam = " --version " + chartVersion
 
                         String valuesParam = ""
                         if (config.helm.deploy.env != "dev") {
@@ -154,17 +183,9 @@ class HelmDeployPipeline extends DeployPipeline {
                     steps.withCredentials([steps.aws(credentialsId: config.helm.deploy.awsEksCredentialId,
                             accessKeyVariable: 'AWS_ACCESS_KEY_ID', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY')]) {
                         steps.parallel parallelRuns
-
-                        steps.sh """${config.debugSh}
-                            helm list
-                        """
                     }
                 } else {
                     steps.parallel parallelRuns
-
-                    steps.sh """${config.debugSh}
-                        helm list
-                    """
                 }
             }
         }

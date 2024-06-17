@@ -140,6 +140,7 @@ helm:
     namespace: "default"
     releases: []
     #  - name: ""
+        # Helm chart name. Same as 'name' if empty.
     #    chart: ""
         # Helm chart value file.
         # For dev env, the default is the value file inside chart.
