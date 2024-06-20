@@ -57,6 +57,7 @@ macos:
 win:
   builderImage: "nexus-docker-5001:5001/docker-win-vm:1.0.0"
   remoteBuilderImage: "docker.io/xinnj/ssh-client"
+  fakeIP: "192.168.1.2"
 
 java:
   mavenDownloadUrl: "https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/<maven-version>"

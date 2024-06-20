@@ -96,13 +96,13 @@ spec:
         - name: "EXTRA"
           value: "-snapshot"
         - name: "NUGET_PACKAGES"
-          value: "R:\\nuget\\packages"
+          value: "<NUGET_PACKAGES>"
         - name: "NUGET_HTTP_CACHE_PATH"
-          value: "R:\\nuget\\v3-cache"
+          value: "<NUGET_HTTP_CACHE_PATH>"
         - name: "NUGET_PLUGINS_CACHE_PATH"
-          value: "R:\\nuget\\plugins-cache"
-        - name: SONAR_USER_HOME
-          value: "R:\\sonar"
+          value: "<NUGET_PLUGINS_CACHE_PATH>"
+        - name: "SONAR_USER_HOME"
+          value: "<SONAR_USER_HOME>"
     - name: jnlp
       image: "<inboundAgentImage>"
       env:

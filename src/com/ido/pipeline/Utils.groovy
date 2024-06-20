@@ -283,4 +283,14 @@ plugins {
 
         return true
     }
+
+    static execRemoteWin(Object steps, Map config, String cmd) {
+        steps.writeFile(file: '~ido-cluster.ps1', text: cmd, encoding: "UTF-8")
+        steps.sh """set +x
+            echo '\$ErrorActionPreference = "Stop"\n\$ProgressPreference = "SilentlyContinue"\n${config.debugPowershell}\n' | cat - ${steps.WORKSPACE}/~ido-cluster.ps1 > temp
+            mv temp ${steps.WORKSPACE}/~ido-cluster.ps1
+            scp ${steps.WORKSPACE}/~ido-cluster.ps1 remote-host:/c:/
+            ssh remote-host "c:/~ido-cluster.ps1"
+        """
+    }
 }

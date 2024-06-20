@@ -294,14 +294,17 @@ ios:
   qualityGateEnabled: false
   sonarqubeTimeoutMinutes: 10
 
-## dotnet app config
-dotnet:
+## Win builder config
+win:
   # Use dedicated remote machine as the builder or not
   useRemoteBuilder: false
   # Credential ID of login account of builder machine
   loginCredentialId: "win-builder-login"
   # The vm file if using internal vm as the builder
   winImage: "win11-v1.img"
+
+## dotnet app config
+dotnet:
   sdkVersion: ""
   # Workloads to be installed by dotnet command
   workloads: []

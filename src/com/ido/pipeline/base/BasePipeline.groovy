@@ -183,7 +183,7 @@ bash -c "export -p | awk '{print \\\$3'} | grep \\"^IDO_\\" | tr -d '\\"'"
             String upstreamProjects = ""
             String defaultBranch = Utils.getBranchName(steps)
 
-            for (Map job in config.dependOn) {
+            for (Map job in (config.dependOn as List<Map>)) {
                 if (job.name) {
                     if (job.branch) {
                         if (upstreamProjects == "") {
@@ -334,17 +334,7 @@ bash -c "export -p | awk '{print \\\$3'} | grep \\"^IDO_\\" | tr -d '\\"'"
         steps.container('builder') {
             steps.withEnv(["CI_PRODUCTNAME=$config.productName",
                            "CI_BRANCH=" + Utils.getBranchName(steps)]) {
-                if (steps.isUnix()) {
-                    steps.sh """
-                        cd "${config.srcRootPath}"
-                        sh "${config.customerBuildScript.afterScm}"
-                    """
-                } else {
-                    steps.powershell """
-                        cd "${config.srcRootPath}"
-                        "Invoke-Command -ScriptBlock ([ScriptBlock]::Create((Get-Content ${config.customerBuildScript.afterScm})))"
-                    """
-                }
+                runCustomerBuildScript(config.customerBuildScript.afterScm)
             }
         }
     }
@@ -368,21 +358,11 @@ bash -c "export -p | awk '{print \\\$3'} | grep \\"^IDO_\\" | tr -d '\\"'"
             steps.withEnv(["CI_PRODUCTNAME=$config.productName",
                            "CI_VERSION=$config.version",
                            "CI_BRANCH=" + Utils.getBranchName(steps)]) {
-                if (steps.isUnix()) {
-                    steps.sh """
-                        cd "${config.srcRootPath}"
-                        sh "${config.customerBuildScript.afterVersioning}"
-                    """
-                } else {
-                    steps.powershell """
-                        cd "${config.srcRootPath}"
-                        "Invoke-Command -ScriptBlock ([ScriptBlock]::Create((Get-Content ${config.customerBuildScript.afterVersioning})))"
-                    """
-                }
-            }
+                runCustomerBuildScript(config.customerBuildScript.afterVersioning)
 
-            if (steps.fileExists("${config.srcRootPath}/ido-cluster/_version")) {
-                config.version = steps.readFile(file: "${config.srcRootPath}/ido-cluster/_version", encoding: "UTF-8").trim()
+                if (steps.fileExists("${config.srcRootPath}/ido-cluster/_version")) {
+                    config.version = steps.readFile(file: "${config.srcRootPath}/ido-cluster/_version", encoding: "UTF-8").trim()
+                }
             }
         }
     }
@@ -414,7 +394,7 @@ bash -c "export -p | awk '{print \\\$3'} | grep \\"^IDO_\\" | tr -d '\\"'"
     def invoke(List<?> parameters) {
         String defaultBranch = Utils.getBranchName(steps)
 
-        for (Map job in config.jobsInvoked) {
+        for (Map job in (config.jobsInvoked as List<Map>)) {
             if (job.name) {
                 if (job.branch) {
                     try {
@@ -450,7 +430,7 @@ bash -c "export -p | awk '{print \\\$3'} | grep \\"^IDO_\\" | tr -d '\\"'"
             String defaultBranch = Utils.getBranchName(steps)
 
             def item
-            for (Map job in config.jobsInvoked) {
+            for (Map job in (config.jobsInvoked as List<Map>)) {
                 if (job.name) {
                     if (job.branch) {
                         try {
@@ -475,6 +455,25 @@ bash -c "export -p | awk '{print \\\$3'} | grep \\"^IDO_\\" | tr -d '\\"'"
                     }
                 }
             }
+        }
+    }
+
+    def runCustomerBuildScript(String script) {
+        switch (config.builderType) {
+            case "win":
+                String cmd = """
+cd "\${Env:WORKSPACE}/${config.srcRootPath}"
+"Invoke-Command -ScriptBlock ([ScriptBlock]::Create((Get-Content $script)))"
+"""
+                Utils.execRemoteWin(steps, config, cmd)
+                break
+            case "mac":
+                break
+            default:
+                steps.sh """
+                    cd "${config.srcRootPath}"
+                    sh "$script"
+                """
         }
     }
 }

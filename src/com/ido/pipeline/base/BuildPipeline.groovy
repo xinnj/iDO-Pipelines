@@ -156,17 +156,7 @@ abstract class BuildPipeline extends BasePipeline {
             steps.withEnv(["CI_PRODUCTNAME=$config.productName",
                            "CI_VERSION=$config.version",
                            "CI_BRANCH=" + Utils.getBranchName(steps)]) {
-                if (steps.isUnix()) {
-                    steps.sh """
-                        cd "${config.srcRootPath}"
-                        sh "${config.customerBuildScript.beforeBuild}"
-                    """
-                } else {
-                    steps.powershell """
-                        cd "${config.srcRootPath}"
-                        "Invoke-Command -ScriptBlock ([ScriptBlock]::Create((Get-Content ${config.customerBuildScript.beforeBuild})))"
-                    """
-                }
+                runCustomerBuildScript(config.customerBuildScript.beforeBuild)
             }
         }
     }
@@ -174,28 +164,16 @@ abstract class BuildPipeline extends BasePipeline {
     def abstract build()
 
     Boolean customerBuild() {
-        Boolean runCustomer
+        Boolean runCustomer = false
         steps.container('builder') {
             if (steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${config.customerBuildScript.build}")) {
                 steps.echo "Execute customer build script: ${config.customerBuildScript.build}"
                 steps.withEnv(["CI_PRODUCTNAME=$config.productName",
                                "CI_VERSION=$config.version",
                                "CI_BRANCH=" + Utils.getBranchName(steps)]) {
-                    if (steps.isUnix()) {
-                        steps.sh """
-                            cd "${config.srcRootPath}" 
-                            sh "./${config.customerBuildScript.build}"
-                        """
-                    } else {
-                        steps.powershell """
-                            cd "${config.srcRootPath}"
-                            "Invoke-Command -ScriptBlock ([ScriptBlock]::Create((Get-Content ${config.customerBuildScript.build})))"
-                        """
-                    }
+                    runCustomerBuildScript(config.customerBuildScript.build)
                 }
                 runCustomer = true
-            } else {
-                runCustomer = false
             }
         }
         return runCustomer
@@ -206,17 +184,7 @@ abstract class BuildPipeline extends BasePipeline {
             steps.withEnv(["CI_PRODUCTNAME=$config.productName",
                            "CI_VERSION=$config.version",
                            "CI_BRANCH=" + Utils.getBranchName(steps)]) {
-                if (steps.isUnix()) {
-                    steps.sh """
-                        cd "${config.srcRootPath}"
-                        sh "${config.customerBuildScript.afterBuild}"
-                    """
-                } else {
-                    steps.powershell """
-                        cd "${config.srcRootPath}"
-                        "Invoke-Command -ScriptBlock ([ScriptBlock]::Create((Get-Content ${config.customerBuildScript.afterBuild})))"
-                    """
-                }
+                runCustomerBuildScript(config.customerBuildScript.afterBuild)
             }
         }
     }
@@ -228,17 +196,7 @@ abstract class BuildPipeline extends BasePipeline {
             steps.withEnv(["CI_PRODUCTNAME=$config.productName",
                            "CI_VERSION=$config.version",
                            "CI_BRANCH=" + Utils.getBranchName(steps)]) {
-                if (steps.isUnix()) {
-                    steps.sh """
-                        cd "${config.srcRootPath}"
-                        sh "${config.customerBuildScript.afterArchive}"
-                    """
-                } else {
-                    steps.powershell """
-                        cd "${config.srcRootPath}"
-                        "Invoke-Command -ScriptBlock ([ScriptBlock]::Create((Get-Content ${config.customerBuildScript.afterArchive})))"
-                    """
-                }
+                runCustomerBuildScript(config.customerBuildScript.afterArchive)
             }
         }
     }
