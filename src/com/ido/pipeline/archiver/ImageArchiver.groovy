@@ -68,7 +68,7 @@ public class ImageArchiver {
             cd "${config.srcRootPath}"
             alias buildah="buildah --root /var/buildah-cache --runroot /tmp/containers"
             ${registry_login_pull}
-            buildah build --format ${config._system.imageFormat} -f ${config.dockerFile} -t ${pushImageFullName} ./
+            buildah build --tls-verify=false --format ${config._system.imageFormat} -f ${config.dockerFile} -t ${pushImageFullName} ./
 
             ${registry_login_push}
             buildah push --tls-verify=false ${pushImageFullName}

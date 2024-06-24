@@ -6,7 +6,7 @@ metadata:
 spec:
   initContainers:
     - name: prepare
-      image: docker.io/alpine
+      image: docker.io/alpine:3.20.1
       command:
         - /bin/sh
         - -c
@@ -30,7 +30,7 @@ spec:
           name: macos-image-folder
   containers:
     - name: sonar-scanner
-      image: "docker.io/sonarsource/sonar-scanner-cli"
+      image: "docker.io/sonarsource/sonar-scanner-cli:10.0.3.1430_5.0.1"
       imagePullPolicy: IfNotPresent
       command:
         - sleep

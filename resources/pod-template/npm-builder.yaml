@@ -3,7 +3,7 @@ kind: Pod
 spec:
   containers:
     - name: sonar-scanner
-      image: "docker.io/sonarsource/sonar-scanner-cli"
+      image: "docker.io/sonarsource/sonar-scanner-cli:10.0.3.1430_5.0.1"
       imagePullPolicy: IfNotPresent
       command:
         - sleep
@@ -33,7 +33,7 @@ spec:
         - name: "npm_config_cache"
           value: "/home/jenkins/agent/npm"
     - name: buildah
-      image: "quay.io/buildah/stable"
+      image: "quay.io/buildah/stable:v1.35.4"
       imagePullPolicy: IfNotPresent
       command:
         - sleep

@@ -3,7 +3,7 @@ kind: Pod
 spec:
   initContainers:
     - name: jib-global-config
-      image: docker.io/alpine
+      image: docker.io/alpine:3.20.1
       command:
         - /bin/sh
         - -c
