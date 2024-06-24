@@ -37,7 +37,7 @@ Map call(String configYaml) {
     clsLoader = null
 
     if (pipeline != null) {
-        echo "########## Start Pipeline ##########"
+        echo "\033[32m########## Start Pipeline ##########\033[0m"
         return pipeline.runPipeline(Utils.setDefault(config, this))
     }
     pipeline = null

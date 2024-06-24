@@ -18,30 +18,30 @@ abstract class BuildPipeline extends BasePipeline {
 
     def customStages() {
         steps.stage('Prepare') {
-            steps.echo "########## Stage: Prepare ##########"
+            steps.echo "\033[32m########## Stage: Prepare ##########\033[0m"
             this.prepare()
         }
 
         steps.stage('SCM') {
-            steps.echo "########## Stage: SCM ##########"
+            steps.echo "\033[32m########## Stage: SCM ##########\033[0m"
             this.scm()
         }
 
         if (steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${config.customerBuildScript.afterScm}")) {
             steps.stage('afterScm') {
-                steps.echo "########## Stage: After Scm ##########"
+                steps.echo "\033[32m########## Stage: After Scm ##########\033[0m"
                 this.afterScm()
             }
         }
 
         steps.stage('Versioning') {
-            steps.echo "########## Stage: Versioning ##########"
+            steps.echo "\033[32m########## Stage: Versioning ##########\033[0m"
             this.versioning()
         }
 
         if (steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${config.customerBuildScript.afterVersioning}")) {
             steps.stage('afterVersioning') {
-                steps.echo "########## Stage: After Versioning ##########"
+                steps.echo "\033[32m########## Stage: After Versioning ##########\033[0m"
                 this.afterVersioning()
             }
         }
@@ -49,30 +49,30 @@ abstract class BuildPipeline extends BasePipeline {
         if (config.parallelUtAnalysis) {
             steps.parallel 'UT': {
                 steps.stage('UT') {
-                    steps.echo "########## Stage: UT ##########"
+                    steps.echo "\033[32m########## Stage: UT ##########\033[0m"
                     this.ut()
                 }
             }, 'Code Analysis': {
                 steps.stage('Code Analysis') {
-                    steps.echo "########## Stage: Code Analysis ##########"
+                    steps.echo "\033[32m########## Stage: Code Analysis ##########\033[0m"
                     this.codeAnalysis()
                 }
             }, failFast: true
         } else {
             steps.stage('UT') {
-                steps.echo "########## Stage: UT ##########"
+                steps.echo "\033[32m########## Stage: UT ##########\033[0m"
                 this.ut()
             }
 
             steps.stage('Code Analysis') {
-                steps.echo "########## Stage: Code Analysis ##########"
+                steps.echo "\033[32m########## Stage: Code Analysis ##########\033[0m"
                 this.codeAnalysis()
             }
         }
 
         if (steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${config.customerBuildScript.beforeBuild}")) {
             steps.stage('beforeBuild') {
-                steps.echo "########## Stage: Before Build ##########"
+                steps.echo "\033[32m########## Stage: Before Build ##########\033[0m"
                 this.beforeBuild()
             }
         }
@@ -80,7 +80,7 @@ abstract class BuildPipeline extends BasePipeline {
         if (config.parallelBuildArchive) {
             steps.parallel 'Build': {
                 steps.stage('Build') {
-                    steps.echo "########## Stage: Build ##########"
+                    steps.echo "\033[32m########## Stage: Build ##########\033[0m"
                     if (!this.customerBuild()) {
                         this.build()
                     }
@@ -88,26 +88,26 @@ abstract class BuildPipeline extends BasePipeline {
 
                 if (steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${config.customerBuildScript.afterBuild}")) {
                     steps.stage('afterBuild') {
-                        steps.echo "########## Stage: After Build ##########"
+                        steps.echo "\033[32m########## Stage: After Build ##########\033[0m"
                         this.afterBuild()
                     }
                 }
             }, 'Archive': {
                 steps.stage('Archive') {
-                    steps.echo "########## Stage: Archive ##########"
+                    steps.echo "\033[32m########## Stage: Archive ##########\033[0m"
                     this.archive()
                 }
 
                 if (steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${config.customerBuildScript.afterArchive}")) {
                     steps.stage('afterArchive') {
-                        steps.echo "########## Stage: After Archive ##########"
+                        steps.echo "\033[32m########## Stage: After Archive ##########\033[0m"
                         this.afterArchive()
                     }
                 }
             }, failFast: true
         } else {
             steps.stage('Build') {
-                steps.echo "########## Stage: Build ##########"
+                steps.echo "\033[32m########## Stage: Build ##########\033[0m"
                 if (!this.customerBuild()) {
                     this.build()
                 }
@@ -115,26 +115,26 @@ abstract class BuildPipeline extends BasePipeline {
 
             if (steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${config.customerBuildScript.afterBuild}")) {
                 steps.stage('afterBuild') {
-                    steps.echo "########## Stage: After Build ##########"
+                    steps.echo "\033[32m########## Stage: After Build ##########\033[0m"
                     this.afterBuild()
                 }
             }
 
             steps.stage('Archive') {
-                steps.echo "########## Stage: Archive ##########"
+                steps.echo "\033[32m########## Stage: Archive ##########\033[0m"
                 this.archive()
             }
 
             if (steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${config.customerBuildScript.afterArchive}")) {
                 steps.stage('afterArchive') {
-                    steps.echo "########## Stage: After Archive ##########"
+                    steps.echo "\033[32m########## Stage: After Archive ##########\033[0m"
                     this.afterArchive()
                 }
             }
         }
 
         if (config.jobsInvoked.size() != 0) {
-            steps.echo "########## Stage: Invoke ##########"
+            steps.echo "\033[32m########## Stage: Invoke ##########\033[0m"
             this.invoke(null)
         }
     }

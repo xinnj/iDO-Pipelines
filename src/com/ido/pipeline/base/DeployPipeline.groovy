@@ -11,19 +11,19 @@ abstract class DeployPipeline extends BasePipeline {
     @Override
     def customStages() {
         steps.stage('Prepare') {
-            steps.echo "########## Stage: Prepare ##########"
+            steps.echo "\033[32m########## Stage: Prepare ##########\033[0m"
             this.prepare()
         }
 
         if (config.deployCheckoutSCM) {
             steps.stage('SCM') {
-                steps.echo "########## Stage: SCM ##########"
+                steps.echo "\033[32m########## Stage: SCM ##########\033[0m"
                 this.scm()
             }
         }
 
         steps.stage('Deploy') {
-            steps.echo "########## Stage: Deploy ##########"
+            steps.echo "\033[32m########## Stage: Deploy ##########\033[0m"
             this.deploy()
         }
 
@@ -31,21 +31,21 @@ abstract class DeployPipeline extends BasePipeline {
             steps.parallel 'API Test': {
                 steps.stage('API Test') {
                     if (config.getOrDefault("apiTestEnabled", false)) {
-                        steps.echo "########## Stage: API Test ##########"
+                        steps.echo "\033[32m########## Stage: API Test ##########\033[0m"
                         this.apiTest()
                     }
                 }
             }, 'UI Test': {
                 steps.stage('UI Test') {
                     if (config.getOrDefault("uiTestEnabled", false)) {
-                        steps.echo "########## Stage: UI Test ##########"
+                        steps.echo "\033[32m########## Stage: UI Test ##########\033[0m"
                         this.uiTest()
                     }
                 }
             }, 'Smoke Test': {
                 if (config.getOrDefault("smokeTestEnabled", false)) {
                     steps.stage('Smoke Test') {
-                        steps.echo "########## Stage: Smoke Test ##########"
+                        steps.echo "\033[32m########## Stage: Smoke Test ##########\033[0m"
                         this.smokeTest()
                     }
                 }

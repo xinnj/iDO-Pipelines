@@ -64,7 +64,7 @@ abstract class BasePipeline implements Pipeline, Serializable {
                             }
                         }
                         finally {
-                            steps.echo "########## Stage: Notify ##########"
+                            steps.echo "\033[32m########## Stage: Notify ##########\033[0m"
                             this.sendNotification()
                         }
                     }
@@ -147,7 +147,7 @@ bash -c "export -p | awk '{print \\\$3'} | grep \\"^IDO_\\" | tr -d '\\"'"
                                 }
                             }
                             finally {
-                                steps.echo "########## Stage: Notify ##########"
+                                steps.echo "\033[32m########## Stage: Notify ##########\033[0m"
                                 this.sendNotification()
                             }
                         }
