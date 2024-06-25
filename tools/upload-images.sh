@@ -12,8 +12,10 @@ else
     "docker.io/xinnj/ssh-client:1.0.0" \
     "docker.io/alpine:3.20.1" \
     "docker.io/dwimberger/alpine-qr" \
+    "docker.io/nginx:stable" \
     "docker.io/node:20.13.1-slim" \
-    "docker.io/nginx:stable"
+    "docker.io/eclipse-temurin:21-jdk" \
+    "docker.io/eclipse-temurin:21-jre"
   )
 fi
 
@@ -30,5 +32,5 @@ for img in "${images[@]}"; do
 
   unset http_proxy
   unset https_proxy
-  podman push --tls-verify=false $push_image
+  podman push --tls-verify=false $push_image || podman push --tls-verify=false $push_image || podman push --tls-verify=false $push_image
 done

@@ -15,6 +15,8 @@ class NodejsImagePipeline extends NpmPipeline {
 
     @Override
     def prepare() {
+        config.scmCleanExclude = "**/node_modules"
+
         super.prepare()
 
         imageArchiver = new ImageArchiver(steps, config)
@@ -38,7 +40,8 @@ class NodejsImagePipeline extends NpmPipeline {
                 export NODE_ENV=production
                 cd "${config.srcRootPath}"
 
-                npm ci --omit=dev
+                npm prune --omit=dev
+                npm install --omit=dev
             """
         }
     }

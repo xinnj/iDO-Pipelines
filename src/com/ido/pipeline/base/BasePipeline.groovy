@@ -217,48 +217,26 @@ bash -c "export -p | awk '{print \\\$3'} | grep \\"^IDO_\\" | tr -d '\\"'"
         if ((Map) config.scm != null) {
             steps.echo "Use scm from config"
             scmCredentialsId = config.scm.credentialsId
-            try {
-                steps.checkout([$class           : 'GitSCM',
-                                branches         : [[name: config.scm.branch]],
-                                userRemoteConfigs: [[name: "origin", url: config.scm.repoUrl, credentialsId: scmCredentialsId]],
-                                extensions       : [[$class: 'CloneOption', noTags: false, shallow: false, timeout: 120],
-                                                    [$class: 'CheckoutOption', timeout: 120],
-                                                    [$class: 'CleanBeforeCheckout', deleteUntrackedNestedRepositories: false],
-                                                    steps.pruneTags(true)
-                                ]])
-            } catch (Exception ignored) {
-                steps.checkout([$class           : 'GitSCM',
-                                branches         : [[name: config.scm.branch]],
-                                userRemoteConfigs: [[name: "origin", url: config.scm.repoUrl, credentialsId: scmCredentialsId]],
-                                extensions       : [[$class: 'CloneOption', noTags: false, shallow: false, timeout: 120],
-                                                    [$class: 'CheckoutOption', timeout: 120],
-                                                    [$class: 'CleanBeforeCheckout', deleteUntrackedNestedRepositories: false],
-                                                    steps.pruneTags(true)
-                                ]])
-            }
+            steps.checkout([$class           : 'GitSCM',
+                            branches         : [[name: config.scm.branch]],
+                            userRemoteConfigs: [[name: "origin", url: config.scm.repoUrl, credentialsId: scmCredentialsId]],
+                            extensions       : [[$class: 'CloneOption', noTags: false, shallow: false, timeout: 120],
+                                                [$class: 'CheckoutOption', timeout: 120],
+                                                steps.pruneTags(true)
+                            ]])
         } else if (steps.scm != null) {
             steps.echo "Use scm where Jenkinsfile is"
             scmCredentialsId = steps.scm.getUserRemoteConfigs().credentialsId.get(0)
-            try {
-                steps.checkout([$class           : 'GitSCM',
-                                branches         : steps.scm.getBranches(),
-                                userRemoteConfigs: steps.scm.getUserRemoteConfigs(),
-                                extensions       : [[$class: 'CloneOption', noTags: false, shallow: false, timeout: 120],
-                                                    [$class: 'CheckoutOption', timeout: 120],
-                                                    [$class: 'CleanBeforeCheckout', deleteUntrackedNestedRepositories: false],
-                                                    steps.pruneTags(true)
-                                ]])
-            } catch (Exception ignored) {
-                steps.checkout([$class           : 'GitSCM',
-                                branches         : steps.scm.getBranches(),
-                                userRemoteConfigs: steps.scm.getUserRemoteConfigs(),
-                                extensions       : [[$class: 'CloneOption', noTags: false, shallow: false, timeout: 120],
-                                                    [$class: 'CheckoutOption', timeout: 120],
-                                                    [$class: 'CleanBeforeCheckout', deleteUntrackedNestedRepositories: false],
-                                                    steps.pruneTags(true)
-                                ]])
-            }
+            steps.checkout([$class           : 'GitSCM',
+                            branches         : steps.scm.getBranches(),
+                            userRemoteConfigs: steps.scm.getUserRemoteConfigs(),
+                            extensions       : [[$class: 'CloneOption', noTags: false, shallow: false, timeout: 120],
+                                                [$class: 'CheckoutOption', timeout: 120],
+                                                steps.pruneTags(true)
+                            ]])
         }
+
+        cleanGit()
 
         // Checkout additional scm(s)
         if (config.additionalScm != null) {
@@ -275,25 +253,15 @@ bash -c "export -p | awk '{print \\\$3'} | grep \\"^IDO_\\" | tr -d '\\"'"
                         scmCredentialsId = it.credentialsId
                     }
 
-                    try {
-                        steps.checkout([$class           : 'GitSCM',
-                                        branches         : [[name: it.branch]],
-                                        userRemoteConfigs: [[name: it.repoName, url: it.repoUrl, credentialsId: scmCredentialsId]],
-                                        extensions       : [[$class: 'CloneOption', noTags: false, shallow: false, timeout: 120],
-                                                            [$class: 'CheckoutOption', timeout: 120],
-                                                            [$class: 'CleanBeforeCheckout', deleteUntrackedNestedRepositories: false],
-                                                            steps.pruneTags(true)
-                                        ]])
-                    } catch (Exception ignored) {
-                        steps.checkout([$class           : 'GitSCM',
-                                        branches         : [[name: it.branch]],
-                                        userRemoteConfigs: [[name: it.repoName, url: it.repoUrl, credentialsId: scmCredentialsId]],
-                                        extensions       : [[$class: 'CloneOption', noTags: false, shallow: false, timeout: 120],
-                                                            [$class: 'CheckoutOption', timeout: 120],
-                                                            [$class: 'CleanBeforeCheckout', deleteUntrackedNestedRepositories: false],
-                                                            steps.pruneTags(true)
-                                        ]])
-                    }
+                    steps.checkout([$class           : 'GitSCM',
+                                    branches         : [[name: it.branch]],
+                                    userRemoteConfigs: [[name: it.repoName, url: it.repoUrl, credentialsId: scmCredentialsId]],
+                                    extensions       : [[$class: 'CloneOption', noTags: false, shallow: false, timeout: 120],
+                                                        [$class: 'CheckoutOption', timeout: 120],
+                                                        steps.pruneTags(true)
+                                    ]])
+
+                    cleanGit()
                 }
             }
         }
@@ -326,6 +294,26 @@ bash -c "export -p | awk '{print \\\$3'} | grep \\"^IDO_\\" | tr -d '\\"'"
                 Remove-Item -Recurse -Force -ErrorAction Ignore .git/rebase-apply
                 Remove-Item -Recurse -Force -ErrorAction Ignore .git/rebase-merge
                 exit 0
+            """
+        }
+    }
+
+    def cleanGit() {
+        String excludeCmd = ""
+        if (config.scmCleanExclude) {
+            excludeCmd = "-e \"${config.scmCleanExclude}\""
+        }
+
+        if (steps.isUnix()) {
+            steps.sh """${config.debugSh}
+                git reset --hard -q
+                git clean -fdxq ${excludeCmd}
+            """
+        } else {
+            steps.powershell """${config.debugPowershell}
+                \$ErrorActionPreference = 'Stop'
+                git reset --hard -q
+                git clean -fdxq ${excludeCmd}
             """
         }
     }
