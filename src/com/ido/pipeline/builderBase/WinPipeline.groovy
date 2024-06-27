@@ -81,7 +81,7 @@ if (!(Select-String -Path "\$PROFILE" -Pattern "net use R:" -Quiet -SimpleMatch)
     (Get-Content \$PROFILE) -replace ".*net use R:.*", "if (-not(Test-Path -Path R:/workspace -PathType Container)) {net use R: ${smbServerAddress} | out-null}" | Set-Content \$PROFILE
 }
 
-if (!(Get-PackageProvider -ListAvailable -Name NuGet)) {
+if (!(Get-PackageProvider -ListAvailable | select-string "NuGet")) {
     Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
 }
 
@@ -133,6 +133,29 @@ netsh interface portproxy add v4tov4 listenport=445 connectaddress=\$remoteIP co
                     
                     sudo -- sh -c "echo '127.0.0.1 remote-host' >> /etc/hosts"
                 """
+
+                cmd = """
+if (!(Test-Path -Path "\$PROFILE" )) {
+    New-Item -Type File -Path "\$PROFILE" -Force
+}
+
+if (!(Select-String -Path "\$PROFILE" -Pattern "ErrorActionPreference" -Quiet -SimpleMatch)) {
+    Add-Content -Path "\$PROFILE" -Value "`\$ErrorActionPreference = 'SilentlyContinue'"
+}
+if (!(Select-String -Path "\$PROFILE" -Pattern "[System.Console]::OutputEncoding" -Quiet -SimpleMatch)) {
+    Add-Content -Path "\$PROFILE" -Value "[System.Console]::OutputEncoding = [System.Console]::InputEncoding = [System.Text.Encoding]::UTF8"
+}
+if (!(Select-String -Path "\$PROFILE" -Pattern "net use R:" -Quiet -SimpleMatch)) {
+    Add-Content -Path "\$PROFILE" -Value "if (-not(Test-Path -Path R:/workspace -PathType Container)) {net use R: ${smbServerAddress} | out-null}"
+} else {
+    (Get-Content \$PROFILE) -replace ".*net use R:.*", "if (-not(Test-Path -Path R:/workspace -PathType Container)) {net use R: ${smbServerAddress} | out-null}" | Set-Content \$PROFILE
+}
+
+if (!(Get-PackageProvider -ListAvailable | select-string "NuGet")) {
+    Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
+}
+"""
+                Utils.execRemoteWin(steps, config, cmd)
             }
 
             cmd = """

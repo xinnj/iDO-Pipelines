@@ -2,7 +2,7 @@ apiVersion: v1
 kind: Pod
 metadata:
   labels:
-    macos-agent: true
+    macos-agent: "true"
 spec:
   initContainers:
     - name: prepare
@@ -12,11 +12,31 @@ spec:
         - -c
         - |
           set -euao pipefail
-          if ! [ -f "/home/arch/macos-image/<macosImage>" ]; then
+          
+          case <macosImage> in
+            http*)
+              download_mode="url"
+            ;;
+            *)
+              download_mode="file"
+            ;;
+          esac
+          
+          filename=$(basename <macosImage>)
+          download_url=<macosImage>
+          
+          if ! [ -f "/home/arch/macos-image/${filename}" ]; then
             date
-            echo "Copy <macosImage> to local..."
-            cp -f /Users/jenkins/agent/macos-image/<macosImage> /home/arch/macos-image/<macosImage>.download
-            mv /home/arch/macos-image/<macosImage>.download /home/arch/macos-image/<macosImage>
+            echo "Copy ${download_url} to local..."
+            cd /home/arch/macos-image
+          
+            if [ "$download_mode" == "url" ]; then
+              wget -O ${filename}.download $download_url
+            else
+              cp -f "${$download_url}" ${filename}.download
+            fi
+            mv ${filename}.download ${filename}
+          
             chown -R 1000:1000 /home/arch/macos-image
             date
           fi

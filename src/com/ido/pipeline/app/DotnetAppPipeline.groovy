@@ -9,10 +9,10 @@ import com.ido.pipeline.builderBase.WinPipeline
  */
 class DotnetAppPipeline extends WinPipeline {
     FileArchiver fileArchiver
-    String nugetPackages = "R:\\nuget\\packages"
-    String nugetHttpCachePath = "R:\\nuget\\v3-cache"
-    String nugetPluginsCachePath = "R:\\nuget\\plugins-cache"
-    String sonarUserHome = "R:\\sonar"
+    String nugetPackages = "R:/nuget/packages"
+    String nugetHttpCachePath = "R:/nuget/v3-cache"
+    String nugetPluginsCachePath = "R:/nuget/plugins-cache"
+    String sonarUserHome = "R:/sonar"
 
     DotnetAppPipeline(Object steps) {
         super(steps)
