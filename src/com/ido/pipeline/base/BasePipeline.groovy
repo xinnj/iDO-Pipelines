@@ -123,6 +123,7 @@ bash -c "export -p | awk '{print \\\$3'} | grep \\"^IDO_\\" | tr -d '\\"'"
                             .replaceAll('<imagePullSecret>', config._system.imagePullSecret as String)
                             .replaceAll('<inboundAgentImage>', config._system.inboundAgentImage as String)
 
+                    // steps.echo config.podTemplate
                     steps.podTemplate(yaml: config.podTemplate,
                             idleMinutes: config.keepBuilderPodMinutes,
                             workspaceVolume: workspaceVolumeType(config._system.workspaceVolume.type),
@@ -179,9 +180,10 @@ bash -c "export -p | awk '{print \\\$3'} | grep \\"^IDO_\\" | tr -d '\\"'"
     def abstract customStages()
 
     def prepare() {
+        config.branch = Utils.getBranchName(steps)
         if (config.dependOn.size() != 0) {
             String upstreamProjects = ""
-            String defaultBranch = Utils.getBranchName(steps)
+            String defaultBranch = config.branch
 
             for (Map job in (config.dependOn as List<Map>)) {
                 if (job.name) {
@@ -246,7 +248,7 @@ bash -c "export -p | awk '{print \\\$3'} | grep \\"^IDO_\\" | tr -d '\\"'"
                     this.configGit()
 
                     if (!it.branch) {
-                        it.branch = Utils.getBranchName(steps)
+                        it.branch = config.branch
                     }
 
                     if (!it.credentialsId) {
@@ -321,7 +323,7 @@ bash -c "export -p | awk '{print \\\$3'} | grep \\"^IDO_\\" | tr -d '\\"'"
     def afterScm() {
         steps.container('builder') {
             steps.withEnv(["CI_PRODUCTNAME=$config.productName",
-                           "CI_BRANCH=" + Utils.getBranchName(steps)]) {
+                           "CI_BRANCH=$config.branch"]) {
                 runCustomerBuildScript(config.customerBuildScript.afterScm)
             }
         }
@@ -345,7 +347,7 @@ bash -c "export -p | awk '{print \\\$3'} | grep \\"^IDO_\\" | tr -d '\\"'"
         steps.container('builder') {
             steps.withEnv(["CI_PRODUCTNAME=$config.productName",
                            "CI_VERSION=$config.version",
-                           "CI_BRANCH=" + Utils.getBranchName(steps)]) {
+                           "CI_BRANCH=$config.branch"]) {
                 runCustomerBuildScript(config.customerBuildScript.afterVersioning)
 
                 if (steps.fileExists("${config.srcRootPath}/ido-cluster/_version")) {
@@ -380,7 +382,7 @@ bash -c "export -p | awk '{print \\\$3'} | grep \\"^IDO_\\" | tr -d '\\"'"
     }
 
     def invoke(List<?> parameters) {
-        String defaultBranch = Utils.getBranchName(steps)
+        String defaultBranch = config.branch
 
         for (Map job in (config.jobsInvoked as List<Map>)) {
             if (job.name) {
@@ -415,7 +417,7 @@ bash -c "export -p | awk '{print \\\$3'} | grep \\"^IDO_\\" | tr -d '\\"'"
     def stopInvokedJob() {
         if (config.jobsInvoked.size() != 0) {
             steps.echo "Stop all running build of the jobs to be invoked..."
-            String defaultBranch = Utils.getBranchName(steps)
+            String defaultBranch = config.branch
 
             def item
             for (Map job in (config.jobsInvoked as List<Map>)) {
@@ -450,12 +452,34 @@ bash -c "export -p | awk '{print \\\$3'} | grep \\"^IDO_\\" | tr -d '\\"'"
         switch (config.builderType) {
             case "win":
                 String cmd = """
-cd "\${Env:WORKSPACE}/${config.srcRootPath}"
+[Environment]::SetEnvironmentVariable('CI_PRODUCTNAME','$config.productName', 'User')
+[Environment]::SetEnvironmentVariable('CI_BRANCH','$config.branch', 'User')
+[Environment]::SetEnvironmentVariable('CI_VERSION','$config.version', 'User')
+[Environment]::SetEnvironmentVariable('CI_WORKSPACE','$config.vmWorkspace', 'User')
+cd "${config.vmWorkspace}/${config.srcRootPath}"
 "Invoke-Command -ScriptBlock ([ScriptBlock]::Create((Get-Content $script)))"
 """
                 Utils.execRemoteWin(steps, config, cmd)
                 break
             case "mac":
+                steps.withCredentials([steps.usernamePassword(credentialsId: config.macos.loginCredentialId, passwordVariable: 'password', usernameVariable: 'username')]) {
+                    steps.sh """${config.debugSh}
+                        ssh remote-host /bin/sh <<EOF
+                            ${config.debugSh}
+                            set -euao pipefail
+                            export CI_PRODUCTNAME=${config.productName}
+                            export CI_VERSION=${config.version}
+                            export CI_BRANCH=${config.branch}
+
+                            security unlock-keychain -p \${password}
+                            security set-keychain-settings -lut 21600 login.keychain
+        
+                            set -x
+                            cd "${steps.WORKSPACE}/${config.srcRootPath}"
+                            sh "${config.customerBuildScript.${script}}"
+EOF
+                    """
+                }
                 break
             default:
                 steps.sh """

@@ -135,11 +135,11 @@ class AndroidAppPipeline extends JdkPipeline {
         String newFileName = fileArchiver.getFileName()
         steps.container('uploader') {
             String uploadUrl = "${config.fileServer.uploadUrl}${config.fileServer.uploadRootPath}${config.productName}/" +
-                    Utils.getBranchName(steps) + "/android"
+                    config.branch + "/android"
             String debugDownloadUrl = "${config.fileServer.downloadUrl}${config.fileServer.uploadRootPath}/${config.productName}/" +
-                    Utils.getBranchName(steps) + "/android/files/${newFileName}-debug.apk"
+                    config.branch + "/android/files/${newFileName}-debug.apk"
             String releaseDownloadUrl = "${config.fileServer.downloadUrl}${config.fileServer.uploadRootPath}/${config.productName}/" +
-                    Utils.getBranchName(steps) + "/android/files/${newFileName}-release.apk"
+                    config.branch + "/android/files/${newFileName}-release.apk"
 
 
             steps.sh """${config.debugSh}

@@ -15,8 +15,7 @@ public class FileArchiver {
     }
 
     String getFileName() {
-        String branch = Utils.getBranchName(steps)
-        return "${config.productName}-${branch}-${config.version}"
+        return "${config.productName}-${config.branch}-${config.version}"
     }
 
     def upload(String server, String path) {

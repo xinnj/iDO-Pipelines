@@ -7,7 +7,6 @@ import com.ido.pipeline.base.BuildPipeline
  * @author xinnj
  */
 abstract class WinPipeline extends BuildPipeline{
-    String vmWorkspace = ""
     String smbServerAddress = ""
 
     WinPipeline(Object steps) {
@@ -18,7 +17,7 @@ abstract class WinPipeline extends BuildPipeline{
     Map runPipeline(Map config) {
         steps.withCredentials([steps.usernamePassword(credentialsId: config.win.loginCredentialId, passwordVariable: 'password', usernameVariable: 'username')]) {
             if (config.win.useRemoteBuilder) {
-                steps.lock(label: "win-builder", quantity: 1, resourceSelectStrategy: "random", variable: "builder") {
+                steps.lock(label: config.win.remoteBuilderTags, quantity: 1, resourceSelectStrategy: "random", variable: "builder") {
                     String remoteHost = steps.env.builder0_host
                     String remotePort = steps.env.builder0_port
                     steps.echo "Locked remote builder: " + steps.env.builder
@@ -54,7 +53,7 @@ abstract class WinPipeline extends BuildPipeline{
         config.builderType = "win"
         super.prepare()
 
-        vmWorkspace = (steps.WORKSPACE as String).replace("/home/jenkins/agent", "R:").replace("/", "\\")
+        config.vmWorkspace = (steps.WORKSPACE as String).replace("/home/jenkins/agent", "R:").replace("/", "\\")
 
         steps.container('builder') {
             String cmd
@@ -160,42 +159,9 @@ if (!(Get-PackageProvider -ListAvailable | select-string "NuGet")) {
 
             cmd = """
 powershell -command \"New-ItemProperty -Path 'HKLM:\\SOFTWARE\\OpenSSH' -Name DefaultShell -Value 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe' -PropertyType String -Force; Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope CurrentUser\"
+powershell -command \"[Environment]::SetEnvironmentVariable('DOTNET_CLI_TELEMETRY_OPTOUT','true', 'User')\"
 """
             Utils.execRemoteWin(steps, config, cmd)
-
-            String branch = Utils.getBranchName(steps)
-            cmd = """
-[Environment]::SetEnvironmentVariable('DOTNET_CLI_TELEMETRY_OPTOUT','true', 'User')
-[Environment]::SetEnvironmentVariable('CI_PRODUCTNAME','$config.productName', 'User')
-[Environment]::SetEnvironmentVariable('CI_BRANCH','$branch', 'User')
-[Environment]::SetEnvironmentVariable('CI_CONFIGURATION','$config.dotnet.configuration', 'User')
-[Environment]::SetEnvironmentVariable('WORKSPACE','$vmWorkspace', 'User')
-"""
-            Utils.execRemoteWin(steps, config, cmd)
-        }
-    }
-
-    @Override
-    def versioning() {
-        super.versioning()
-
-        steps.container('builder') {
-            steps.sh """
-                ssh remote-host "[Environment]::SetEnvironmentVariable('CI_VERSION','$config.version', 'User')"
-            """
-        }
-
-    }
-
-    @Override
-    def afterVersioning() {
-        super.afterVersioning()
-        steps.container('builder') {
-            if (steps.fileExists("${config.srcRootPath}/ido-cluster/_version")) {
-                steps.sh """
-                    ssh remote-host "[Environment]::SetEnvironmentVariable('CI_VERSION','$config.version', 'User')"
-                """
-            }
         }
     }
 }

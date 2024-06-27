@@ -228,14 +228,22 @@ android:
   qualityGateEnabled: false
   sonarqubeTimeoutMinutes: 10
 
-## Xcode config
-xcode:
+## Macos builder config
+macos:
   # Use dedicated remote machine as the builder or not
   useRemoteBuilder: false
+  # Space-delimited list of Labels (A label can not containing spaces) used to identify a builder
+  remoteBuilderTags: "macos-builder"
   # Credential ID of login account of builder machine
   loginCredentialId: "macos-builder-login"
-  # The vm file if using internal vm as the builder
-  macosImage: "ventura-v1.img"
+  # The vm file if using internal vm as the builder. Can be a URL or absolute file path.
+  # /home/jenkins/agent/macos-image/xxx.img
+  # http://file-server/download/tools/osx/xxx.img
+  macosImage: "http://file-server/download/tools/osx/ventura-v1.img"
+  useCocoapods: false
+
+## Xcode config
+xcode:
   path: "/Applications/Xcode.app"
   # Apple connect API key, used by automatic code sign
   authenticationKey:
@@ -243,7 +251,6 @@ xcode:
     ID: ""
     # Secret file credential
     keyFileCredentialId: "apple-auth-key"
-  useCocoapods: false
 
 ## iOS app config
 ios:
@@ -298,10 +305,14 @@ ios:
 win:
   # Use dedicated remote machine as the builder or not
   useRemoteBuilder: false
+  # Space-delimited list of Labels (A label can not containing spaces) used to identify a builder
+  remoteBuilderTags: "win-builder"
   # Credential ID of login account of builder machine
   loginCredentialId: "win-builder-login"
-  # The vm file if using internal vm as the builder
-  winImage: "win11-v1.img"
+  # The vm file if using internal vm as the builder. Can be a URL or absolute file path.
+  # /home/jenkins/agent/win-image/xxx.img
+  # http://file-server/download/tools/win/xxx.img
+  winImage: "http://file-server/download/tools/win/win11-v1.img"
 
 ## dotnet app config
 dotnet:

@@ -71,6 +71,7 @@ spec:
         - |
           set -euaxo pipefail
           cd /home/arch/OSX-KVM
+          export IMAGE_PATH=/home/arch/macos-image/$(basename $IMAGE_URL)
           ./Start.sh
           touch /home/arch/vm-started
           echo "Sleep for <keepBuilderPodMaxMinutes>m"
@@ -116,8 +117,8 @@ spec:
       env:
         - name: "HEADLESS"
           value: "true"
-        - name: "IMAGE_PATH"
-          value: "/home/arch/macos-image/<macosImage>"
+        - name: "IMAGE_URL"
+          value: "<macosImage>"
         - name: "BOOTDISK"
           value: "/home/arch/macos-image/<macosImage>.boot"
         - name: "ENV"

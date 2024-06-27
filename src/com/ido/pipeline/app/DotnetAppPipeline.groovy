@@ -52,10 +52,8 @@ class DotnetAppPipeline extends WinPipeline {
 [Environment]::SetEnvironmentVariable('NUGET_HTTP_CACHE_PATH','$nugetHttpCachePath', 'User')
 [Environment]::SetEnvironmentVariable('NUGET_PLUGINS_CACHE_PATH','$nugetPluginsCachePath', 'User')
 [Environment]::SetEnvironmentVariable('SONAR_USER_HOME',"$sonarUserHome", 'User')
-"""
-            Utils.execRemoteWin(steps, config, cmd)
+[Environment]::SetEnvironmentVariable('CI_CONFIGURATION','$config.dotnet.configuration', 'User')
 
-            cmd = """
 New-Item -ItemType Directory -Force -Path \$Env:NUGET_PACKAGES | out-null
 New-Item -ItemType Directory -Force -Path \$Env:NUGET_HTTP_CACHE_PATH | out-null
 New-Item -ItemType Directory -Force -Path \$Env:NUGET_PLUGINS_CACHE_PATH | out-null
@@ -105,7 +103,7 @@ if (\$workloadsStr.Length -ne 0)
             String cmd = """
 \$Env:Path = "${config._system.dotnet.sdkPath}/${config.dotnet.sdkVersion};\$Env:Path"
 
-cd "\${Env:WORKSPACE}/${config.srcRootPath}"
+cd "${config.vmWorkspace}/${config.srcRootPath}"
 dotnet publish ${config.dotnet.ut.project} -c ${config.dotnet.configuration} -p:Version=${config.version} `
     --source ${config._system.dotnet.nugetSource} --no-cache --nologo
 
@@ -144,7 +142,7 @@ dotnet test ${config.dotnet.ut.project} -c ${config.dotnet.configuration} --no-b
 dotnet tool install dotnet-sonarscanner --add-source ${config._system.dotnet.nugetSource} --ignore-failed-sources `
     --tool-path "${config._system.dotnet.sdkPath}/tools" --no-cache
 
-cd "\${Env:WORKSPACE}/${config.srcRootPath}"
+cd "${config.vmWorkspace}/${config.srcRootPath}"
 
 dotnet sonarscanner begin /k:"${config.productName}" /d:sonar.login="${steps.env.SONAR_AUTH_TOKEN}" `
     /d:sonar.host.url="${steps.env.SONAR_HOST_URL}" ${qualityGate}
@@ -173,7 +171,7 @@ if (-not\$?)
             String cmd = """
 \$Env:Path = "${config._system.dotnet.sdkPath}/${config.dotnet.sdkVersion};\$Env:Path"
 
-cd "\${Env:WORKSPACE}/${config.srcRootPath}"
+cd "${config.vmWorkspace}/${config.srcRootPath}"
 
 dotnet publish ${config.dotnet.buildFile} -c ${config.dotnet.configuration} -p:Version=${config.version} `
     --source ${config._system.dotnet.nugetSource} ${cmdRuntime} --no-cache --nologo
@@ -194,7 +192,7 @@ wixc.ps1 -config "${config.dotnet.msiConfig}.final" -output "ido-cluster/outputs
     @Override
     def archive() {
         String uploadUrl = "${config.fileServer.uploadUrl}${config.fileServer.uploadRootPath}${config.productName}/" +
-                Utils.getBranchName(steps) + "/dotnet"
+                config.branch + "/dotnet"
 
         fileArchiver.upload(uploadUrl, "${config.srcRootPath}/ido-cluster/outputs")
     }

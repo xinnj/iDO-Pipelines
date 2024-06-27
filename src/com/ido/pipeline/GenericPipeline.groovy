@@ -24,7 +24,7 @@ class GenericPipeline extends BuildPipeline {
         steps.container('builder') {
             steps.withEnv(["CI_PRODUCTNAME=$config.productName",
                            "CI_VERSION=$config.version",
-                           "CI_BRANCH=" + Utils.getBranchName(steps)]) {
+                           "CI_BRANCH=$config.branch"]) {
                 if (steps.isUnix()) {
                     steps.sh """${config.debugSh}
                         cd "${config.srcRootPath}"

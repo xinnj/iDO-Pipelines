@@ -38,7 +38,7 @@ class IosAppPipeline extends XcodePipeline {
 
         steps.container('builder') {
             config.ios.certificateCredentialIds.each {
-                steps.withCredentials([steps.usernamePassword(credentialsId: config.xcode.loginCredentialId, passwordVariable: 'password', usernameVariable: 'username'),
+                steps.withCredentials([steps.usernamePassword(credentialsId: config.macos.loginCredentialId, passwordVariable: 'password', usernameVariable: 'username'),
                                        steps.certificate(credentialsId: it, keystoreVariable: 'keyStore', passwordVariable: 'keyPass')]) {
                     steps.sh """${config.debugSh}
                         ssh remote-host /bin/sh <<EOF
@@ -102,7 +102,7 @@ EOF
 
                 // Archive if not executed
                 if (!buildTypes.containsKey(buildType)) {
-                    steps.withCredentials([steps.usernamePassword(credentialsId: config.xcode.loginCredentialId, passwordVariable: 'password', usernameVariable: 'username'),
+                    steps.withCredentials([steps.usernamePassword(credentialsId: config.macos.loginCredentialId, passwordVariable: 'password', usernameVariable: 'username'),
                                            steps.file(credentialsId: config.xcode.authenticationKey.keyFileCredentialId,
                                                    variable: 'authKeyPath')]) {
                         steps.sh """${config.debugSh}
@@ -133,7 +133,7 @@ EOF
                 }
 
                 // Export ipa
-                steps.withCredentials([steps.usernamePassword(credentialsId: config.xcode.loginCredentialId, passwordVariable: 'password', usernameVariable: 'username'),
+                steps.withCredentials([steps.usernamePassword(credentialsId: config.macos.loginCredentialId, passwordVariable: 'password', usernameVariable: 'username'),
                                        steps.file(credentialsId: config.xcode.authenticationKey.keyFileCredentialId,
                                                variable: 'authKeyPath')]) {
                     steps.sh """${config.debugSh}
@@ -173,7 +173,7 @@ EOF
         String newFileName = fileArchiver.getFileName()
         steps.container('uploader') {
             String uploadUrl = "${config.fileServer.uploadUrl}${config.fileServer.uploadRootPath}${config.productName}/" +
-                    Utils.getBranchName(steps) + "/ios"
+                    config.branch + "/ios"
 
             steps.sh """${config.debugSh}
                 cd "${config.srcRootPath}/ido-cluster/outputs"
@@ -187,10 +187,10 @@ EOF
 
             config.ios.buildOptions.each {
                 String downloadUrl = "${config.fileServer.downloadUrl}${config.fileServer.uploadRootPath}${config.productName}/" +
-                        Utils.getBranchName(steps) + "/ios/files/${newFileName}-${it.name}.ipa"
+                        config.branch + "/ios/files/${newFileName}-${it.name}.ipa"
                 String plistUrl = "itms-services://?action=download-manifest&amp;" +
                         "url=${config.fileServer.downloadUrl}/${config.fileServer.uploadRootPath}${config.productName}/" +
-                        Utils.getBranchName(steps) + "/ios/files/${newFileName}-manifest-${it.name}.plist"
+                        config.branch + "/ios/files/${newFileName}-manifest-${it.name}.plist"
 
                 steps.sh """${config.debugSh}
                     cd "${config.srcRootPath}"

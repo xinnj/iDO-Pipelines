@@ -155,7 +155,7 @@ abstract class BuildPipeline extends BasePipeline {
         steps.container('builder') {
             steps.withEnv(["CI_PRODUCTNAME=$config.productName",
                            "CI_VERSION=$config.version",
-                           "CI_BRANCH=" + Utils.getBranchName(steps)]) {
+                           "CI_BRANCH=$config.branch"]) {
                 runCustomerBuildScript(config.customerBuildScript.beforeBuild)
             }
         }
@@ -170,7 +170,7 @@ abstract class BuildPipeline extends BasePipeline {
                 steps.echo "Execute customer build script: ${config.customerBuildScript.build}"
                 steps.withEnv(["CI_PRODUCTNAME=$config.productName",
                                "CI_VERSION=$config.version",
-                               "CI_BRANCH=" + Utils.getBranchName(steps)]) {
+                               "CI_BRANCH=$config.branch"]) {
                     runCustomerBuildScript(config.customerBuildScript.build)
                 }
                 runCustomer = true
@@ -183,7 +183,7 @@ abstract class BuildPipeline extends BasePipeline {
         steps.container('builder') {
             steps.withEnv(["CI_PRODUCTNAME=$config.productName",
                            "CI_VERSION=$config.version",
-                           "CI_BRANCH=" + Utils.getBranchName(steps)]) {
+                           "CI_BRANCH=$config.branch"]) {
                 runCustomerBuildScript(config.customerBuildScript.afterBuild)
             }
         }
@@ -195,7 +195,7 @@ abstract class BuildPipeline extends BasePipeline {
         steps.container('builder') {
             steps.withEnv(["CI_PRODUCTNAME=$config.productName",
                            "CI_VERSION=$config.version",
-                           "CI_BRANCH=" + Utils.getBranchName(steps)]) {
+                           "CI_BRANCH=$config.branch"]) {
                 runCustomerBuildScript(config.customerBuildScript.afterArchive)
             }
         }
