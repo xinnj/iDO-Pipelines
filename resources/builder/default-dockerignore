@@ -5,3 +5,5 @@ Dockerfile
 .gitignore
 .idea
 .npmrc
+Jenkinsfile
+Jenkinsfile.yaml
