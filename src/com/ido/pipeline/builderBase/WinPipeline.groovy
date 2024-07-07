@@ -98,7 +98,7 @@ if (!(Get-LoopbackAdapter -Name smb)) {
 }
 """
                 steps.sh """
-                    set +x
+                    { set +x; } 2>/dev/null
                     currentHome=\$HOME
                     sudo -- sh -c "cat \${currentHome}/hosts >> /etc/hosts"
                 """
@@ -124,7 +124,7 @@ netsh interface portproxy add v4tov4 listenport=445 connectaddress=\$remoteIP co
             } else {
                 smbServerAddress = "\\\\${config._system.smbServer.internal}\\${config._system.smbServer.shareName} ${config._system.smbServer.password} /user:${config._system.smbServer.user}"
                 steps.sh """
-                    set +x
+                    { set +x; } 2>/dev/null
                     if [[ \$(grep -E -c '(svm|vmx)' /proc/cpuinfo) -le 0 ]]; then
                         echo KVM not possible on this host
                         exit 1
