@@ -1,19 +1,6 @@
 apiVersion: v1
 kind: Pod
 spec:
-  initContainers:
-    - name: jib-global-config
-      image: docker.io/alpine:3.20.1
-      command:
-        - /bin/sh
-        - -c
-        - |
-          if ! [ -f "/home/jenkins/agent/jib/google-cloud-tools-java/jib/config.json" ]; then
-            echo '{"disableUpdateCheck": true,"registryMirrors": [{"registry": "registry-1.docker.io","mirrors": ["nexus-docker-5000:5000", "registry-1.docker.io"]}]}' > /home/jenkins/agent/jib/google-cloud-tools-java/jib/config.json
-          fi
-      volumeMounts:
-        - mountPath: /home/jenkins/agent
-          name: workspace-volume
   containers:
     - name: builder
       image: <builderImage>

@@ -27,6 +27,34 @@ class SpringBootImagePipeline extends JdkPipeline {
     @Override
     def build() {
         steps.container('builder') {
+            if (config._system.globalRegistryMirror) {
+                steps.sh """${config.debugSh}
+                    cat > \${XDG_CONFIG_HOME}/google-cloud-tools-java/jib/config.json <<EOF
+{
+  "disableUpdateCheck": true,
+  "registryMirrors": [
+    {
+      "registry": "registry-1.docker.io",
+      "mirrors": ["${config._system.globalRegistryMirror}"]
+    },
+    {
+      "registry": "qury.io",
+      "mirrors": ["${config._system.globalRegistryMirror}"]
+    }
+  ]
+}
+EOF
+                """
+            } else {
+                steps.sh """${config.debugSh}
+                    cat > \${XDG_CONFIG_HOME}/google-cloud-tools-java/jib/config.json <<EOF
+{
+  "disableUpdateCheck": true
+}
+EOF
+                """
+            }
+
             if (config.registryPull && config.registryPull.credentialsId) {
                 steps.withCredentials([steps.usernamePassword(credentialsId: config.registryPull.credentialsId, passwordVariable: 'passwordPull', usernameVariable: 'userNamePull')]) {
                     if (config.registryPush && config.registryPush.credentialsId) {
@@ -53,7 +81,6 @@ class SpringBootImagePipeline extends JdkPipeline {
         if (config._system.imagePullMirror) {
             config.springBoot.baseImage = Utils.replaceImageMirror(config._system.imageMirrors, config.springBoot.baseImage)
         }
-        config.springBoot.baseImage = (config.springBoot.baseImage as String).replaceAll("^docker.io/", "")
 
         String jib_from_auth = ""
         if (config.registryPull && config.registryPull.credentialsId) {

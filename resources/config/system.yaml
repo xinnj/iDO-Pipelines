@@ -1,3 +1,5 @@
+# Global registry mirror, e.g. "nexus-docker-5000:5000"
+globalRegistryMirror: ""
 # Use mirror to pull builder images
 imagePullMirror: false
 imageMirrors:

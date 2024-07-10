@@ -52,6 +52,21 @@ public class ImageArchiver {
     }
 
     private runBuildah() {
+        String registryConf = ""
+        if (config._system.globalRegistryMirror) {
+            steps.sh """${config.debugSh}
+            cat > /tmp/registries.conf <<EOF
+[[registry]]
+prefix = "*.io"
+[[registry.mirror]]
+location = "${config._system.globalRegistryMirror}"
+insecure = true
+EOF
+            """
+
+            registryConf = "--registries-conf /tmp/registries.conf"
+        }
+
         String registry_login_pull = ""
         if (config.registryPull && config.registryPull.credentialsId) {
             registry_login_pull = "buildah login --tls-verify=false -u \${userNamePull}  -p \${passwordPull} " + config.registryPull.url
@@ -68,7 +83,7 @@ public class ImageArchiver {
             cd "${config.srcRootPath}"
             alias buildah="buildah --root /var/buildah-cache --runroot /tmp/containers"
             ${registry_login_pull}
-            buildah build --tls-verify=false --format ${config._system.imageFormat} -f ${config.dockerFile} -t ${pushImageFullName} ./
+            buildah build ${registryConf} --tls-verify=false --format ${config._system.imageFormat} -f ${config.dockerFile} -t ${pushImageFullName} ./
 
             ${registry_login_push}
             buildah push --tls-verify=false ${pushImageFullName}

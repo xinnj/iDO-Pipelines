@@ -160,8 +160,8 @@ springBoot:
   mainClass: ""
   appRoot: "/app"
   baseImage: "docker.io/eclipse-temurin:11-jre"
-  jvmFlages: "-Duser.timezone=PRC -Dfile.encoding=UTF-8"
-  environment: "TZ='Asia/Shanghai'"
+  jvmFlages: "-Dfile.encoding=UTF-8"
+  environment: ""
   # Directories used to add arbitrary files to the image
   extraDirectories: []
   # extraDirectories:
