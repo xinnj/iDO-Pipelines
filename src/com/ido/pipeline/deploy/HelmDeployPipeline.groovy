@@ -53,10 +53,17 @@ class HelmDeployPipeline extends DeployPipeline {
             }
         }
 
-        List parameters = [steps.text(name: 'USAGE', defaultValue: 'Please provide the chart version of each release.', description: '')]
+        List parameters = [steps.text(name: 'USAGE', defaultValue: 'Please provide the chart version of each release.' +
+                '\nChart with empty version will be ignored.' +
+                "\nFor prod env, version can't be 'latest'.", description: '')]
+
+        String defaultValue = "latest"
+        if (config.helm.deploy.env == "prod") {
+            defaultValue = ""
+        }
         for (release in releases) {
             String varName = "CHART_VERSION_" + release.name
-            def para = steps.string(name: varName, defaultValue: 'latest', description: '', trim: true)
+            def para = steps.string(name: varName, defaultValue: defaultValue, description: '', trim: true)
             parameters.add(para)
         }
         steps.properties([
@@ -66,14 +73,6 @@ class HelmDeployPipeline extends DeployPipeline {
         if (firstRun) {
             steps.error "Populating job parameters. Please run the job again."
         }
-
-        for (release in releases) {
-            String varName = "CHART_VERSION_" + release.name
-            if (!steps.params[varName]) {
-                steps.error "Chart version can't be empty."
-            }
-        }
-
     }
 
     @Override
@@ -115,17 +114,25 @@ class HelmDeployPipeline extends DeployPipeline {
                     }
 
                     String varName = "CHART_VERSION_" + releaseName
-                    String chartVersion = steps.params[varName]
+                    String chartVersion = (steps.params[varName] as String).trim()
 
                     if (chartVersion == "latest") {
+                        if (config.helm.deploy.env == "prod") {
+                            steps.error "Chart version can't be 'latest' for prod env."
+                        }
                         chartVersion = steps.sh(returnStdout: true, script: """${config.debugSh}
 helm search repo devops/${chartName} | awk 'NR==2{printf \$2}'
 """)
                     }
 
-                    versions[chartName] = chartVersion
+                    if (chartVersion != "") {
+                        versions[chartName] = chartVersion
+                    }
                 }
 
+                if (versions.size() == 0) {
+                    steps.error "All chart versions are empty."
+                }
                 if (versions.size() == 1) {
                     versions.each {
                         steps.currentBuild.displayName = it.value
