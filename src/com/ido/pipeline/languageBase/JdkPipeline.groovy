@@ -41,8 +41,8 @@ abstract class JdkPipeline extends BuildPipeline {
                     steps.writeFile(file: "${config.srcRootPath}/.mvn/wrapper/maven-wrapper.properties", text: wrapperProperties, encoding: "UTF-8")
                 }
 
-                if (config.java.useDefaultMavenSettings) {
-                    String settings = steps.libraryResource(resource: 'builder/default-maven-settings.xml', encoding: 'UTF-8')
+                if (config.java.defaultMavenSettings != "") {
+                    String settings = steps.libraryResource(resource: config.java.defaultMavenSettings, encoding: 'UTF-8')
                     steps.writeFile(file: "${config.srcRootPath}/default-maven-settings.xml", text: settings, encoding: "UTF-8")
                 }
 
@@ -66,8 +66,8 @@ abstract class JdkPipeline extends BuildPipeline {
                     steps.writeFile(file: "${config.srcRootPath}/gradle/wrapper/gradle-wrapper.properties", text: wrapperProperties, encoding: "UTF-8")
                 }
 
-                if (config.java.useDefaultGradleInitScript) {
-                    String initScript = steps.libraryResource(resource: 'builder/default-gradle-init.gradle', encoding: 'UTF-8')
+                if (config.java.defaultGradleInitScript != "") {
+                    String initScript = steps.libraryResource(resource: config.java.defaultGradleInitScript, encoding: 'UTF-8')
                     steps.writeFile(file: "${config.srcRootPath}/default-gradle-init.gradle", text: initScript, encoding: "UTF-8")
                 }
 

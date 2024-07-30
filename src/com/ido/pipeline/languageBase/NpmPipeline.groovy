@@ -25,8 +25,8 @@ abstract class NpmPipeline extends BuildPipeline {
     def scm() {
         super.scm()
 
-        if (config.npm.useDefaultNpmrc) {
-            String npmrc = steps.libraryResource(resource: 'builder/default-npmrc', encoding: 'UTF-8')
+        if (config.npm.defaultNpmrc != "") {
+            String npmrc = steps.libraryResource(resource: config.npm.defaultNpmrc, encoding: 'UTF-8')
             steps.writeFile(file: "${steps.WORKSPACE}/.default-npmrc", text: npmrc, encoding: "UTF-8")
         }
 

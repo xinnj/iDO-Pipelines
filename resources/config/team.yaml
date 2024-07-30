@@ -99,9 +99,9 @@ java:
   # Builder image with JDK installed
   builderImage: "docker.io/eclipse-temurin:11-jdk"
   mavenVersion: "3.8.6"
-  useDefaultMavenSettings: true
+  defaultMavenSettings: "builder/default-maven-settings.xml"
   gradleVersion: "7.6"
-  useDefaultGradleInitScript: true
+  defaultGradleInitScript: "builder/default-gradle-init.gradle"
   moduleName: "."
   forceUpdateDependencies: false
 
@@ -182,7 +182,7 @@ springBoot:
 ## NPM config
 npm:
   builderImage: "docker.io/node:20.13.1-slim"
-  useDefaultNpmrc: true
+  defaultNpmrc: "builder/default-npmrc"
 
 ## Node.js config
 nodejs:
