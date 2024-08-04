@@ -1,0 +1,8 @@
+- Prerequisite
+  - A git repo
+  - Put file [customer.groovy](customer.groovy) in `var` folder of the git repo 
+- Configuration
+  - `resources/customer/system.yaml`
+  - `resources/customer/team.yaml`
+- Pipelines
+  - `src/customer`
