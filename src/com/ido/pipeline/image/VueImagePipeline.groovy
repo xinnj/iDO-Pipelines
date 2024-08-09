@@ -15,7 +15,7 @@ class VueImagePipeline extends NpmPipeline {
 
     @Override
     def prepare() {
-        config.scmCleanExclude = "**/node_modules"
+        // config.scmCleanExclude = "**/node_modules"
 
         super.prepare()
 

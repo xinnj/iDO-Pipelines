@@ -15,7 +15,7 @@ class NodejsImagePipeline extends NpmPipeline {
 
     @Override
     def prepare() {
-        config.scmCleanExclude = "**/node_modules"
+        // config.scmCleanExclude = "**/node_modules"
 
         super.prepare()
 
@@ -40,7 +40,7 @@ class NodejsImagePipeline extends NpmPipeline {
                 export NODE_ENV=production
                 cd "${config.srcRootPath}"
 
-                npm prune --omit=dev
+                # npm prune --omit=dev
                 npm install --omit=dev
             """
         }
