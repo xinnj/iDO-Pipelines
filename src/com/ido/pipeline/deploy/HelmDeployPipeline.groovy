@@ -47,7 +47,7 @@ class HelmDeployPipeline extends DeployPipeline {
         Boolean firstRun = false
         for (release in releases) {
             String varName = "CHART_VERSION_" + release.name
-            if (!steps.params[varName]) {
+            if (!steps.params.containsKey(varName)) {
                 firstRun = true
                 break
             }
@@ -55,7 +55,7 @@ class HelmDeployPipeline extends DeployPipeline {
 
         List parameters = [steps.text(name: 'USAGE', defaultValue: 'Please provide the chart version of each release.' +
                 '\nChart with empty version will be ignored.' +
-                "\nFor prod env, version can't be 'latest'.", description: '')]
+                "\nFor prod env, version can't be 'Latest Version'.", description: '')]
 
         String defaultValue = "latest"
         if (config.helm.deploy.env == "prod") {
@@ -63,7 +63,12 @@ class HelmDeployPipeline extends DeployPipeline {
         }
         for (release in releases) {
             String varName = "CHART_VERSION_" + release.name
-            def para = steps.string(name: varName, defaultValue: defaultValue, description: '', trim: true)
+            def para = steps.editableChoice(
+                    name: varName,
+                    choices: ['Not Install', 'Latest Version'],
+                    defaultValue: 'Not Install',
+                    description: '',
+                    restrict: false,)
             parameters.add(para)
         }
         steps.properties([
@@ -108,37 +113,30 @@ class HelmDeployPipeline extends DeployPipeline {
                 releases.each {
                     String releaseName = (it as Map).name
 
-                    String chartName = (it as Map).chart
-                    if (!chartName) {
-                        chartName = releaseName
+                    if (!it.chart) {
+                        it['chart'] = releaseName
                     }
 
                     String varName = "CHART_VERSION_" + releaseName
                     String chartVersion = (steps.params[varName] as String).trim()
 
-                    if (chartVersion == "latest") {
+                    if (chartVersion == "Latest Version") {
                         if (config.helm.deploy.env == "prod") {
-                            steps.error "Chart version can't be 'latest' for prod env."
+                            steps.error "Chart version can't be 'Latest Version' for prod env."
                         }
                         chartVersion = steps.sh(returnStdout: true, script: """${config.debugSh}
-helm search repo devops/${chartName} | awk 'NR==2{printf \$2}'
+helm search repo devops/${it.chart} | awk 'NR==2{printf \$2}'
 """)
                     }
 
-                    if (chartVersion != "") {
-                        versions[chartName] = chartVersion
+                    if (chartVersion && chartVersion != 'Not Install') {
+                        versions[it.chart] = chartVersion
                     }
                 }
 
                 if (versions.size() == 0) {
                     steps.error "All chart versions are empty."
-                }
-                if (versions.size() == 1) {
-                    versions.each {
-                        steps.currentBuild.displayName = it.value
-                    }
-                }
-                if (versions.size() > 1) {
+                } else {
                     String buildDescription = ""
                     versions.each {
                         buildDescription = buildDescription + it.key + ": " + it.value + "<p>"
@@ -149,40 +147,38 @@ helm search repo devops/${chartName} | awk 'NR==2{printf \$2}'
                 def parallelRuns = [:]
                 for (int i = 0; i < releases.size(); i++) {
                     int j = i
-                    parallelRuns["Deploy: " + (releases.get(j) as Map).name] = {
-                        String releaseName = (releases.get(j) as Map).name
+                    if (versions[(releases.get(j) as Map).chart]) {
+                        parallelRuns["Deploy: " + (releases.get(j) as Map).name] = {
+                            String releaseName = (releases.get(j) as Map).name
 
-                        String chartName = (releases.get(j) as Map).chart
-                        if (!chartName) {
-                            chartName = releaseName
-                        }
+                            String chartName = (releases.get(j) as Map).chart
+                            String chartVersion = versions[chartName]
+                            String versionParam = " --version " + chartVersion
 
-                        String chartVersion = versions[chartName]
-                        String versionParam = " --version " + chartVersion
-
-                        String valuesParam = ""
-                        if (config.helm.deploy.env != "dev") {
-                            String valueFile = (releases.get(j) as Map).valueFile
-                            if (valueFile) {
-                                valuesParam = "--values ${valueFile}"
-                            } else {
-                                valuesParam = "--values ${releaseName}/values-${config.helm.deploy.env}.yaml"
+                            String valuesParam = ""
+                            if (config.helm.deploy.env != "dev") {
+                                String valueFile = (releases.get(j) as Map).valueFile
+                                if (valueFile) {
+                                    valuesParam = "--values ${valueFile}"
+                                } else {
+                                    valuesParam = "--values ${releaseName}/values-${config.helm.deploy.env}.yaml"
+                                }
                             }
+
+                            String setParam = ""
+                            String valueSet = (releases.get(j) as Map).valueSet
+                            if (valueSet) {
+                                setParam = "--set ${valueSet}"
+                            }
+
+                            steps.sh """${config.debugSh}
+                                helm upgrade ${releaseName} devops/${chartName} --install --wait \
+                                    --namespace ${config.helm.deploy.namespace} --create-namespace \
+                                    ${versionParam} ${valuesParam} ${setParam}
+                            """
+
+                            steps.echo "Successfully deploy: ${releaseName} ${chartName} ${chartVersion}"
                         }
-
-                        String setParam = ""
-                        String valueSet = (releases.get(j) as Map).valueSet
-                        if (valueSet) {
-                            setParam = "--set ${valueSet}"
-                        }
-
-                        steps.sh """${config.debugSh}
-                            helm upgrade ${releaseName} devops/${chartName} --install --wait \
-                                --namespace ${config.helm.deploy.namespace} --create-namespace \
-                                ${versionParam} ${valuesParam} ${setParam}
-                        """
-
-                        steps.echo "Successfully deploy: ${releaseName} ${chartName} ${chartVersion}"
                     }
                 }
                 steps.echo "Execute parallel"
