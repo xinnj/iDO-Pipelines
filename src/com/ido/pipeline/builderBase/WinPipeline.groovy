@@ -39,10 +39,6 @@ abstract class WinPipeline extends BuildPipeline{
             config.podTemplate = config.podTemplate
                     .replaceAll('<USERNAME>', username)
                     .replaceAll('<PASSWORD>', password)
-                    .replaceAll('<NUGET_PACKAGES>', nugetPackages)
-                    .replaceAll('<NUGET_HTTP_CACHE_PATH>', nugetHttpCachePath)
-                    .replaceAll('<NUGET_PLUGINS_CACHE_PATH>', nugetPluginsCachePath)
-                    .replaceAll('<SONAR_USER_HOME>', sonarUserHome)
         }
 
         return super.runPipeline(config)
@@ -86,6 +82,10 @@ if (!(Get-PackageProvider -ListAvailable | select-string "NuGet")) {
 
 if (!(Get-Module -ListAvailable -Name LoopbackAdapter)) {
     Install-Module -Name LoopbackAdapter -MinimumVersion 1.2.0.0 -Force
+}
+
+if (!(Get-Module -ListAvailable -Name WintellectPowerShell)) {
+    Install-Module -Name WintellectPowerShell -Force
 }
 
 if (!(Get-LoopbackAdapter -Name smb)) {

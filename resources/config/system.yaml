@@ -72,3 +72,6 @@ android:
     enable: false
     host: "mirrors.neusoft.edu.cn"
     port: "80"
+
+sdk:
+  rootPath: "sdk"

@@ -8,14 +8,26 @@ import com.ido.pipeline.builderBase.WinPipeline
  * @author xinnj
  */
 class DotnetAppPipeline extends WinPipeline {
-    FileArchiver fileArchiver
     String nugetPackages = "R:/nuget/packages"
     String nugetHttpCachePath = "R:/nuget/v3-cache"
     String nugetPluginsCachePath = "R:/nuget/plugins-cache"
     String sonarUserHome = "R:/sonar"
 
+    FileArchiver fileArchiver
+
     DotnetAppPipeline(Object steps) {
         super(steps)
+    }
+
+    @Override
+    Map runPipeline(Map config) {
+        config.podTemplate = config.podTemplate
+                .replaceAll('<NUGET_PACKAGES>', nugetPackages)
+                .replaceAll('<NUGET_HTTP_CACHE_PATH>', nugetHttpCachePath)
+                .replaceAll('<NUGET_PLUGINS_CACHE_PATH>', nugetPluginsCachePath)
+                .replaceAll('<SONAR_USER_HOME>', sonarUserHome)
+
+        return super.runPipeline(config)
     }
 
     @Override

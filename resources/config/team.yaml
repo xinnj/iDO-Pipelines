@@ -232,7 +232,7 @@ android:
 macos:
   # Use dedicated remote machine as the builder or not
   useRemoteBuilder: false
-  # Space-delimited list of Labels (A label can not containing spaces) used to identify a builder
+  # Space-delimited list of Labels (A label can not contain spaces) used to identify a builder
   remoteBuilderTags: "macos-builder"
   # Credential ID of login account of builder machine
   loginCredentialId: "macos-builder-login"
@@ -305,7 +305,7 @@ ios:
 win:
   # Use dedicated remote machine as the builder or not
   useRemoteBuilder: false
-  # Space-delimited list of Labels (A label can not containing spaces) used to identify a builder
+  # Space-delimited list of Labels (A label can not contain spaces) used to identify a builder
   remoteBuilderTags: "win-builder"
   # Credential ID of login account of builder machine
   loginCredentialId: "win-builder-login"
@@ -338,3 +338,13 @@ dotnet:
   sonarqubeServerName: ""
   qualityGateEnabled: false
   sonarqubeTimeoutMinutes: 10
+
+## QT app config
+qt:
+
+## Generic SDK config
+sdk:
+  autoUpdateSdkInfo: true
+  sdkBranch: ""
+  sdkInfoFile: ""
+  buildDebug: false

@@ -57,15 +57,15 @@ class HelmDeployPipeline extends DeployPipeline {
                 '\nChart with empty version will be ignored.' +
                 "\nFor prod env, version can't be 'Latest Version'.", description: '')]
 
-        String defaultValue = "latest"
+        ArrayList<String> defaultValue = ['Not Install', 'Latest Version']
         if (config.helm.deploy.env == "prod") {
-            defaultValue = ""
+            defaultValue = ['Not Install']
         }
         for (release in releases) {
             String varName = "CHART_VERSION_" + release.name
             def para = steps.editableChoice(
                     name: varName,
-                    choices: ['Not Install', 'Latest Version'],
+                    choices: defaultValue,
                     defaultValue: 'Not Install',
                     description: '',
                     restrict: false,)

@@ -293,4 +293,122 @@ plugins {
             ssh remote-host "c:/~ido-cluster.ps1"
         """
     }
+
+    static boolean updateSdkInfoUnix(Object steps, Map config) {
+        if (!config.sdk.autoUpdateSdkInfo) {
+            return false
+        }
+
+        String arch = config.arch
+        if (!arch) {
+            steps.error "arch is empty!"
+        }
+
+        String buildTags = arch
+        String branch = getBranchName(steps)
+
+        String jsonFile
+        if (config.sdkInfoFile != null && config.sdkInfoFile.trim() != "") {
+            jsonFile = "${config.srcPath}/${config.sdkInfoFile}"
+        } else {
+            jsonFile = "${config.srcPath}/sdk-info-${arch}.json"
+        }
+        steps.echo "SDK info file: " + jsonFile
+
+        def sdkInfo = steps.readJSON(file: jsonFile)
+        if (sdkInfo == null) {
+            steps.error "Can't find sdk info file!"
+        }
+
+        Map latestInfo
+        Boolean modified = false
+
+        if (config.buildTags != null && ((String) config.buildTags).trim() != "") {
+            buildTags = buildTags + "&" + ((String) config.buildTags).trim()
+        }
+        String commitMessage = "[[${buildTags}]]Update SDK Info: "
+
+
+        for (onePackage in sdkInfo.packages) {
+            steps.echo onePackage.name
+
+            String type = onePackage.type
+            if (!type) {
+                type = "Release"
+            }
+
+            String latestInfoUrl = "${config.fileServer.downloadUrl}/${config._system.sdk.rootPath}/${config.productName}/" +
+                    "${config.sdk.sdkBranch}/${arch}/${config.productName}-${type}-latest.json"
+            String latestInfoFile = "${config.productName}-${type}-latest.json"
+            steps.fileOperations([steps.fileDownloadOperation(targetFileName: latestInfoFile, targetLocation: "${config.srcRootPath}/", url: latestInfoUrl)])
+
+            if (steps.fileExists("${config.srcRootPath}/${latestInfoFile}")) {
+                latestInfo = steps.readJSON(file: "${config.srcRootPath}/${latestInfoFile}")
+
+                Boolean md5Changed = false
+                if (onePackage.md5 == null || onePackage.md5 != latestInfo.md5) {
+                    md5Changed = true
+                }
+
+                if (onePackage.version == null || onePackage.version != latestInfo.version || md5Changed) {
+                    latestInfo.each { k, v ->
+                        L:
+                        {
+                            if (v == null) {
+                                onePackage.put(k, "")
+                            } else {
+                                onePackage.put(k, v)
+                            }
+                        }
+                    }
+                    modified = true
+
+                    commitMessage = commitMessage + "{" + onePackage.name + "|" + latestInfo.version + "|" + latestInfo.author + "|" + latestInfo.message + "}"
+                    steps.echo onePackage.name + " version changed from: " + onePackage.version + ", to: " + latestInfo.version + ", message: " + latestInfo.message
+                }
+            }
+        }
+        commitMessage = commitMessage.replaceAll("(\\n|\\r)", " ").replaceAll("\"", "'")
+        steps.echo "commitMessage: " + commitMessage
+
+        if (modified) {
+            steps.echo "Updated SDK Info: " + sdkInfo
+            steps.writeJSON(file: jsonFile, json: sdkInfo, pretty: 4)
+
+//            steps.withCredentials([steps.sshUserPrivateKey(credentialsId: config.gitCredentialsId, keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER')]) {
+//                steps.sh """
+//                    export GIT_SSH_COMMAND=\"ssh -o StrictHostKeyChecking=no -i \${SSH_KEY}\"
+//                    git config --global user.email "builder@git.bizconf.cn"
+//                    git config --global user.name "builder"
+//                    git add ${jsonFile}
+//                    git commit -m "${commitMessage}"
+//                    git pull origin ${branch} --rebase
+//                    git_push_error=0
+//                    git push origin HEAD:${branch} || git_push_error=1
+//                    if [ \$git_push_error -eq 1 ]; then
+//                        echo Retry git push...
+//                        git pull origin ${branch} --rebase
+//                        git push origin HEAD:${branch}
+//                    fi
+//                """
+//            }
+            steps.withCredentials([steps.gitUsernamePassword(credentialsId: config.gitCredentialsId)]) {
+                steps.sh """${config.debugSh}
+                    git config --global user.email "builder@autoupdate"
+                    git config --global user.name "builder"
+                    git add ${jsonFile}
+                    git commit -m "${commitMessage}"
+                    git pull origin ${branch} --rebase
+                    git_push_error=0
+                    git push origin HEAD:${branch} || git_push_error=1
+                    if [ \$git_push_error -eq 1 ]; then
+                        echo "Retry git push..."
+                        git pull origin ${branch} --rebase
+                        git push origin HEAD:${branch}
+                    fi
+                """
+            }
+        }
+        return modified
+    }
 }

@@ -16,6 +16,7 @@ abstract class BuildPipeline extends BasePipeline {
         super(steps)
     }
 
+    @Override
     def customStages() {
         steps.stage('Prepare') {
             steps.echo "\033[32m########## Stage: Prepare ##########\033[0m"
@@ -139,12 +140,27 @@ abstract class BuildPipeline extends BasePipeline {
         }
     }
 
+    @Override
     def prepare() {
         if (!config.productName) {
             steps.error "productName is empty!"
         }
 
         super.prepare()
+    }
+
+    @Override
+    def afterVersioning() {
+        super.afterVersioning()
+
+        steps.container('builder') {
+            if (Utils.updateSdkInfoUnix(steps, config)) {
+                steps.currentBuild.displayName = "SDK Info Updated"
+                // if sdk info is updated, finish this build as a new build is triggered
+                fastStop = 'SUCCESS'
+                steps.error "Fast stop this build with success."
+            }
+        }
     }
 
     def abstract ut()
