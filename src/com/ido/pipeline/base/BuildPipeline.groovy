@@ -28,7 +28,7 @@ abstract class BuildPipeline extends BasePipeline {
             this.scm()
         }
 
-        if (steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${config.customerBuildScript.afterScm}")) {
+        if (checkCustomerBuildScript(config.customerBuildScript.afterScm)) {
             steps.stage('afterScm') {
                 steps.echo "\033[32m########## Stage: After Scm ##########\033[0m"
                 this.afterScm()
@@ -40,7 +40,7 @@ abstract class BuildPipeline extends BasePipeline {
             this.versioning()
         }
 
-        if (steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${config.customerBuildScript.afterVersioning}")) {
+        if (checkCustomerBuildScript(config.customerBuildScript.afterVersioning)) {
             steps.stage('afterVersioning') {
                 steps.echo "\033[32m########## Stage: After Versioning ##########\033[0m"
                 this.afterVersioning()
@@ -71,7 +71,7 @@ abstract class BuildPipeline extends BasePipeline {
             }
         }
 
-        if (steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${config.customerBuildScript.beforeBuild}")) {
+        if (checkCustomerBuildScript(config.customerBuildScript.beforeBuild)) {
             steps.stage('beforeBuild') {
                 steps.echo "\033[32m########## Stage: Before Build ##########\033[0m"
                 this.beforeBuild()
@@ -87,7 +87,7 @@ abstract class BuildPipeline extends BasePipeline {
                     }
                 }
 
-                if (steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${config.customerBuildScript.afterBuild}")) {
+                if (checkCustomerBuildScript(config.customerBuildScript.afterBuild)) {
                     steps.stage('afterBuild') {
                         steps.echo "\033[32m########## Stage: After Build ##########\033[0m"
                         this.afterBuild()
@@ -99,7 +99,7 @@ abstract class BuildPipeline extends BasePipeline {
                     this.archive()
                 }
 
-                if (steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${config.customerBuildScript.afterArchive}")) {
+                if (checkCustomerBuildScript(config.customerBuildScript.afterArchive)) {
                     steps.stage('afterArchive') {
                         steps.echo "\033[32m########## Stage: After Archive ##########\033[0m"
                         this.afterArchive()
@@ -114,7 +114,7 @@ abstract class BuildPipeline extends BasePipeline {
                 }
             }
 
-            if (steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${config.customerBuildScript.afterBuild}")) {
+            if (checkCustomerBuildScript(config.customerBuildScript.afterBuild)) {
                 steps.stage('afterBuild') {
                     steps.echo "\033[32m########## Stage: After Build ##########\033[0m"
                     this.afterBuild()
@@ -126,7 +126,7 @@ abstract class BuildPipeline extends BasePipeline {
                 this.archive()
             }
 
-            if (steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${config.customerBuildScript.afterArchive}")) {
+            if (checkCustomerBuildScript(config.customerBuildScript.afterArchive)) {
                 steps.stage('afterArchive') {
                     steps.echo "\033[32m########## Stage: After Archive ##########\033[0m"
                     this.afterArchive()
@@ -182,7 +182,7 @@ abstract class BuildPipeline extends BasePipeline {
     Boolean customerBuild() {
         Boolean runCustomer = false
         steps.container('builder') {
-            if (steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${config.customerBuildScript.build}")) {
+            if (checkCustomerBuildScript(config.customerBuildScript.build)) {
                 steps.echo "Execute customer build script: ${config.customerBuildScript.build}"
                 steps.withEnv(["CI_PRODUCTNAME=$config.productName",
                                "CI_VERSION=$config.version",

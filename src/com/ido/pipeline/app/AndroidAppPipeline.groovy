@@ -79,6 +79,11 @@ class AndroidAppPipeline extends JdkPipeline {
                 updateDependenciesArgs = "--refresh-dependencies"
             }
 
+            String initScriptArgs = ""
+            if (config.java.defaultGradleInitScript) {
+                initScriptArgs = "-I \"${steps.env.WORKSPACE}/${config.srcRootPath}/default-gradle-init.gradle\""
+            }
+
             steps.sh """${config.debugSh}
                 cd "${config.srcRootPath}"
                 mkdir -p ido-cluster/outputs/files
@@ -89,7 +94,7 @@ class AndroidAppPipeline extends JdkPipeline {
                         --no-daemon \
                         -x test \
                         ${updateDependenciesArgs} \
-                        -I "${steps.env.WORKSPACE}/${config.srcRootPath}/default-gradle-init.gradle" \
+                        ${initScriptArgs} \
                         -Dfile.encoding=UTF-8 \
                         "-Dorg.gradle.jvmargs=-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" \
                         -p ${config.java.moduleName}
@@ -110,7 +115,7 @@ class AndroidAppPipeline extends JdkPipeline {
                         --no-daemon \
                         -x test \
                         ${updateDependenciesArgs} \
-                        -I "${steps.env.WORKSPACE}/${config.srcRootPath}/default-gradle-init.gradle" \
+                        ${initScriptArgs} \
                         -Dfile.encoding=UTF-8 \
                         "-Dorg.gradle.jvmargs=-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" \
                         -p ${config.java.moduleName}

@@ -53,6 +53,14 @@ abstract class WinPipeline extends BuildPipeline{
 
         steps.container('builder') {
             String cmd
+            cmd = """
+New-ItemProperty -Path 'HKLM:\\SOFTWARE\\OpenSSH' -Name DefaultShell -Value "\$Env:ProgramFiles\\PowerShell\\7\\pwsh.exe" -PropertyType String -Force; Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope CurrentUser
+[Environment]::SetEnvironmentVariable('DOTNET_CLI_TELEMETRY_OPTOUT','true', 'User')
+"""
+            steps.echo "before set ssh"
+            Utils.execRemoteWin(steps, config, cmd)
+            steps.echo "after set ssh"
+
             if (config.win.useRemoteBuilder) {
                 smbServerAddress = "\\\\${config._system.win.fakeIP}\\${config._system.smbServer.shareName} ${config._system.smbServer.password} /user:${config._system.smbServer.user}"
 
@@ -64,6 +72,9 @@ if (!(Test-Path -Path "\$PROFILE" )) {
     New-Item -Type File -Path "\$PROFILE" -Force
 }
 
+if (!(Select-String -Path "\$PROFILE" -Pattern "PSNativeCommandUseErrorActionPreference " -Quiet -SimpleMatch)) {
+    Add-Content -Path "\$PROFILE" -Value "`\$PSNativeCommandUseErrorActionPreference  = `\$true"
+}
 if (!(Select-String -Path "\$PROFILE" -Pattern "ErrorActionPreference" -Quiet -SimpleMatch)) {
     Add-Content -Path "\$PROFILE" -Value "`\$ErrorActionPreference = 'SilentlyContinue'"
 }
@@ -77,7 +88,7 @@ if (!(Select-String -Path "\$PROFILE" -Pattern "net use R:" -Quiet -SimpleMatch)
 }
 
 if (!(Get-PackageProvider -ListAvailable | select-string "NuGet")) {
-    Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
+    Get-PackageProvider | where name -eq 'nuget' | Install-PackageProvider -Force
 }
 
 if (!(Get-Module -ListAvailable -Name LoopbackAdapter)) {
@@ -156,12 +167,6 @@ if (!(Get-PackageProvider -ListAvailable | select-string "NuGet")) {
 """
                 Utils.execRemoteWin(steps, config, cmd)
             }
-
-            cmd = """
-powershell -command \"New-ItemProperty -Path 'HKLM:\\SOFTWARE\\OpenSSH' -Name DefaultShell -Value 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe' -PropertyType String -Force; Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope CurrentUser\"
-powershell -command \"[Environment]::SetEnvironmentVariable('DOTNET_CLI_TELEMETRY_OPTOUT','true', 'User')\"
-"""
-            Utils.execRemoteWin(steps, config, cmd)
         }
     }
 }

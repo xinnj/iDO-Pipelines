@@ -98,11 +98,16 @@ abstract class JdkPipeline extends BuildPipeline {
                         updateDependenciesArgs = "-U"
                     }
 
+                    String mavenSettingsArgs = ""
+                    if (config.java.defaultMavenSettings) {
+                        mavenSettingsArgs = "-s ./default-maven-settings.xml"
+                    }
+
                     steps.sh """${config.debugSh}
                         export MAVEN_OPTS="-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
                         cd "${config.srcRootPath}"
                         sh ./mvnw org.jacoco:jacoco-maven-plugin:0.8.11:prepare-agent verify org.jacoco:jacoco-maven-plugin:0.8.11:report \
-                            -s ./default-maven-settings.xml \
+                            ${mavenSettingsArgs} \
                             "-Dmaven.repo.local=\${MAVEN_USER_HOME}/repository" \
                             ${updateDependenciesArgs} \
                             -Dfile.encoding=UTF-8 \
@@ -115,6 +120,11 @@ abstract class JdkPipeline extends BuildPipeline {
                     String updateDependenciesArgs = ""
                     if (config.java.forceUpdateDependencies) {
                         updateDependenciesArgs = "--refresh-dependencies"
+                    }
+
+                    String initScriptArgs = ""
+                    if (config.java.defaultGradleInitScript) {
+                        initScriptArgs = "-I \"${steps.env.WORKSPACE}/${config.srcRootPath}/default-gradle-init.gradle\""
                     }
 
                     steps.sh """${config.debugSh}
@@ -135,7 +145,7 @@ EOF
                         sh ./gradlew jacocoTestReport \
                             --no-daemon \
                             ${updateDependenciesArgs} \
-                            -I "${steps.env.WORKSPACE}/${config.srcRootPath}/default-gradle-init.gradle" \
+                            ${initScriptArgs} \
                             -Dfile.encoding=UTF-8 \
                             "-Dorg.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8" \
                             -p ${config.java.moduleName}
@@ -167,12 +177,17 @@ EOF
                         updateDependenciesArgs = "-U"
                     }
 
+                    String mavenSettingsArgs = ""
+                    if (config.java.defaultMavenSettings) {
+                        mavenSettingsArgs = "-s ./default-maven-settings.xml"
+                    }
+
                     steps.withSonarQubeEnv(config.context.sonarqubeServerName) {
                         steps.sh """${config.debugSh}
                             export MAVEN_OPTS="-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
                             cd "${config.srcRootPath}"
                             sh ./mvnw compile org.sonarsource.scanner.maven:sonar-maven-plugin:3.10.0.2594:sonar \
-                                -s ./default-maven-settings.xml \
+                                ${mavenSettingsArgs} \
                                 "-Dmaven.repo.local=\${MAVEN_USER_HOME}/repository" \
                                 ${updateDependenciesArgs} \
                                 -Dfile.encoding=UTF-8 \
@@ -189,6 +204,11 @@ EOF
                         updateDependenciesArgs = "--refresh-dependencies"
                     }
 
+                    String initScriptArgs = ""
+                    if (config.java.defaultGradleInitScript) {
+                        initScriptArgs = "-I \"${steps.env.WORKSPACE}/${config.srcRootPath}/default-gradle-init.gradle\""
+                    }
+
                     steps.withSonarQubeEnv(config.context.sonarqubeServerName) {
                         steps.sh """${config.debugSh}
                             cd "${config.srcRootPath}"
@@ -198,7 +218,7 @@ EOF
                             sh ./gradlew sonar \
                                 --no-daemon \
                                 ${updateDependenciesArgs} \
-                                -I "${steps.env.WORKSPACE}/${config.srcRootPath}/default-gradle-init.gradle" \
+                                ${initScriptArgs} \
                                 -Dfile.encoding=UTF-8 \
                                 "-Dorg.gradle.jvmargs=-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" \
                                 -p ${config.java.moduleName}

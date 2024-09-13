@@ -72,7 +72,7 @@ abstract class MacosPipeline extends BuildPipeline {
                     set -euao pipefail
 
                     mkdir -p ~/agent
-                    umount ~/agent || true
+                    diskutil unmount ~/agent || true
                     mount -t smbfs ${smbServerAddress} ~/agent
 
                     mkdir -p \${SPM_CACHE_DIR}
@@ -85,13 +85,31 @@ abstract class MacosPipeline extends BuildPipeline {
                             /usr/local/bin/pod --version
                             mkdir -p "\${CP_HOME_DIR}/repos"
                             cd "\${CP_HOME_DIR}/repos"
+                            git config --global http.postBuffer 524288000
                             git clone ${config._system.macos.cocoapodsRepoUrl} trunk
                             /usr/local/bin/pod setup
                         fi
-                        /usr/local/bin/pod install
                     fi
 EOF
             """
+        }
+    }
+
+    @Override
+    def scm() {
+        super.scm()
+
+        if (config.macos.useCocoapods) {
+            steps.container('builder') {
+                steps.sh """${config.debugSh}
+                    ssh remote-host /bin/sh <<EOF
+                        ${config.debugSh}
+                        set -euao pipefail
+                        cd "${steps.WORKSPACE}/${config.srcRootPath}"
+                        /usr/local/bin/pod install
+EOF
+                """
+            }
         }
     }
 }

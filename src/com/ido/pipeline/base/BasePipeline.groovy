@@ -448,6 +448,15 @@ bash -c "export -p | awk '{print \\\$3'} | grep \\"^IDO_\\" | tr -d '\\"'"
         }
     }
 
+    boolean checkCustomerBuildScript(String script) {
+        switch (config.builderType) {
+            case "win":
+                return steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${script}.ps1")
+            default:
+                return steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${script}.sh")
+        }
+    }
+
     def runCustomerBuildScript(String script) {
         switch (config.builderType) {
             case "win":
@@ -457,7 +466,7 @@ bash -c "export -p | awk '{print \\\$3'} | grep \\"^IDO_\\" | tr -d '\\"'"
 [Environment]::SetEnvironmentVariable('CI_VERSION','$config.version', 'User')
 [Environment]::SetEnvironmentVariable('CI_WORKSPACE','$config.vmWorkspace', 'User')
 cd "${config.vmWorkspace}/${config.srcRootPath}"
-"Invoke-Command -ScriptBlock ([ScriptBlock]::Create((Get-Content $script)))"
+${script}.ps1
 """
                 Utils.execRemoteWin(steps, config, cmd)
                 break
@@ -476,7 +485,8 @@ cd "${config.vmWorkspace}/${config.srcRootPath}"
         
                             set -x
                             cd "${steps.WORKSPACE}/${config.srcRootPath}"
-                            sh "${config.customerBuildScript.${script}}"
+                            chmod +x "${script}.sh"
+                            "${script}.sh"
 EOF
                     """
                 }
@@ -484,7 +494,8 @@ EOF
             default:
                 steps.sh """
                     cd "${config.srcRootPath}"
-                    sh "$script"
+                    chmod +x "${script}.sh"
+                    "${script}.sh"
                 """
         }
     }

@@ -339,9 +339,20 @@ dotnet:
   qualityGateEnabled: false
   sonarqubeTimeoutMinutes: 10
 
+## Visual Studio config
+vs:
+  # Path of vcvarsallFile.bat file
+  vcvarsallFile: ""
+  # The tools architecture to use.
+  # x86 | amd64 | x86_amd64 | x86_arm | x86_arm64 | amd64_x86 | amd64_arm | amd64_arm64
+  arch: ""
+
 ## QT app config
 qt:
-
+  QT5_DIR: ""
+  qmakeParameters: ""
+  # Wix Cover config file path
+  msiConfig: ""
 ## Generic SDK config
 sdk:
   autoUpdateSdkInfo: true

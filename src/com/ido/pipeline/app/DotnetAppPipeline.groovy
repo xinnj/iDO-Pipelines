@@ -63,7 +63,7 @@ class DotnetAppPipeline extends WinPipeline {
 [Environment]::SetEnvironmentVariable('NUGET_PACKAGES','$nugetPackages', 'User')
 [Environment]::SetEnvironmentVariable('NUGET_HTTP_CACHE_PATH','$nugetHttpCachePath', 'User')
 [Environment]::SetEnvironmentVariable('NUGET_PLUGINS_CACHE_PATH','$nugetPluginsCachePath', 'User')
-[Environment]::SetEnvironmentVariable('SONAR_USER_HOME',"$sonarUserHome", 'User')
+[Environment]::SetEnvironmentVariable('SONAR_USER_HOME','$sonarUserHome', 'User')
 [Environment]::SetEnvironmentVariable('CI_CONFIGURATION','$config.dotnet.configuration', 'User')
 
 New-Item -ItemType Directory -Force -Path \$Env:NUGET_PACKAGES | out-null
@@ -179,14 +179,20 @@ if (-not\$?)
         if (config.dotnet.runtime) {
             cmdRuntime = "--runtime ${config.dotnet.runtime}"
         }
-        steps.container('builder') {
-            String cmd = """
+        String cmd = """
 \$Env:Path = "${config._system.dotnet.sdkPath}/${config.dotnet.sdkVersion};\$Env:Path"
-
 cd "${config.vmWorkspace}/${config.srcRootPath}"
 
 dotnet publish ${config.dotnet.buildFile} -c ${config.dotnet.configuration} -p:Version=${config.version} `
     --source ${config._system.dotnet.nugetSource} ${cmdRuntime} --no-cache --nologo
+"""
+        Utils.execRemoteWin(steps, config, cmd)
+    }
+
+    @Override
+    def archive() {
+        String cmd = """
+cd "${config.vmWorkspace}/${config.srcRootPath}"
 
 envsubst -i "${config.dotnet.msiConfig}" -o "${config.dotnet.msiConfig}.final" -no-unset -no-empty
 if (-not\$?)
@@ -197,12 +203,8 @@ if (-not\$?)
 New-Item -ItemType Directory -Force -Path "ido-cluster/outputs"
 wixc.ps1 -config "${config.dotnet.msiConfig}.final" -output "ido-cluster/outputs/${newFileName}.msi"
 """
-            Utils.execRemoteWin(steps, config, cmd)
-        }
-    }
+        Utils.execRemoteWin(steps, config, cmd)
 
-    @Override
-    def archive() {
         String uploadUrl = "${config.fileServer.uploadUrl}${config.fileServer.uploadRootPath}${config.productName}/" +
                 config.branch + "/dotnet"
 

@@ -156,8 +156,8 @@ EOF
                                 mv -f ./build/${buildTypes.get(buildType)}/*.ipa ido-cluster/outputs/files/${newFileName}-${it.name}.ipa
                                 echo "${it.name} ipa exported."
     
-                                xcodebuild ${cmdBuildFile} ${cmdXcconfig} -showBuildSettings \
-                                  | awk -F ' = ' '/PRODUCT_BUNDLE_IDENTIFIER/ { print \\\$2 }' > ido-cluster/_PRODUCT_BUNDLE_IDENTIFIER
+                                xcodebuild ${cmdBuildFile} ${cmdXcconfig} -scheme ${it.scheme} -showBuildSettings \
+                                  | awk -F ' = ' '/ PRODUCT_BUNDLE_IDENTIFIER/ { print \\\$2 }' > ido-cluster/_PRODUCT_BUNDLE_IDENTIFIER
                                 
                                 plutil -p ./build/${buildTypes.get(buildType)}/${config.productName}.xcarchive/Info.plist \
                                   | awk -F '"' '/CFBundleShortVersionString/ { print \\\$4 }' > ido-cluster/_BUNDLE_VERSION
