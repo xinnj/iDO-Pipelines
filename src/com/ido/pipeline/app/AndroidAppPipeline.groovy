@@ -61,6 +61,8 @@ class AndroidAppPipeline extends JdkPipeline {
                 }
             }
 
+            steps.echo "sdkPackagesInstalled: ${sdkPackagesInstalled}"
+
             List<String> sdkPackagesToBeInstalled = (config.android.sdkPackagesRequired as List<String>)
                     .findAll {!sdkPackagesInstalled.contains(it)}
 
@@ -68,6 +70,7 @@ class AndroidAppPipeline extends JdkPipeline {
             sdkPackagesToBeInstalled.each {
                 sdkPackages = sdkPackages + "\"$it\" "
             }
+            steps.echo "sdkPackages: ${sdkPackages}"
 
             steps.sh """${config.debugSh}
                 if [ ! -e \${ANDROID_HOME}/licenses-agreed ]; then
