@@ -43,12 +43,23 @@ class AndroidAppPipeline extends JdkPipeline {
             proxy = "--no_https --proxy=http --proxy_host=${config._system.android.proxy.host} --proxy_port=${config._system.android.proxy.port}"
         }
         steps.container('builder') {
-            List<String> sdkPackagesInstalled = steps.sh(returnStdout: true, encoding: "UTF-8",
+            List<String> sdkPackagesInstalledOutput = steps.sh(returnStdout: true, encoding: "UTF-8",
                     script: """${config.debugSh}
 \${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --list_installed | tail -n +4 | awk '{print \$1}'
 """)
                     .trim()
                     .split(System.lineSeparator()) as List<String>
+
+            Boolean start = false
+            def sdkPackagesInstalled = []
+            for (int i=0; i < sdkPackagesInstalledOutput.size(); i++) {
+                if (start) {
+                    sdkPackagesInstalled.add(sdkPackagesInstalledOutput[i])
+                }
+                if (sdkPackagesInstalledOutput[i].matches("^\\s*----.*")) {
+                    start = true
+                }
+            }
 
             List<String> sdkPackagesToBeInstalled = (config.android.sdkPackagesRequired as List<String>)
                     .findAll {!sdkPackagesInstalled.contains(it)}
