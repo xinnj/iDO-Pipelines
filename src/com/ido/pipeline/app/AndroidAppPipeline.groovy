@@ -68,7 +68,7 @@ class AndroidAppPipeline extends JdkPipeline {
 
             String sdkPackages = ""
             sdkPackagesToBeInstalled.each {
-                sdkPackages = sdkPackages + "\"$it\" "
+                sdkPackages = sdkPackages + "'$it' "
             }
             steps.echo "sdkPackages: ${sdkPackages}"
 
