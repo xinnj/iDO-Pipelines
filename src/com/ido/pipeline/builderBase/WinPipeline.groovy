@@ -52,14 +52,30 @@ abstract class WinPipeline extends BuildPipeline{
         config.vmWorkspace = (steps.WORKSPACE as String).replace("/home/jenkins/agent", "R:").replace("/", "\\")
 
         steps.container('builder') {
-            String cmd
-            cmd = """
+            if (config.win.useRemoteBuilder) {
+                steps.sh """
+                    { set +x; } 2>/dev/null
+                    currentHome=\$HOME
+                    sudo -- sh -c "cat \${currentHome}/hosts >> /etc/hosts"
+                """
+            } else {
+                steps.sh """
+                    { set +x; } 2>/dev/null
+                    if [[ \$(grep -E -c '(svm|vmx)' /proc/cpuinfo) -le 0 ]]; then
+                        echo KVM not possible on this host
+                        exit 1
+                    fi
+                    
+                    sudo -- sh -c "echo '127.0.0.1 remote-host' >> /etc/hosts"
+                """
+            }
+
+            // set default shell to powershell v7
+            String cmd = """
 New-ItemProperty -Path 'HKLM:\\SOFTWARE\\OpenSSH' -Name DefaultShell -Value "\$Env:ProgramFiles\\PowerShell\\7\\pwsh.exe" -PropertyType String -Force; Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope CurrentUser
 [Environment]::SetEnvironmentVariable('DOTNET_CLI_TELEMETRY_OPTOUT','true', 'User')
 """
-            steps.echo "before set ssh"
-            Utils.execRemoteWin(steps, config, cmd)
-            steps.echo "after set ssh"
+                Utils.execRemoteWin(steps, config, cmd)
 
             if (config.win.useRemoteBuilder) {
                 smbServerAddress = "\\\\${config._system.win.fakeIP}\\${config._system.smbServer.shareName} ${config._system.smbServer.password} /user:${config._system.smbServer.user}"
@@ -108,11 +124,6 @@ if (!(Get-LoopbackAdapter -Name smb)) {
     shotdown /f
 }
 """
-                steps.sh """
-                    { set +x; } 2>/dev/null
-                    currentHome=\$HOME
-                    sudo -- sh -c "cat \${currentHome}/hosts >> /etc/hosts"
-                """
                 Utils.execRemoteWin(steps, config, cmd)
 
                 steps.sh """
@@ -134,15 +145,6 @@ netsh interface portproxy add v4tov4 listenport=445 connectaddress=\$remoteIP co
                 Utils.execRemoteWin(steps, config, cmd)
             } else {
                 smbServerAddress = "\\\\${config._system.smbServer.internal}\\${config._system.smbServer.shareName} ${config._system.smbServer.password} /user:${config._system.smbServer.user}"
-                steps.sh """
-                    { set +x; } 2>/dev/null
-                    if [[ \$(grep -E -c '(svm|vmx)' /proc/cpuinfo) -le 0 ]]; then
-                        echo KVM not possible on this host
-                        exit 1
-                    fi
-                    
-                    sudo -- sh -c "echo '127.0.0.1 remote-host' >> /etc/hosts"
-                """
 
                 cmd = """
 if (!(Test-Path -Path "\$PROFILE" )) {
