@@ -103,7 +103,7 @@ if (!(Select-String -Path "\$PROFILE" -Pattern "net use R:" -Quiet -SimpleMatch)
     (Get-Content \$PROFILE) -replace ".*net use R:.*", "if (-not(Test-Path -Path R:/workspace -PathType Container)) {net use R: ${smbServerAddress} | out-null}" | Set-Content \$PROFILE
 }
 
-if (!(Get-PackageProvider -ListAvailable | select-string "NuGet")) {
+if (!(Get-PackageProvider -ListAvailable -name NuGet)) {
     Get-PackageProvider | where name -eq 'nuget' | Install-PackageProvider -Force
 }
 
@@ -163,8 +163,8 @@ if (!(Select-String -Path "\$PROFILE" -Pattern "net use R:" -Quiet -SimpleMatch)
     (Get-Content \$PROFILE) -replace ".*net use R:.*", "if (-not(Test-Path -Path R:/workspace -PathType Container)) {net use R: ${smbServerAddress} | out-null}" | Set-Content \$PROFILE
 }
 
-if (!(Get-PackageProvider -ListAvailable | select-string "NuGet")) {
-    Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
+if (!(Get-PackageProvider -ListAvailable -name NuGet)) {
+    Get-PackageProvider | where name -eq 'nuget' | Install-PackageProvider -Force
 }
 """
                 Utils.execRemoteWin(steps, config, cmd)

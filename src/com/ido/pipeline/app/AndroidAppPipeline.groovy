@@ -112,7 +112,7 @@ class AndroidAppPipeline extends JdkPipeline {
                         -Dfile.encoding=UTF-8 \
                         "-Dorg.gradle.jvmargs=-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" \
                         -p ${config.java.moduleName}
-                    numFound=\$(find ./ -type f -name "*-debug*.apk" -not -path "./outputs/*" -print | wc -l)
+                    numFound=\$(find ./ -type f -name "*.apk" -print | wc -l)
                     if [ \$numFound -lt 1 ]; then
                         echo "Can't find debug version apk file!"
                         exit 1
@@ -121,7 +121,7 @@ class AndroidAppPipeline extends JdkPipeline {
                         echo "Find multiple debug version apk files!"
                         exit 1
                     fi
-                    find ./ -type f -name "*-debug*.apk" -not -path "./outputs/*" \
+                    find ./ -type f -name "*.apk" \
                         -exec mv "{}" "ido-cluster/outputs/files/${newFileName}-debug.apk" \\;
                 fi
                 if [ "$config.android.buildRelease" = "true" ]; then
@@ -133,7 +133,7 @@ class AndroidAppPipeline extends JdkPipeline {
                         -Dfile.encoding=UTF-8 \
                         "-Dorg.gradle.jvmargs=-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" \
                         -p ${config.java.moduleName}
-                    numFound=\$(find ./ -type f -name "*-release*.apk" -not -path "./outputs/*" -print | wc -l)
+                    numFound=\$(find ./ -type f -name "*.apk" -print | wc -l)
                     if [ \$numFound -lt 1 ]; then
                         echo "Can't find release version apk file!"
                         exit 1
@@ -142,7 +142,7 @@ class AndroidAppPipeline extends JdkPipeline {
                         echo "Find multiple release version apk files!"
                         exit 1
                     fi
-                    find ./ -type f -name "*-release*.apk" -not -path "./outputs/*" \
+                    find ./ -type f -name "*.apk" \
                         -exec mv "{}" "ido-cluster/outputs/files/${newFileName}-release.apk" \\;
                 fi
             """
