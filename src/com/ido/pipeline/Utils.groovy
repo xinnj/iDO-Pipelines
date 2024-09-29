@@ -63,12 +63,12 @@ public class Utils {
     static String getGitCommitVersion(steps) {
         if (steps.isUnix()) {
             steps.sh """#!/bin/sh +x
-                git describe --always --long > _gitDesc
+                git describe --always --long --tags > _gitDesc
             """
         } else {
             steps.bat """
                 @echo off
-                git describe --always --long > _gitDesc
+                git describe --always --long --tags > _gitDesc
             """
         }
         String[] strArray = (steps.readFile(file: '_gitDesc', encoding: "UTF-8") as String).trim().split('-')

@@ -11,11 +11,11 @@ class Version {
                 steps.dir(config.versionRootPath) {
                     if (steps.isUnix()) {
                         versionFull = steps.sh(returnStdout: true, script: """${config.debugSh}
-git describe --always --long
+git describe --always --long --tags
 """)
                     } else {
                         versionFull = steps.powershell(returnStdout: true, script: """${config.debugPowershell}
-git describe --always --long
+git describe --always --long --tags
 """)
                     }
                 }
