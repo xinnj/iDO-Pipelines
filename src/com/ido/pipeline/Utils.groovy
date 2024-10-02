@@ -14,10 +14,12 @@ public class Utils {
         Map teamCustomer, systemCustomer
         try {
             teamCustomer = steps.readYaml(text: steps.libraryResource('customer/team.yaml'))
-        } catch(Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         try {
             systemCustomer = steps.readYaml(text: steps.libraryResource('customer/system.yaml'))
-        } catch(Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
         Map team = steps.readYaml(text: steps.libraryResource('config/team.yaml'))
         Map system = steps.readYaml(text: steps.libraryResource('config/system.yaml'))
@@ -284,19 +286,7 @@ plugins {
         return true
     }
 
-    static execRemoteWin(Object steps, Map config, String cmd) {
-        steps.container('builder') {
-            steps.writeFile(file: '~ido-cluster.ps1', text: cmd, encoding: "UTF-8")
-            steps.sh """{ set +x; } 2>/dev/null
-                echo '\$ErrorActionPreference = "Stop"\n\$ProgressPreference = "SilentlyContinue"\n${config.debugPowershell}\n' | cat - ${steps.WORKSPACE}/~ido-cluster.ps1 > temp
-                mv temp ${steps.WORKSPACE}/~ido-cluster.ps1
-                scp ${steps.WORKSPACE}/~ido-cluster.ps1 remote-host:/c:/
-                ssh remote-host "c:/~ido-cluster.ps1"
-            """
-        }
-    }
-
-    static boolean updateSdkInfoUnix(Object steps, Map config) {
+    static boolean updateSdkInfo(Object steps, Map config) {
         if (!config.sdk.autoUpdateSdkInfo) {
             return false
         }
@@ -347,12 +337,12 @@ plugins {
             if (steps.fileExists("${config.srcRootPath}/${latestInfoFile}")) {
                 latestInfo = steps.readJSON(file: "${config.srcRootPath}/${latestInfoFile}")
 
-                Boolean md5Changed = false
-                if (onePackage.md5 == null || onePackage.md5 != latestInfo.md5) {
-                    md5Changed = true
+                Boolean hashChanged = false
+                if (onePackage.sha1 == null || onePackage.sha1 != latestInfo.sha1) {
+                    hashChanged = true
                 }
 
-                if (onePackage.version == null || onePackage.version != latestInfo.version || md5Changed) {
+                if (onePackage.version == null || onePackage.version != latestInfo.version || hashChanged) {
                     latestInfo.each { k, v ->
                         L:
                         {
@@ -377,40 +367,110 @@ plugins {
             steps.echo "Updated SDK Info: " + sdkInfo
             steps.writeJSON(file: jsonFile, json: sdkInfo, pretty: 4)
 
-//            steps.withCredentials([steps.sshUserPrivateKey(credentialsId: config.gitCredentialsId, keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER')]) {
-//                steps.sh """
-//                    export GIT_SSH_COMMAND=\"ssh -o StrictHostKeyChecking=no -i \${SSH_KEY}\"
-//                    git config --global user.email "builder@git.bizconf.cn"
-//                    git config --global user.name "builder"
-//                    git add ${jsonFile}
-//                    git commit -m "${commitMessage}"
-//                    git pull origin ${branch} --rebase
-//                    git_push_error=0
-//                    git push origin HEAD:${branch} || git_push_error=1
-//                    if [ \$git_push_error -eq 1 ]; then
-//                        echo Retry git push...
-//                        git pull origin ${branch} --rebase
-//                        git push origin HEAD:${branch}
-//                    fi
-//                """
-//            }
-            steps.withCredentials([steps.gitUsernamePassword(credentialsId: config.gitCredentialsId)]) {
-                steps.sh """${config.debugSh}
-                    git config --global user.email "builder@autoupdate"
-                    git config --global user.name "builder"
-                    git add ${jsonFile}
-                    git commit -m "${commitMessage}"
-                    git pull origin ${branch} --rebase
-                    git_push_error=0
-                    git push origin HEAD:${branch} || git_push_error=1
-                    if [ \$git_push_error -eq 1 ]; then
-                        echo "Retry git push..."
+
+            if (steps.isUnix()) {
+                steps.withCredentials([steps.sshUserPrivateKey(credentialsId: config.gitCredentialsId, keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER')]) {
+                    steps.sh """${config.debugSh}
+                        export GIT_SSH_COMMAND=\"ssh -o StrictHostKeyChecking=no -i \${SSH_KEY}\"
+                        git config --global user.email "builder@autoupdate"
+                        git config --global user.name "builder"
+                        git add ${jsonFile}
+                        git commit -m "${commitMessage}"
                         git pull origin ${branch} --rebase
                         git push origin HEAD:${branch}
-                    fi
-                """
+                        if [ \$? -ne 0 ]; then
+                            echo Retry git push...
+                            git pull origin ${branch} --rebase
+                            git push origin HEAD:${branch}
+                        fi
+                    """
+                }
+//                steps.withCredentials([steps.gitUsernamePassword(credentialsId: config.gitCredentialsId)]) {
+//                    steps.sh """${config.debugSh}
+//                        git config --global user.email "builder@autoupdate"
+//                        git config --global user.name "builder"
+//                        git add ${jsonFile}
+//                        git commit -m "${commitMessage}"
+//                        git pull origin ${branch} --rebase
+//                        git push origin HEAD:${branch} || git_push_error=1
+//                        if [ \$? -ne 1 ]; then
+//                            echo "Retry git push..."
+//                            git pull origin ${branch} --rebase
+//                            git push origin HEAD:${branch}
+//                        fi
+//                    """
+//                }
+            } else {
+                steps.withCredentials([steps.sshUserPrivateKey(credentialsId: config.gitCredentialsId, keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER')]) {
+                    steps.pwsh """${config.debugPwsh}
+                        GIT_SSH_COMMAND=\"ssh -o StrictHostKeyChecking=no -i \${SSH_KEY}\"
+                        git config --global user.email "builder@autoupdate"
+                        git config --global user.name "builder"
+                        git add ${jsonFile}
+                        git commit -m "${commitMessage}"
+                        git pull origin ${branch} --rebase
+                        git push origin HEAD:${branch}
+                        if (-not\$?)
+                        {
+                            echo Retry git push...
+                            git pull origin ${branch} --rebase
+                            git push origin HEAD:${branch}
+                        }
+                    """
+                }
+//                steps.withCredentials([steps.gitUsernamePassword(credentialsId: config.gitCredentialsId)]) {
+//                    steps.pwsh """${config.debugPwsh}
+//                        git config --global user.email "builder@autoupdate"
+//                        git config --global user.name "builder"
+//                        git add ${jsonFile}
+//                        git commit -m "${commitMessage}"
+//                        git pull origin ${branch} --rebase
+//                        git push origin HEAD:${branch}
+//                        if (-not\$?)
+//                        {
+//                            echo Retry git push...
+//                            git pull origin ${branch} --rebase
+//                            git push origin HEAD:${branch}
+//                        }
+//                    """
+//                }
             }
         }
         return modified
+    }
+
+    static private genSdkInfo(Object steps, Map config, String type) {
+        String sdkFileName = "${config.productName}-${config.version}"
+
+        String sha1 = steps.sha1("${config.srcRootPath}/ido-cluster/outputs/${sdkFileName}-${type}.zip")
+
+        String commitMessage, commitAuthor
+        if (steps.isUnix()) {
+            commitMessage = steps.sh(returnStdout: true, script: """${config.debugSh}
+                git log --format=%an -n 1
+            """).trim()
+            commitAuthor = steps.sh(returnStdout: true, script: """${config.debugSh}
+                git log --format=%an -n 1
+            """).trim()
+        } else {
+            commitMessage = steps.pwsh(returnStdout: true, script: """${config.debugPwsh}
+                git log --format=%an -n 1
+            """).trim()
+            commitAuthor = steps.pwsh(returnStdout: true, script: """${config.debugPwsh}
+                git log --format=%an -n 1
+            """).trim()
+        }
+
+        Map sdkInfo = [
+                "name"   : config.productName,
+                "version": config.version,
+                "message": commitMessage,
+                "author" : commitAuthor,
+                "sha1"   : sha1
+        ]
+
+        steps.echo "SDK Info: " + sdkInfo
+        String jsonFile = "${config.srcRootPath}/ido-cluster/outputs/${config.productName}-${type}-latest.json"
+        steps.writeJSON(file: jsonFile, json: sdkInfo, pretty: 4)
     }
 }

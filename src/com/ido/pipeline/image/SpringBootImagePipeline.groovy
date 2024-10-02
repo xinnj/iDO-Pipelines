@@ -10,6 +10,7 @@ import com.ido.pipeline.languageBase.JdkPipeline
 class SpringBootImagePipeline extends JdkPipeline {
     SpringBootImagePipeline(Object steps) {
         super(steps)
+        this.useK8sAgent = true
     }
 
     @Override
@@ -168,7 +169,7 @@ EOF
                             --no-daemon \
                             -x test \
                             ${updateDependenciesArgs} \
-                            -I "${steps.env.WORKSPACE}/${config.srcRootPath}/default-gradle-init.gradle" \
+                            -I "${steps.WORKSPACE}/${config.srcRootPath}/default-gradle-init.gradle" \
                             -Dfile.encoding=UTF-8 \
                             "-Dorg.gradle.jvmargs=-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" \
                             -p ${config.java.moduleName} \

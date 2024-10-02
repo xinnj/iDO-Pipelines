@@ -26,7 +26,9 @@ Map call(String configYaml) {
     m = null
 
     if (classPath.startsWith('customer/')) {
+        // Customer lib name must be 'customer'
         scriptDir = customer.getPath()
+        // All customer pipeline must be put under 'src/customer' folder
         clsLoader.addClasspath(scriptDir + "/../src/" + classPath)
     } else {
         clsLoader.addClasspath(scriptDir + "/../src/com/ido/pipeline/" + classPath)

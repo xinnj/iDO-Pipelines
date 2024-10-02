@@ -19,7 +19,7 @@
                 }
             ],
             "branch": false,
-            "md5": "e640ae144d2b9644e7098826df3a97c2"
+            "sha1": "e640ae144d2b9644e7098826df3a97c2"
         },
                 {
             "name": "BizCloudSDK-BV",
@@ -28,7 +28,7 @@
             "type": "Release",
             "install_path":             [
                                 {
-                    "from": "shared_usr/win-x64_x86/include",
+                    "from": "shared_usr/win-x64_x86/include/*.h",
                     "to": "Biz3partyLib/include"
                 },
                                 {
@@ -38,19 +38,11 @@
                                 {
                     "from": "shared_usr/win-x64_x86/bin",
                     "to": "cloudbin"
-                },
-                                {
-                    "from": "shared_usr/win-x64_x86/debug/lib",
-                    "to": "Biz3partyLib/lib-win-x86/Debug"
-                },
-                                {
-                    "from": "shared_usr/win-x64_x86/debug/bin",
-                    "to": "cloudbin_debug"
                 }
             ],
             "message": "[[win]]Update SDK Info: {BizGuiSdk|3.1.500-660-gb3fff5fb|maenlong|[add log]添加日志定位问题16313}",
             "author": "builder",
-            "md5": "29883fe94004d1030a482352821e85cb"
+            "sha1": "29883fe94004d1030a482352821e85cb"
         }
     ]
 }

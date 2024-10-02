@@ -7,6 +7,7 @@ import hudson.model.*
 import hudson.scm.*
 import jenkins.model.*
 import org.jenkinsci.plugins.workflow.steps.FlowInterruptedException
+
 import java.util.Date.*
 import java.util.TimeZone.*
 
@@ -17,6 +18,8 @@ abstract class BasePipeline implements Pipeline, Serializable {
     def steps
     Map config
     String fastStop = ""
+    boolean useK8sAgent = true
+    String nodeName = ""
 
     BasePipeline(Object steps) {
         this.steps = steps
@@ -24,14 +27,21 @@ abstract class BasePipeline implements Pipeline, Serializable {
 
     Map runPipeline(Map originConf) {
         this.config = originConf
+        if (this.config.useK8sAgent == null) {
+            this.config.useK8sAgent = this.useK8sAgent
+        }
+        if (!this.config.nodeName) {
+            this.config.nodeName = this.nodeName
+        }
+
         def result = [:]
 
         if (config.debug) {
             config.put("debugSh", "{ set -x; } 2>/dev/null")
-            config.put("debugPowershell", "Set-PSDebug -Trace 1")
+            config.put("debugPwsh", "Set-PSDebug -Trace 1")
         } else {
             config.put("debugSh", "{ set +x; } 2>/dev/null")
-            config.put("debugPowershell", "Set-PSDebug -Trace 0")
+            config.put("debugPwsh", "Set-PSDebug -Trace 0")
         }
 
         if (config.stopSameJob) {
@@ -44,120 +54,77 @@ abstract class BasePipeline implements Pipeline, Serializable {
         }
 
         steps.lock(resource: "lock_${steps.currentBuild.fullProjectName}") {
-            switch (config.nodeType) {
-                case "standalone":
-                    steps.node(config.nodeName) {
-                        try {
-                            customStages()
-                            steps.currentBuild.result = 'SUCCESS'
-                        }
-                        catch (FlowInterruptedException interruptEx) {
-                            steps.echo 'Received FlowInterruptedException'
-                            steps.currentBuild.result = 'ABORTED'
-                        }
-                        catch (Exception e) {
-                            if (fastStop != "") {
-                                steps.currentBuild.result = fastStop
-                            } else {
-                                steps.echo 'Exception occurred: ' + e.toString()
-                                steps.currentBuild.result = 'FAILURE'
-                            }
-                        }
-                        finally {
-                            steps.echo "\033[32m########## Stage: Notify ##########\033[0m"
-                            this.sendNotification()
-                        }
-                    }
-                    break
-                case "k8s":
-                    steps.node('Workspace') {
-                        String json = JsonOutput.toJson(config)
+            steps.node('Workspace') {
+                String json = JsonOutput.toJson(config)
 
-                        Map packagesEnv = [:]
-                        String output = steps.sh(returnStdout: true, encoding: "UTF-8", script: """${config.debugSh}
+                Map packagesEnv = [:]
+                String output = steps.sh(returnStdout: true, encoding: "UTF-8", script: """${config.debugSh}
 bash -c "export -p | awk '{print \\\$3'} | grep \\"^IDO_\\" | tr -d '\\"'"
 """)
-                        output.trim()
-                                .split(System.lineSeparator())
-                                .each { item ->
-                                    def object = item.split("=")
-                                    packagesEnv.put(object[0], object[1])
-                                }
-
-                        def jsonSlurperClassic = new JsonSlurperClassic()
-                        config = jsonSlurperClassic.parseText(SubstEnv(json, packagesEnv)) as Map
-                        // steps.echo config.toMapString()
-                    }
-
-                    def podRetentionType = { Boolean k ->
-                        if (k) {
-                            steps.always()
-                        } else {
-                            steps.never()
+                output.trim()
+                        .split(System.lineSeparator())
+                        .each { item ->
+                            def object = item.split("=")
+                            packagesEnv.put(object[0], object[1])
                         }
-                    }
 
-                    def workspaceVolumeType = { String type ->
-                        switch (type) {
-                            case "hostPath":
-                                return steps.hostPathWorkspaceVolume(hostPath: config._system.workspaceVolume.hostPath)
-                                break
-                            case "nfs":
-                                return steps.nfsWorkspaceVolume(serverAddress: config._system.workspaceVolume.nfsServerAddress,
-                                        serverPath: config._system.workspaceVolume.nfsServerPath)
-                                break
-                            case "pvc":
-                                return steps.persistentVolumeClaimWorkspaceVolume(claimName: config._system.workspaceVolume.pvcName)
-                                break
-                            default:
-                                steps.error "Wrong workspaceVolumeType: ${type}"
-                        }
-                    }
+                def jsonSlurperClassic = new JsonSlurperClassic()
+                config = jsonSlurperClassic.parseText(SubstEnv(json, packagesEnv)) as Map
+                // steps.echo config.toMapString()
+            }
 
-                    if (config._system.imagePullMirror) {
-                        config.podTemplate = Utils.replaceImageMirror(config._system.imageMirrors, config.podTemplate)
+            if (config.useK8sAgent) {
+                def podRetentionType = { Boolean k ->
+                    if (k) {
+                        steps.always()
+                    } else {
+                        steps.never()
                     }
+                }
 
-                    config.podTemplate = (config.podTemplate as String)
-                            .replaceAll('<keepBuilderPodMaxMinutes>', (config._system.keepBuilderPodMaxMinutes).toString())
-                            .replaceAll('<imagePullSecret>', config._system.imagePullSecret as String)
-                            .replaceAll('<inboundAgentImage>', config._system.inboundAgentImage as String)
-
-                    // steps.echo config.podTemplate
-                    steps.podTemplate(yaml: config.podTemplate,
-                            idleMinutes: config.keepBuilderPodMinutes,
-                            workspaceVolume: workspaceVolumeType(config._system.workspaceVolume.type),
-                            slaveConnectTimeout: "3600",
-                            showRawYaml: config._system.showRawYaml
-                    ) {
-                        steps.node(steps.POD_LABEL) {
-                            try {
-                                customStages()
-                                steps.currentBuild.result = 'SUCCESS'
-                            }
-                            catch (FlowInterruptedException interruptEx) {
-                                steps.echo 'Received FlowInterruptedException'
-                                steps.currentBuild.result = 'ABORTED'
-                            }
-                            catch (Exception e) {
-                                if (fastStop != "") {
-                                    steps.currentBuild.result = fastStop
-                                } else {
-                                    steps.echo 'Exception occurred: ' + e.toString()
-                                    steps.currentBuild.result = 'FAILURE'
-                                }
-                            }
-                            finally {
-                                steps.echo "\033[32m########## Stage: Notify ##########\033[0m"
-                                this.sendNotification()
-                            }
-                        }
+                def workspaceVolumeType = { String type ->
+                    switch (type) {
+                        case "hostPath":
+                            return steps.hostPathWorkspaceVolume(hostPath: config._system.workspaceVolume.hostPath)
+                            break
+                        case "nfs":
+                            return steps.nfsWorkspaceVolume(serverAddress: config._system.workspaceVolume.nfsServerAddress,
+                                    serverPath: config._system.workspaceVolume.nfsServerPath)
+                            break
+                        case "pvc":
+                            return steps.persistentVolumeClaimWorkspaceVolume(claimName: config._system.workspaceVolume.pvcName)
+                            break
+                        default:
+                            steps.error "Wrong workspaceVolumeType: ${type}"
                     }
-                    podRetentionType = null
-                    workspaceVolumeType = null
-                    break
-                default:
-                    steps.error "Node type: ${config.nodeType} is not supported!"
+                }
+
+                if (config._system.imagePullMirror) {
+                    config.podTemplate = Utils.replaceImageMirror(config._system.imageMirrors, config.podTemplate)
+                }
+
+                config.podTemplate = (config.podTemplate as String)
+                        .replaceAll('<keepBuilderPodMaxMinutes>', (config._system.keepBuilderPodMaxMinutes).toString())
+                        .replaceAll('<imagePullSecret>', config._system.imagePullSecret as String)
+                        .replaceAll('<inboundAgentImage>', config._system.inboundAgentImage as String)
+
+                // steps.echo config.podTemplate
+                steps.podTemplate(yaml: config.podTemplate,
+                        idleMinutes: config.keepBuilderPodMinutes,
+                        workspaceVolume: workspaceVolumeType(config._system.workspaceVolume.type),
+                        slaveConnectTimeout: "3600",
+                        showRawYaml: config._system.showRawYaml
+                ) {
+                    steps.node(steps.POD_LABEL) {
+                        runStages()
+                    }
+                }
+                podRetentionType = null
+                workspaceVolumeType = null
+            } else {
+                steps.node(config.nodeName) {
+                    runStages()
+                }
             }
         }
 
@@ -166,11 +133,41 @@ bash -c "export -p | awk '{print \\\$3'} | grep \\"^IDO_\\" | tr -d '\\"'"
         return result
     }
 
-    String SubstEnv(String str, Map env) {
+    def runStages() {
+        try {
+            customStages()
+            steps.currentBuild.result = 'SUCCESS'
+        }
+        catch (FlowInterruptedException interruptEx) {
+            steps.echo 'Received FlowInterruptedException'
+            steps.currentBuild.result = 'ABORTED'
+        }
+        catch (Exception e) {
+            if (fastStop != "") {
+                steps.currentBuild.result = fastStop
+            } else {
+                steps.echo 'Exception occurred: ' + e.toString()
+                steps.currentBuild.result = 'FAILURE'
+            }
+        }
+        finally {
+            steps.echo "\033[32m########## Stage: Notify ##########\033[0m"
+            if (steps.currentBuild.result == null) {
+                steps.currentBuild.result = 'FAILURE'
+            }
+            this.sendNotification()
+        }
+    }
+
+    def String SubstEnv(String str, Map env) {
         String result = str
 
         def matcher = str =~ /\$\{(IDO_.+?)\}/
         matcher.each {
+            if (config.debug) {
+                steps.echo "var: ${it[0]}"
+                steps.echo "env: " + env["${it[1]}"]
+            }
             result = result.replace(it[0], env["${it[1]}"])
         }
 
@@ -181,6 +178,9 @@ bash -c "export -p | awk '{print \\\$3'} | grep \\"^IDO_\\" | tr -d '\\"'"
 
     def prepare() {
         config.branch = Utils.getBranchName(steps)
+        steps.env.CI_PRODUCTNAME = config.productName
+        steps.env.CI_BRANCH = config.branch
+
         if (config.dependOn.size() != 0) {
             String upstreamProjects = ""
             String defaultBranch = config.branch
@@ -238,7 +238,7 @@ bash -c "export -p | awk '{print \\\$3'} | grep \\"^IDO_\\" | tr -d '\\"'"
                             ]])
         }
 
-        cleanGit()
+        this.cleanGit()
 
         // Checkout additional scm(s)
         if (config.additionalScm != null) {
@@ -263,7 +263,7 @@ bash -c "export -p | awk '{print \\\$3'} | grep \\"^IDO_\\" | tr -d '\\"'"
                                                         steps.pruneTags(true)
                                     ]])
 
-                    cleanGit()
+                    this.cleanGit()
                 }
             }
         }
@@ -283,7 +283,7 @@ bash -c "export -p | awk '{print \\\$3'} | grep \\"^IDO_\\" | tr -d '\\"'"
                 rm -fr .git/rebase-merge > /dev/null 2>&1 || :
             """
         } else {
-            steps.powershell """${config.debugPowershell}
+            steps.pwsh """${config.debugPwsh}
                 \$ErrorActionPreference = 'Stop'
                 
                 git config --global core.abbrev 8
@@ -312,7 +312,7 @@ bash -c "export -p | awk '{print \\\$3'} | grep \\"^IDO_\\" | tr -d '\\"'"
                 git clean -fdxq ${excludeCmd}
             """
         } else {
-            steps.powershell """${config.debugPowershell}
+            steps.pwsh """${config.debugPwsh}
                 \$ErrorActionPreference = 'Stop'
                 git reset --hard -q
                 git clean -fdxq ${excludeCmd}
@@ -321,12 +321,7 @@ bash -c "export -p | awk '{print \\\$3'} | grep \\"^IDO_\\" | tr -d '\\"'"
     }
 
     def afterScm() {
-        steps.container('builder') {
-            steps.withEnv(["CI_PRODUCTNAME=$config.productName",
-                           "CI_BRANCH=$config.branch"]) {
-                runCustomerBuildScript(config.customerBuildScript.afterScm)
-            }
-        }
+        runCustomerBuildScript(config.customerBuildScript.afterScm)
     }
 
     def versioning() {
@@ -337,23 +332,16 @@ bash -c "export -p | awk '{print \\\$3'} | grep \\"^IDO_\\" | tr -d '\\"'"
             config.version = ver
         }
         steps.currentBuild.displayName = config.version
-        steps.sh """${config.debugSh}
-            mkdir -p "${config.srcRootPath}/ido-cluster"
-            echo ${config.version} > "${config.srcRootPath}/ido-cluster/_version"
-        """
+        steps.env.CI_VERSION = config.version
     }
 
     def afterVersioning() {
-        steps.container('builder') {
-            steps.withEnv(["CI_PRODUCTNAME=$config.productName",
-                           "CI_VERSION=$config.version",
-                           "CI_BRANCH=$config.branch"]) {
-                runCustomerBuildScript(config.customerBuildScript.afterVersioning)
+        runCustomerBuildScript(config.customerBuildScript.afterVersioning)
 
-                if (steps.fileExists("${config.srcRootPath}/ido-cluster/_version")) {
-                    config.version = steps.readFile(file: "${config.srcRootPath}/ido-cluster/_version", encoding: "UTF-8").trim()
-                }
-            }
+        if (steps.fileExists("${config.srcRootPath}/ido-cluster/_version")) {
+            config.version = steps.readFile(file: "${config.srcRootPath}/ido-cluster/_version", encoding: "UTF-8").trim()
+            steps.currentBuild.displayName = config.version
+            steps.env.CI_VERSION = config.version
         }
     }
 
@@ -449,54 +437,46 @@ bash -c "export -p | awk '{print \\\$3'} | grep \\"^IDO_\\" | tr -d '\\"'"
     }
 
     boolean checkCustomerBuildScript(String script) {
-        switch (config.builderType) {
-            case "win":
-                return steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${script}.ps1")
-            default:
-                return steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${script}.sh")
+        if (steps.isUnix()) {
+            return steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${script}.sh")
+        } else {
+            return steps.fileExists("${steps.WORKSPACE}/${config.srcRootPath}/${script}.ps1")
         }
     }
 
     def runCustomerBuildScript(String script) {
-        switch (config.builderType) {
-            case "win":
-                String cmd = """
-[Environment]::SetEnvironmentVariable('CI_PRODUCTNAME','$config.productName', 'User')
-[Environment]::SetEnvironmentVariable('CI_BRANCH','$config.branch', 'User')
-[Environment]::SetEnvironmentVariable('CI_VERSION','$config.version', 'User')
-[Environment]::SetEnvironmentVariable('CI_WORKSPACE','$config.vmWorkspace', 'User')
-cd "${config.vmWorkspace}/${config.srcRootPath}"
-${script}.ps1
-"""
-                Utils.execRemoteWin(steps, config, cmd)
-                break
-            case "mac":
-                steps.withCredentials([steps.usernamePassword(credentialsId: config.macos.loginCredentialId, passwordVariable: 'password', usernameVariable: 'username')]) {
-                    steps.sh """${config.debugSh}
-                        ssh remote-host /bin/sh <<EOF
-                            ${config.debugSh}
-                            set -euao pipefail
-                            export CI_PRODUCTNAME=${config.productName}
-                            export CI_VERSION=${config.version}
-                            export CI_BRANCH=${config.branch}
-
-                            security unlock-keychain -p \${password}
-                            security set-keychain-settings -lut 21600 login.keychain
-        
-                            set -x
-                            cd "${steps.WORKSPACE}/${config.srcRootPath}"
-                            chmod +x "${script}.sh"
-                            "${script}.sh"
-EOF
-                    """
-                }
-                break
-            default:
-                steps.sh """
+        if (config.useK8sAgent) {
+            steps.container('builder') {
+                steps.sh """${config.debugSh}
                     cd "${config.srcRootPath}"
                     chmod +x "${script}.sh"
                     "${script}.sh"
                 """
+            }
+        } else {
+            if (steps.isUnix()) {
+                steps.sh """${config.debugSh}
+                    cd "${config.srcRootPath}"
+                    chmod +x "${script}.sh"
+                    "${script}.sh"
+                """
+            } else {
+                steps.pwsh """${config.debugPwsh}
+                    \$ErrorActionPreference = 'Stop'
+                    cd "${config.srcRootPath}"
+                    & "${script}.ps1"
+                """
+            }
+        }
+    }
+
+    def execOnAgent(String container, Closure clos) {
+        if (config.useK8sAgent && container) {
+            steps.container(container) {
+                return clos()
+            }
+        } else {
+            return clos()
         }
     }
 }

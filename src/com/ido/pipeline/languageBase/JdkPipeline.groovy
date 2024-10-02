@@ -15,10 +15,12 @@ abstract class JdkPipeline extends BuildPipeline {
     Map runPipeline(Map config) {
         config.parallelUtAnalysis = false
 
-        if (!config.podTemplate) {
-            String builder = steps.libraryResource(resource: 'pod-template/jdk-builder.yaml', encoding: 'UTF-8')
-            builder = builder.replaceAll('<builderImage>', config.java.builderImage)
-            config.podTemplate = builder
+        if (config.useK8sAgent == null || config.useK8sAgent) {
+            if (!config.podTemplate) {
+                String builder = steps.libraryResource(resource: 'pod-template/jdk-builder.yaml', encoding: 'UTF-8')
+                builder = builder.replaceAll('<builderImage>', config.java.builderImage)
+                config.podTemplate = builder
+            }
         }
 
         return super.runPipeline(config)
@@ -46,13 +48,13 @@ abstract class JdkPipeline extends BuildPipeline {
                     steps.writeFile(file: "${config.srcRootPath}/default-maven-settings.xml", text: settings, encoding: "UTF-8")
                 }
 
-                steps.container('builder') {
+                execOnAgent('builder', {
                     steps.sh """${config.debugSh}
                         cd "${config.srcRootPath}"
                         rm -f ./mvnw.zip
                         sh ./mvnw -v
                     """
-                }
+                })
                 break
             case "gradle":
                 if (!steps.fileExists("${config.srcRootPath}/gradlew")) {
@@ -71,13 +73,13 @@ abstract class JdkPipeline extends BuildPipeline {
                     steps.writeFile(file: "${config.srcRootPath}/default-gradle-init.gradle", text: initScript, encoding: "UTF-8")
                 }
 
-                steps.container('builder') {
+                execOnAgent('builder', {
                     steps.sh """${config.debugSh}
                         cd "${config.srcRootPath}"
                         rm -f ./gradlew.zip
                         sh ./gradlew -v
                     """
-                }
+                })
                 break
             default:
                 steps.error "java.buildTool: ${config.java.buildTool} is not supported!"
@@ -90,19 +92,19 @@ abstract class JdkPipeline extends BuildPipeline {
             return
         }
 
-        steps.container('builder') {
-            switch (config.java.buildTool) {
-                case "maven":
-                    String updateDependenciesArgs = ""
-                    if (config.java.forceUpdateDependencies) {
-                        updateDependenciesArgs = "-U"
-                    }
+        switch (config.java.buildTool) {
+            case "maven":
+                String updateDependenciesArgs = ""
+                if (config.java.forceUpdateDependencies) {
+                    updateDependenciesArgs = "-U"
+                }
 
-                    String mavenSettingsArgs = ""
-                    if (config.java.defaultMavenSettings) {
-                        mavenSettingsArgs = "-s ./default-maven-settings.xml"
-                    }
+                String mavenSettingsArgs = ""
+                if (config.java.defaultMavenSettings) {
+                    mavenSettingsArgs = "-s ./default-maven-settings.xml"
+                }
 
+                execOnAgent('builder', {
                     steps.sh """${config.debugSh}
                         export MAVEN_OPTS="-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
                         cd "${config.srcRootPath}"
@@ -113,20 +115,22 @@ abstract class JdkPipeline extends BuildPipeline {
                             -Dfile.encoding=UTF-8 \
                             -pl ${config.java.moduleName} -am
                     """
-                    break
-                case "gradle":
-                    Utils.addGradlePlugin(steps, 'jacoco', null, "${config.srcRootPath}/${config.java.moduleName}")
+                })
+                break
+            case "gradle":
+                Utils.addGradlePlugin(steps, 'jacoco', null, "${config.srcRootPath}/${config.java.moduleName}")
 
-                    String updateDependenciesArgs = ""
-                    if (config.java.forceUpdateDependencies) {
-                        updateDependenciesArgs = "--refresh-dependencies"
-                    }
+                String updateDependenciesArgs = ""
+                if (config.java.forceUpdateDependencies) {
+                    updateDependenciesArgs = "--refresh-dependencies"
+                }
 
-                    String initScriptArgs = ""
-                    if (config.java.defaultGradleInitScript) {
-                        initScriptArgs = "-I \"${steps.env.WORKSPACE}/${config.srcRootPath}/default-gradle-init.gradle\""
-                    }
+                String initScriptArgs = ""
+                if (config.java.defaultGradleInitScript) {
+                    initScriptArgs = "-I \"${steps.WORKSPACE}/${config.srcRootPath}/default-gradle-init.gradle\""
+                }
 
+                execOnAgent('builder', {
                     steps.sh """${config.debugSh}
                         cd "${config.srcRootPath}"
                         cat <<EOF >> ${config.java.moduleName}/build.gradle-jacoco
@@ -152,14 +156,14 @@ EOF
 
                         cp -f ${config.java.moduleName}/build.gradle-original ${config.java.moduleName}/build.gradle
                     """
-                    break
-            }
+                })
+                break
+        }
 
-            steps.recordCoverage(tools: [[parser: 'JACOCO']], failOnError: true, sourceCodeRetention: 'NEVER',
-                    qualityGates: [[criticality: 'FAILURE', metric: 'LINE', threshold: config.context.lineCoverageThreshold]])
-            if (steps.currentBuild.result == 'FAILURE') {
-                steps.error "UT coverage failure!"
-            }
+        steps.recordCoverage(tools: [[parser: 'JACOCO']], failOnError: true, sourceCodeRetention: 'NEVER',
+                qualityGates: [[criticality: 'FAILURE', metric: 'LINE', threshold: config.context.lineCoverageThreshold]])
+        if (steps.currentBuild.result == 'FAILURE') {
+            steps.error "UT coverage failure!"
         }
     }
 
@@ -169,19 +173,19 @@ EOF
             return
         }
 
-        steps.container('builder') {
-            switch (config.java.buildTool) {
-                case "maven":
-                    String updateDependenciesArgs = ""
-                    if (config.java.forceUpdateDependencies) {
-                        updateDependenciesArgs = "-U"
-                    }
+        switch (config.java.buildTool) {
+            case "maven":
+                String updateDependenciesArgs = ""
+                if (config.java.forceUpdateDependencies) {
+                    updateDependenciesArgs = "-U"
+                }
 
-                    String mavenSettingsArgs = ""
-                    if (config.java.defaultMavenSettings) {
-                        mavenSettingsArgs = "-s ./default-maven-settings.xml"
-                    }
+                String mavenSettingsArgs = ""
+                if (config.java.defaultMavenSettings) {
+                    mavenSettingsArgs = "-s ./default-maven-settings.xml"
+                }
 
+                execOnAgent('builder', {
                     steps.withSonarQubeEnv(config.context.sonarqubeServerName) {
                         steps.sh """${config.debugSh}
                             export MAVEN_OPTS="-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
@@ -194,21 +198,23 @@ EOF
                                 -pl ${config.java.moduleName} -am
                         """
                     }
-                    break
-                case "gradle":
-                    Utils.addGradlePlugin(steps, 'org.sonarqube', "4.4.1.3373",
-                            "${config.srcRootPath}/${config.java.moduleName}")
+                })
+                break
+            case "gradle":
+                Utils.addGradlePlugin(steps, 'org.sonarqube', "4.4.1.3373",
+                        "${config.srcRootPath}/${config.java.moduleName}")
 
-                    String updateDependenciesArgs = ""
-                    if (config.java.forceUpdateDependencies) {
-                        updateDependenciesArgs = "--refresh-dependencies"
-                    }
+                String updateDependenciesArgs = ""
+                if (config.java.forceUpdateDependencies) {
+                    updateDependenciesArgs = "--refresh-dependencies"
+                }
 
-                    String initScriptArgs = ""
-                    if (config.java.defaultGradleInitScript) {
-                        initScriptArgs = "-I \"${steps.env.WORKSPACE}/${config.srcRootPath}/default-gradle-init.gradle\""
-                    }
+                String initScriptArgs = ""
+                if (config.java.defaultGradleInitScript) {
+                    initScriptArgs = "-I \"${steps.WORKSPACE}/${config.srcRootPath}/default-gradle-init.gradle\""
+                }
 
+                execOnAgent('builder', {
                     steps.withSonarQubeEnv(config.context.sonarqubeServerName) {
                         steps.sh """${config.debugSh}
                             cd "${config.srcRootPath}"
@@ -226,15 +232,15 @@ EOF
                             cp -f ${config.java.moduleName}/build.gradle-original ${config.java.moduleName}/build.gradle
                         """
                     }
-                    break
-            }
+                })
+                break
+        }
 
-            if (config.context.qualityGateEnabled) {
-                steps.timeout(time: config.context.sonarqubeTimeoutMinutes, unit: 'MINUTES') {
-                    def qg = steps.waitForQualityGate()
-                    if (qg.status != 'OK') {
-                        steps.error "Quality gate failure: ${qg.status}"
-                    }
+        if (config.context.qualityGateEnabled) {
+            steps.timeout(time: config.context.sonarqubeTimeoutMinutes, unit: 'MINUTES') {
+                def qg = steps.waitForQualityGate()
+                if (qg.status != 'OK') {
+                    steps.error "Quality gate failure: ${qg.status}"
                 }
             }
         }

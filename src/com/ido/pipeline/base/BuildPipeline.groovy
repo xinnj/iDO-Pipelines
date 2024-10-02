@@ -153,13 +153,11 @@ abstract class BuildPipeline extends BasePipeline {
     def afterVersioning() {
         super.afterVersioning()
 
-        steps.container('builder') {
-            if (Utils.updateSdkInfoUnix(steps, config)) {
-                steps.currentBuild.displayName = "SDK Info Updated"
-                // if sdk info is updated, finish this build as a new build is triggered
-                fastStop = 'SUCCESS'
-                steps.error "Fast stop this build with success."
-            }
+        if (Utils.updateSdkInfo(steps, config)) {
+            steps.currentBuild.displayName = "SDK Info Updated"
+            // if sdk info is updated, finish this build as a new build is triggered
+            fastStop = 'SUCCESS'
+            steps.error "Fast stop this build with success."
         }
     }
 
@@ -168,53 +166,29 @@ abstract class BuildPipeline extends BasePipeline {
     def abstract codeAnalysis()
 
     def beforeBuild() {
-        steps.container('builder') {
-            steps.withEnv(["CI_PRODUCTNAME=$config.productName",
-                           "CI_VERSION=$config.version",
-                           "CI_BRANCH=$config.branch"]) {
-                runCustomerBuildScript(config.customerBuildScript.beforeBuild)
-            }
-        }
+        runCustomerBuildScript(config.customerBuildScript.beforeBuild)
     }
 
     def abstract build()
 
     Boolean customerBuild() {
         Boolean runCustomer = false
-        steps.container('builder') {
-            if (checkCustomerBuildScript(config.customerBuildScript.build)) {
-                steps.echo "Execute customer build script: ${config.customerBuildScript.build}"
-                steps.withEnv(["CI_PRODUCTNAME=$config.productName",
-                               "CI_VERSION=$config.version",
-                               "CI_BRANCH=$config.branch"]) {
-                    runCustomerBuildScript(config.customerBuildScript.build)
-                }
-                runCustomer = true
-            }
+        if (checkCustomerBuildScript(config.customerBuildScript.build)) {
+            steps.echo "Execute customer build script: ${config.customerBuildScript.build}"
+            runCustomerBuildScript(config.customerBuildScript.build)
+            runCustomer = true
         }
         return runCustomer
     }
 
     def afterBuild() {
-        steps.container('builder') {
-            steps.withEnv(["CI_PRODUCTNAME=$config.productName",
-                           "CI_VERSION=$config.version",
-                           "CI_BRANCH=$config.branch"]) {
-                runCustomerBuildScript(config.customerBuildScript.afterBuild)
-            }
-        }
+        runCustomerBuildScript(config.customerBuildScript.afterBuild)
     }
 
     def abstract archive()
 
     def afterArchive() {
-        steps.container('builder') {
-            steps.withEnv(["CI_PRODUCTNAME=$config.productName",
-                           "CI_VERSION=$config.version",
-                           "CI_BRANCH=$config.branch"]) {
-                runCustomerBuildScript(config.customerBuildScript.afterArchive)
-            }
-        }
+        runCustomerBuildScript(config.customerBuildScript.afterArchive)
     }
 }
 

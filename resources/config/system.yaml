@@ -40,7 +40,6 @@ inboundAgentImage: "docker.io/xinnj/inbound-agent:4.13.3-1-alpine-jdk11-nolog"
 keepBuilderPodMaxMinutes: 1440
 
 dotnet:
-  sdkPath: "R:/dotnet"
   nugetSource: "https://nuget.cdn.azure.cn/v3/index.json"
 
 smbServer:
@@ -51,15 +50,8 @@ smbServer:
   password: "PleaseUploadHere"
 
 macos:
-  builderImage: "nexus-docker-5001:5001/docker-osx-slim:1.0.0"
-  remoteBuilderImage: "docker.io/xinnj/ssh-client:1.0.0"
   # CocoaPods repo url, e.g.: https://github.com/CocoaPods/Specs.git
   cocoapodsRepoUrl: "https://mirrors.tuna.tsinghua.edu.cn/git/CocoaPods/Specs.git"
-
-win:
-  builderImage: "nexus-docker-5001:5001/docker-win-vm:1.0.0"
-  remoteBuilderImage: "docker.io/xinnj/ssh-client:1.0.0"
-  fakeIP: "192.168.1.2"
 
 java:
   mavenDownloadUrl: "https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/<maven-version>"

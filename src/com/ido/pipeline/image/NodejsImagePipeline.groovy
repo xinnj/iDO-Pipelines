@@ -11,6 +11,7 @@ class NodejsImagePipeline extends NpmPipeline {
 
     NodejsImagePipeline(Object steps) {
         super(steps)
+        this.useK8sAgent = true
     }
 
     @Override

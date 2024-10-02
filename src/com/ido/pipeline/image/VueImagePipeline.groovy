@@ -11,6 +11,7 @@ class VueImagePipeline extends NpmPipeline {
 
     VueImagePipeline(Object steps) {
         super(steps)
+        this.useK8sAgent = true
     }
 
     @Override

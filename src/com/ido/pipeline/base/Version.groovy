@@ -14,7 +14,7 @@ class Version {
 git describe --always --long --tags
 """)
                     } else {
-                        versionFull = steps.powershell(returnStdout: true, script: """${config.debugPowershell}
+                        versionFull = steps.pwsh(returnStdout: true, script: """${config.debugPwsh}
 git describe --always --long --tags
 """)
                     }

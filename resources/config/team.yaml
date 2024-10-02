@@ -40,8 +40,6 @@ customerBuildScript:
   afterArchive: "ido-cluster/after-archive"
 
 ## Node config
-# "standalone", "k8s"
-nodeType: "k8s"
 nodeName: ""
 podTemplate: ""
 keepBuilderPodMinutes: 0
@@ -150,8 +148,8 @@ helm:
 
 ## File server config
 fileServer:
-  uploadUrl: "http://file-server/upload"
-  downloadUrl: "${IDO_FILE_URL}"
+  uploadUrl: "${IDO_FILE_UPLOAD_URL}"
+  downloadUrl: "${IDO_FILE_DOWNLOAD_URL}"
   # must end with '/'
   uploadRootPath: "/"
 
@@ -230,16 +228,8 @@ android:
 
 ## Macos builder config
 macos:
-  # Use dedicated remote machine as the builder or not
-  useRemoteBuilder: false
-  # Space-delimited list of Labels (A label can not contain spaces) used to identify a builder
-  remoteBuilderTags: "macos-builder"
   # Credential ID of login account of builder machine
   loginCredentialId: "macos-builder-login"
-  # The vm file if using internal vm as the builder. Can be a URL or absolute file path.
-  # /home/jenkins/agent/macos-image/xxx.img
-  # http://file-server/download/tools/osx/xxx.img
-  macosImage: "http://file-server/download/tools/osx/ventura-v1.img"
   useCocoapods: false
 
 ## Xcode config
@@ -283,8 +273,8 @@ ios:
   #     exportOptionsPlist: "<path to exportOptionsPlist file, relative path to srcRootPath>"
   buildOptions: []
   downloadDisplayImages:
-    standard: "${IDO_FILE_URL}/ios-install-images/Install.png"
-    fullSize: "${IDO_FILE_URL}/ios-install-images/Install-large.png"
+    standard: "${IDO_FILE_DOWNLOAD_URL}/ios-install-images/Install.png"
+    fullSize: "${IDO_FILE_DOWNLOAD_URL}/ios-install-images/Install-large.png"
   # Execute UT
   ut:
     enabled: false
@@ -300,19 +290,6 @@ ios:
   sonarqubeServerName: ""
   qualityGateEnabled: false
   sonarqubeTimeoutMinutes: 10
-
-## Win builder config
-win:
-  # Use dedicated remote machine as the builder or not
-  useRemoteBuilder: false
-  # Space-delimited list of Labels (A label can not contain spaces) used to identify a builder
-  remoteBuilderTags: "win-builder"
-  # Credential ID of login account of builder machine
-  loginCredentialId: "win-builder-login"
-  # The vm file if using internal vm as the builder. Can be a URL or absolute file path.
-  # /home/jenkins/agent/win-image/xxx.img
-  # http://file-server/download/tools/win/xxx.img
-  winImage: "http://file-server/download/tools/win/win11-v1.img"
 
 ## dotnet app config
 dotnet:

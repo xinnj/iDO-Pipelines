@@ -6,7 +6,6 @@ import os
 import platform
 import sys
 import time
-
 import requests
 
 
@@ -59,10 +58,10 @@ def install(local_work_dir, file_name, folder_name, install_path):
         print("Success install: {}, to: {}".format(source_files, dest_folder))
 
 
-def http_download_sdk(local_work_dir, file_name, pkg_name, arch, servers, branch_dir, md5):
+def http_download_sdk(local_work_dir, file_name, pkg_name, arch, servers, branch_dir, sha1):
     full_name = local_work_dir + file_name
     if os.path.exists(full_name):
-        if md5 == md5sum(full_name):
+        if sha1 == calculate_sha1(full_name):
             print("File: {} exists, skip download".format(full_name))
             return
 
@@ -94,12 +93,12 @@ def http_download_sdk(local_work_dir, file_name, pkg_name, arch, servers, branch
             else:
                 with open(full_name, "wb") as f:
                     f.write(r.content)
-                if md5 == md5sum(full_name):
+                if sha1 == calculate_sha1(full_name):
                     success_download = True
                     print("Success download {} from server: {}.".format(file_name, one_server))
                     break
                 else:
-                    print("MD5 check failed! Retry...")
+                    print("SHA1 check failed! Retry...")
             time.sleep(5)
         if success_download:
             break
@@ -145,12 +144,12 @@ def find_latest_info(servers, arch, branch_dir, pkg_name, release_type):
     return info
 
 
-def md5sum(filename, blocksize=65536):
-    hash = hashlib.md5()
+def calculate_sha1(filename, block_size=65536):
+    hash_result = hashlib.sha1()
     with open(filename, "rb") as f:
-        for block in iter(lambda: f.read(blocksize), b""):
-            hash.update(block)
-    return hash.hexdigest()
+        for block in iter(lambda: f.read(block_size), b""):
+            hash_result.update(block)
+    return hash_result.hexdigest()
 
 
 if __name__ == '__main__':
@@ -195,10 +194,10 @@ if __name__ == '__main__':
         if download_latest:
             info = find_latest_info(servers, arch, branch_dir, pkg_name, release_type)
             version = info["version"]
-            md5 = info["md5"]
+            sha1 = info["sha1"]
         else:
             version = pkg["version"]
-            md5 = pkg["md5"]
+            sha1 = pkg["sha1"]
 
         folder_name = pkg_name + "-" + version + "-" + arch + "-" + release_type
 
@@ -207,5 +206,5 @@ if __name__ == '__main__':
 
             file_name = folder_name + ".zip"
 
-            http_download_sdk(local_work_dir, file_name, pkg_name, arch, servers, branch_dir, md5)
+            http_download_sdk(local_work_dir, file_name, pkg_name, arch, servers, branch_dir, sha1)
             install(local_work_dir, file_name, folder_name, install_path)

@@ -1,21 +1,22 @@
 package com.ido.pipeline.app
 
-import com.ido.pipeline.Utils
 import com.ido.pipeline.archiver.FileArchiver
 import com.ido.pipeline.builderBase.WinPipeline
 
 /**
  * @author xinnj
  */
-class QtWinAppPipeline extends WinPipeline{
+class QtWinAppPipeline extends WinPipeline {
     FileArchiver fileArchiver
 
     QtWinAppPipeline(Object steps) {
         super(steps)
+        this.useK8sAgent = false
+        this.nodeName = "win && qt"
     }
 
     @Override
-    prepare(){
+    prepare() {
         super.prepare()
 
         fileArchiver = new FileArchiver(steps, config)
@@ -36,19 +37,15 @@ class QtWinAppPipeline extends WinPipeline{
             steps.error "vs.arch is empty!"
         }
 
-        String cmd = """
-[Environment]::SetEnvironmentVariable('vs_vcvarsallFile','${config.vs.vcvarsallFile}', 'User')
-[Environment]::SetEnvironmentVariable('vs_arch','${config.vs.arch}', 'User')
-"""
-
         if (config.qt.QT5_DIR) {
-            cmd = cmd + "[Environment]::SetEnvironmentVariable('QT5_DIR','${config.qt.QT5_DIR}', 'User')\n"
+            steps.env.QT5_DIR = config.qt.QT5_DIR
         }
         if (config.qt.QT6_DIR) {
-            cmd = cmd + "[Environment]::SetEnvironmentVariable('QT6_DIR','${config.qt.QT6_DIR}', 'User')\n"
+            steps.env.QT6_DIR = config.qt.QT6_DIR
         }
 
-        Utils.execRemoteWin(steps, config, cmd)
+        steps.env.vs_vcvarsallFile = config.vs.vcvarsallFile
+        steps.env.vs_arch = config.vs.arch
     }
 
     @Override
@@ -63,35 +60,31 @@ class QtWinAppPipeline extends WinPipeline{
 
     @Override
     build() {
-        String cmd = """
-Invoke-CmdScript -script "\$Env:vs_vcvarsallFile" -parameters "\$Env:vs_arch"
-
-cd "${config.vmWorkspace}/${config.srcRootPath}"
-qmake.exe ${config.qt.qmakeParameters}
-jom.exe
-"""
-
-        Utils.execRemoteWin(steps, config, cmd)
+        steps.pwsh """${config.debugPwsh}
+            Invoke-CmdScript -script "\$Env:vs_vcvarsallFile" -parameters "\$Env:vs_arch"
+            
+            cd "${steps.WORKSPACE}/${config.srcRootPath}"
+            qmake.exe ${config.qt.qmakeParameters}
+            jom.exe
+        """
     }
 
     @Override
     def archive() {
         String newFileName = fileArchiver.getFileName()
 
-        String cmd = """
-cd "${config.vmWorkspace}/${config.srcRootPath}"
-
-envsubst -i "${config.qt.msiConfig}" -o "${config.qt.msiConfig}.final" -no-unset -no-empty
-if (-not\$?)
-{
-    throw 'envsubst failure'
-}
-
-New-Item -ItemType Directory -Force -Path "ido-cluster/outputs"
-wixc.ps1 -config "${config.qt.msiConfig}.final" -output "ido-cluster/outputs/${newFileName}.msi"
-"""
-
-        Utils.execRemoteWin(steps, config, cmd)
+        steps.pwsh """${config.debugPwsh}
+            cd "${steps.WORKSPACE}/${config.srcRootPath}"
+            
+            envsubst -i "${config.qt.msiConfig}" -o "${config.qt.msiConfig}.final" -no-unset -no-empty
+            if (-not\$?)
+            {
+                throw 'envsubst failure'
+            }
+            
+            New-Item -ItemType Directory -Force -Path "ido-cluster/outputs"
+            wixc.ps1 -config "${config.qt.msiConfig}.final" -output "ido-cluster/outputs/${newFileName}.msi"
+        """
 
         String uploadUrl = "${config.fileServer.uploadUrl}${config.fileServer.uploadRootPath}${config.productName}/" +
                 config.branch + "/win"
