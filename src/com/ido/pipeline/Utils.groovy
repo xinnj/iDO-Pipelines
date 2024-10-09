@@ -291,19 +291,19 @@ plugins {
             return false
         }
 
-        String arch = config.arch
-        if (!arch) {
-            steps.error "arch is empty!"
+        String category = config.category
+        if (!category) {
+            steps.error "category is empty!"
         }
 
-        String buildTags = arch
+        String buildTags = category
         String branch = getBranchName(steps)
 
         String jsonFile
         if (config.sdkInfoFile != null && config.sdkInfoFile.trim() != "") {
             jsonFile = "${config.srcPath}/${config.sdkInfoFile}"
         } else {
-            jsonFile = "${config.srcPath}/sdk-info-${arch}.json"
+            jsonFile = "${config.srcPath}/sdk-info-${category}.json"
         }
         steps.echo "SDK info file: " + jsonFile
 
@@ -326,47 +326,48 @@ plugins {
 
             String type = onePackage.type
             if (!type) {
-                type = "Release"
+                type = "release"
             }
 
             String latestInfoUrl = "${config.fileServer.downloadUrl}/${config._system.sdk.rootPath}/${config.productName}/" +
-                    "${config.sdk.sdkBranch}/${arch}/${config.productName}-${type}-latest.json"
-            String latestInfoFile = "${config.productName}-${type}-latest.json"
+                    "${config.sdk.sdkBranch}/${category}/${config.productName}-${category}-${type}-latest.json"
+            String latestInfoFile = "${config.productName}-${category}-${type}-latest.json"
             steps.fileOperations([steps.fileDownloadOperation(targetFileName: latestInfoFile, targetLocation: "${config.srcRootPath}/", url: latestInfoUrl)])
 
             if (steps.fileExists("${config.srcRootPath}/${latestInfoFile}")) {
                 latestInfo = steps.readJSON(file: "${config.srcRootPath}/${latestInfoFile}")
 
-                Boolean hashChanged = false
-                if (onePackage.sha1 == null || onePackage.sha1 != latestInfo.sha1) {
-                    hashChanged = true
-                }
+                if (onePackage.version != "latest") {
+                    Boolean hashChanged = false
+                    if (onePackage.sha1 == null || onePackage.sha1 != latestInfo.sha1) {
+                        hashChanged = true
+                    }
 
-                if (onePackage.version == null || onePackage.version != latestInfo.version || hashChanged) {
-                    latestInfo.each { k, v ->
-                        L:
-                        {
-                            if (v == null) {
-                                onePackage.put(k, "")
-                            } else {
-                                onePackage.put(k, v)
+                    if (onePackage.version == null || onePackage.version != latestInfo.version || hashChanged) {
+                        latestInfo.each { k, v ->
+                            L:
+                            {
+                                if (v == null) {
+                                    onePackage.put(k, "")
+                                } else {
+                                    onePackage.put(k, v)
+                                }
                             }
                         }
-                    }
-                    modified = true
+                        modified = true
 
-                    commitMessage = commitMessage + "{" + onePackage.name + "|" + latestInfo.version + "|" + latestInfo.author + "|" + latestInfo.message + "}"
-                    steps.echo onePackage.name + " version changed from: " + onePackage.version + ", to: " + latestInfo.version + ", message: " + latestInfo.message
+                        commitMessage = commitMessage + "{" + onePackage.name + "|" + latestInfo.version + "|" + latestInfo.author + "|" + latestInfo.message + "}"
+                        steps.echo onePackage.name + " version changed from: " + onePackage.version + ", to: " + latestInfo.version + ", message: " + latestInfo.message
+                    }
                 }
             }
         }
-        commitMessage = commitMessage.replaceAll("(\\n|\\r)", " ").replaceAll("\"", "'")
-        steps.echo "commitMessage: " + commitMessage
 
         if (modified) {
+            commitMessage = commitMessage.replaceAll("(\\n|\\r)", " ").replaceAll("\"", "'")
+
             steps.echo "Updated SDK Info: " + sdkInfo
             steps.writeJSON(file: jsonFile, json: sdkInfo, pretty: 4)
-
 
             if (steps.isUnix()) {
                 steps.withCredentials([steps.sshUserPrivateKey(credentialsId: config.gitCredentialsId, keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER')]) {
@@ -439,10 +440,10 @@ plugins {
         return modified
     }
 
-    static private genSdkInfo(Object steps, Map config, String type) {
-        String sdkFileName = "${config.productName}-${config.version}"
+    static genSdkLatestInfo(Object steps, Map config, String category, String type) {
+        String sdkFileName = "${config.productName}-${category}-${type}-${config.version}.zip"
 
-        String sha1 = steps.sha1("${config.srcRootPath}/ido-cluster/outputs/${sdkFileName}-${type}.zip")
+        String sha1 = steps.sha1("${config.srcRootPath}/ido-cluster/outputs/${sdkFileName}")
 
         String commitMessage, commitAuthor
         if (steps.isUnix()) {
@@ -470,7 +471,7 @@ plugins {
         ]
 
         steps.echo "SDK Info: " + sdkInfo
-        String jsonFile = "${config.srcRootPath}/ido-cluster/outputs/${config.productName}-${type}-latest.json"
+        String jsonFile = "${config.srcRootPath}/ido-cluster/outputs/${config.productName}-${category}-${type}-latest.json"
         steps.writeJSON(file: jsonFile, json: sdkInfo, pretty: 4)
     }
 }

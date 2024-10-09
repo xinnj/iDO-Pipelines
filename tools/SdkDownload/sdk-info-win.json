@@ -7,15 +7,12 @@
                 {
             "name": "qt-bin",
             "version": "5.15.2-5-m",
-            "arch": "win",
+            "category": "win",
+            "type": "release",
             "install_path":             [
                                 {
                     "from": ".",
                     "to": "cloudbin"
-                },
-                                {
-                    "from": ".",
-                    "to": "cloudbin_debug"
                 }
             ],
             "branch": false,
@@ -24,8 +21,8 @@
                 {
             "name": "BizCloudSDK-BV",
             "version": "3.2.1",
-            "arch": "win",
-            "type": "Release",
+            "category": "win",
+            "type": "release",
             "install_path":             [
                                 {
                     "from": "shared_usr/win-x64_x86/include/*.h",
