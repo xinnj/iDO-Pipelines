@@ -18,6 +18,7 @@ class QtWinAppPipeline extends WinPipeline {
     @Override
     prepare() {
         super.prepare()
+        config.category = "win"
 
         fileArchiver = new FileArchiver(steps, config)
 

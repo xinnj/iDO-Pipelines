@@ -66,4 +66,4 @@ android:
     port: "80"
 
 sdk:
-  rootPath: "sdk"
+  rootPath: "sdk-next"

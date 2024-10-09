@@ -6,7 +6,7 @@ import java.util.TimeZone.*
 import java.util.Date.*
 import hudson.scm.*
 import hudson.model.*
-import com.ido.pipeline.Utils
+import com.ido.pipeline.sdk.SdkDownloader
 
 /**
  * @author xinnj
@@ -150,15 +150,18 @@ abstract class BuildPipeline extends BasePipeline {
     }
 
     @Override
-    def afterVersioning() {
-        super.afterVersioning()
+    def versioning() {
+        super.versioning()
 
-        if (Utils.updateSdkInfo(steps, config)) {
+        SdkDownloader sdkDownloader = new SdkDownloader(steps, config)
+        if (sdkDownloader.updateSdkInfo()) {
             steps.currentBuild.displayName = "SDK Info Updated"
             // if sdk info is updated, finish this build as a new build is triggered
             fastStop = 'SUCCESS'
             steps.error "Fast stop this build with success."
         }
+
+        sdkDownloader.downloadSdk()
     }
 
     def abstract ut()

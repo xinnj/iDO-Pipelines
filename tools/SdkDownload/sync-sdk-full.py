@@ -58,26 +58,8 @@ def install(local_work_dir, file_name, folder_name, install_path):
         print("Success install: {}, to: {}".format(source_files, dest_folder))
 
 
-def http_download_sdk(local_work_dir, file_name, pkg_name, arch, servers, branch_dir, sha1):
+def http_download_sdk(local_work_dir, file_name, pkg_name, category, servers, branch_dir, sha1):
     full_name = local_work_dir + file_name
-    if os.path.exists(full_name):
-        if sha1 == calculate_sha1(full_name):
-            print("File: {} exists, skip download".format(full_name))
-            return
-
-    # Clean old versions
-    if platform.system() == "Windows":
-        orgcmd = "del {}/{}-*-{}.zip".format(local_work_dir, pkg_name, arch)
-        cmd = orgcmd.replace("/", "\\")
-        os.system(cmd)
-
-        p = "{}/{}-*-{}".format(local_work_dir, pkg_name, arch)
-        p = p.replace("/", "\\")
-        cmd = "for /d %G in (\"{}\") do rd /s /q \"%~G\"".format(p)
-        os.system(cmd)
-    else:
-        cmd = "rm -rf {}/{}-*-{}".format(local_work_dir, pkg_name, arch)
-        os.system(cmd)
 
     success_download = False
     retry_num = 2
@@ -85,7 +67,7 @@ def http_download_sdk(local_work_dir, file_name, pkg_name, arch, servers, branch
         success_download = False
         for x in range(retry_num):
             try:
-                download_url = one_server + '/download/sdk-next/' + pkg_name + '/' + branch_dir + arch + '/' + file_name
+                download_url = one_server + '/download/sdk-next/' + pkg_name + '/' + branch_dir + category + '/' + file_name
                 r = requests.get(download_url, timeout=2)
                 r.raise_for_status()
             except Exception as e:
@@ -108,16 +90,16 @@ def http_download_sdk(local_work_dir, file_name, pkg_name, arch, servers, branch
         sys.exit(1)
 
 
-def http_download_info(file_name, pkg_name, arch, servers, branch_dir):
+def http_download_info(file_name, pkg_name, category, servers, branch_dir):
     for one_server in servers:
         try:
-            download_url = one_server + '/download/sdk-next/' + pkg_name + '/' + branch_dir + arch + '/' + file_name
+            download_url = one_server + '/download/sdk-next/' + pkg_name + '/' + branch_dir + category + '/' + file_name
             r = requests.get(download_url, timeout=2)
             r.raise_for_status()
         except Exception as e:
             print("Can't download {}, retry...".format(download_url))
         else:
-            with open(os.path.join("/sdk-info", file_name), "wb") as f:
+            with open(os.path.join(os.path.dirname(os.path.abspath("__file__")) + "sdk-info", file_name), "wb") as f:
                 f.write(r.content)
             print("Success download {} from server: {}.".format(file_name, one_server))
             break
@@ -126,17 +108,14 @@ def http_download_info(file_name, pkg_name, arch, servers, branch_dir):
         sys.exit(1)
 
 
-def find_latest_info(servers, arch, branch_dir, pkg_name, release_type):
+def find_latest_info(servers, category, branch_dir, pkg_name, release_type):
     local_work_dir = "sdk-info/"
     if not os.path.isdir(local_work_dir):
         os.makedirs(local_work_dir)
 
-    if release_type == "":
-        info_file_name = pkg_name + "-latest.json"
-    else:
-        info_file_name = pkg_name + "-" + release_type + "-latest.json"
+    info_file_name = pkg_name + "-" + category + "-" + release_type + "-latest.json"
 
-    http_download_info(info_file_name, pkg_name, arch, servers, branch_dir)
+    http_download_info(info_file_name, pkg_name, category, servers, branch_dir)
 
     with open(local_work_dir + info_file_name, 'r', encoding='utf-8') as f:
         info = json.load(f)
@@ -179,32 +158,33 @@ if __name__ == '__main__':
     for pkg in jinfo["packages"]:
         pkg_name = pkg["name"]
 
-        arch = pkg["arch"]
-        release_type = pkg["type", "Release"]
-        download = pkg.get("download", True)
+        category = pkg["category"]
+        release_type = pkg.get("type", "release")
 
         use_branch = pkg.get("branch", True)
         if use_branch:
-            branch_dir = ""
-        else:
             branch_dir = branch + '/'
+        else:
+            branch_dir = ""
 
-        download_latest = pkg.get("download_latest", False)
+        if pkg["version"] == "latest":
+            download_latest = True
+        else:
+            download_latest = False
 
         if download_latest:
-            info = find_latest_info(servers, arch, branch_dir, pkg_name, release_type)
+            info = find_latest_info(servers, category, branch_dir, pkg_name, release_type)
             version = info["version"]
             sha1 = info["sha1"]
         else:
             version = pkg["version"]
             sha1 = pkg["sha1"]
 
-        folder_name = pkg_name + "-" + version + "-" + arch + "-" + release_type
+        folder_name = pkg_name + "-" + category + "-" + release_type + "-" + version
 
-        if download:
-            install_path = pkg["install_path"]
+        install_path = pkg["install_path"]
 
-            file_name = folder_name + ".zip"
+        file_name = folder_name + ".zip"
 
-            http_download_sdk(local_work_dir, file_name, pkg_name, arch, servers, branch_dir, sha1)
-            install(local_work_dir, file_name, folder_name, install_path)
+        http_download_sdk(local_work_dir, file_name, pkg_name, category, servers, branch_dir, sha1)
+        install(local_work_dir, file_name, folder_name, install_path)

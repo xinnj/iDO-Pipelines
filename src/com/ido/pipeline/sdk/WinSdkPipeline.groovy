@@ -8,6 +8,7 @@ import com.ido.pipeline.Utils
  * @author xinnj
  */
 class WinSdkPipeline extends WinPipeline {
+    String category = "win"
     FileArchiver fileArchiver
 
     WinSdkPipeline(Object steps) {
@@ -35,13 +36,15 @@ class WinSdkPipeline extends WinPipeline {
     @Override
     def archive() {
         String uploadUrl = "${config.fileServer.uploadUrl}${config.fileServer.uploadRootPath}/" +
-                "${config._system.sdk.rootPath}/${config.productName}/${config.branch}/win"
+                "${config._system.sdk.rootPath}/${config.productName}/${config.branch}/${category}"
+
+        def sdkDownloader = new SdkDownloader(steps, config)
 
         if (config.sdk.win.buildDebug) {
-            Utils.genSdkInfo(steps, config, "Debug")
+            sdkDownloader.genSdkLatestInfo(category, "debug")
         }
 
-        Utils.genSdkInfo(steps, config, "Release")
+        sdkDownloader.genSdkLatestInfo(category, "release")
 
         fileArchiver.upload(uploadUrl, "${config.srcRootPath}/ido-cluster/outputs")
     }

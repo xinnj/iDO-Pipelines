@@ -32,7 +32,6 @@ if __name__ == '__main__':
         sys.exit(1)
 
     required = {'Requests'}
-    subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--upgrade', 'pip'])
     subprocess.check_call([sys.executable, '-m', 'pip', 'install', *required])
 
     work_dir = sys.argv[1]

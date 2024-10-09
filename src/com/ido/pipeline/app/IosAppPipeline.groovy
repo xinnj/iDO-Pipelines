@@ -19,6 +19,7 @@ class IosAppPipeline extends XcodePipeline {
     @Override
     def prepare() {
         super.prepare()
+        config.category = "ios"
 
         fileArchiver = new FileArchiver(steps, config)
 
