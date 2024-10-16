@@ -1,6 +1,6 @@
 package com.ido.pipeline.app
 
-
+import com.ido.pipeline.Utils
 import com.ido.pipeline.archiver.FileArchiver
 import com.ido.pipeline.languageBase.XcodePipeline
 
@@ -154,9 +154,6 @@ class IosAppPipeline extends XcodePipeline {
         String uploadUrl = "${config.fileServer.uploadUrl}${config.fileServer.uploadRootPath}${config.productName}/" +
                 config.branch + "/ios"
 
-            String text = steps.libraryResource('tools/generate_qrcode.py')
-            steps.writeFile(file: "generate_qrcode.py", text: text, encoding: "UTF-8")
-
             steps.sh """${config.debugSh}
                 cd "${config.srcRootPath}/ido-cluster/outputs"
                 touch ${newFileName}.html
@@ -164,7 +161,7 @@ class IosAppPipeline extends XcodePipeline {
                 echo "<meta http-equiv='Content-Type' content='text/html; charset=utf-8' />" >> ${newFileName}.html
             """
 
-        text = steps.libraryResource('builder/ios-ota-manifest.plist.template')
+        String text = steps.libraryResource('builder/ios-ota-manifest.plist.template')
         steps.writeFile(file: "${config.srcRootPath}/ido-cluster/manifest.plist.template", text: text, encoding: "UTF-8")
 
         config.ios.buildOptions.each {
@@ -173,6 +170,7 @@ class IosAppPipeline extends XcodePipeline {
             String plistUrl = "itms-services://?action=download-manifest&amp;" +
                     "url=${config.fileServer.downloadUrl}/${config.fileServer.uploadRootPath}${config.productName}/" +
                     config.branch + "/ios/files/${newFileName}-manifest-${it.name}.plist"
+            String plistQrcode = Utils.genQrcodeToString(plistUrl)
 
                 steps.sh """${config.debugSh}
                     cd "${config.srcRootPath}"
@@ -192,13 +190,11 @@ class IosAppPipeline extends XcodePipeline {
                         -e \"s|<BUNDLE_VERSION>|\${BUNDLE_VERSION}|g;\" \
                         -e \"s|<PRODUCT_TITLE>|\${PRODUCT_TITLE}|g\" \
                         ido-cluster/outputs/files/${newFileName}-manifest-${it.name}.plist
-
-                    plistQrcode=\$(python3 ${steps.WORKSPACE}/generate_qrcode.py "${plistUrl}")
                     
                     cd "${config.srcRootPath}/ido-cluster/outputs"
                     echo "<hr><h3>${it.name}</h3>" >> ${newFileName}.html
                     echo "<p><a href='files/${newFileName}-${it.name}.ipa'>${newFileName}-${it.name}.ipa</a>" >> ${newFileName}.html
-                    echo "<p><img src='data:image/png;base64,\${plistQrcode}'/>" >> ${newFileName}.html
+                    echo "<p><img src='data:image/png;base64,${plistQrcode}'/>" >> ${newFileName}.html
                 """
         }
 

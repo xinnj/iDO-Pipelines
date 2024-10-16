@@ -1,5 +1,6 @@
 package com.ido.pipeline.app
 
+import com.ido.pipeline.Utils
 import com.ido.pipeline.archiver.FileArchiver
 import com.ido.pipeline.languageBase.AndroidPipeline
 
@@ -91,17 +92,21 @@ class AndroidAppPipeline extends AndroidPipeline {
         String uploadUrl = "${config.fileServer.uploadUrl}${config.fileServer.uploadRootPath}${config.productName}/" +
                 config.branch + "/android"
 
-        if (!config.useK8sAgent) {
-            String text = steps.libraryResource('tools/generate_qrcode.py')
-            steps.writeFile(file: "generate_qrcode.py", text: text, encoding: "UTF-8")
+        String debugDownloadUrl, debugQrcode
+        if (config.android.buildDebug) {
+            debugDownloadUrl = "${config.fileServer.downloadUrl}${config.fileServer.uploadRootPath}${config.productName}/" +
+                    config.branch + "/android/files/${newFileName}-debug.apk"
+            debugQrcode = Utils.genQrcodeToString(debugDownloadUrl)
         }
 
-        String debugDownloadUrl = "${config.fileServer.downloadUrl}${config.fileServer.uploadRootPath}/${config.productName}/" +
-                config.branch + "/android/files/${newFileName}-debug.apk"
-        String releaseDownloadUrl = "${config.fileServer.downloadUrl}${config.fileServer.uploadRootPath}/${config.productName}/" +
-                config.branch + "/android/files/${newFileName}-release.apk"
+        String releaseDownloadUrl, releaseQrcode
+        if (config.android.buildRelease) {
+            releaseDownloadUrl = "${config.fileServer.downloadUrl}${config.fileServer.uploadRootPath}${config.productName}/" +
+                    config.branch + "/android/files/${newFileName}-release.apk"
+            releaseQrcode = Utils.genQrcodeToString(releaseDownloadUrl)
+        }
 
-        execOnAgent('uploader', {
+        execOnAgent('builder', {
             steps.sh """${config.debugSh}
                 cd "${config.srcRootPath}/ido-cluster/outputs"
                 touch ${newFileName}.html
@@ -110,40 +115,14 @@ class AndroidAppPipeline extends AndroidPipeline {
                 
                 if [ "${config.android.buildDebug}" = "true" ]; then
                     echo "debugDownloadUrl: ${debugDownloadUrl}"
-
-                    if [ "${config.useK8sAgent}" = "true" ]; then
-                        qrencode --output qrcode.png "${debugDownloadUrl}"
-                        if [ ! -f qrcode.png ]; then
-                            echo QR code is not generated!
-                            exit 1
-                        fi
-                        debugQrcode="\$(cat qrcode.png | base64 )"
-                        rm -f qrcode.png
-                    else
-                        debugQrcode=\$(python3 ${steps.WORKSPACE}/generate_qrcode.py "${debugDownloadUrl}")
-                    fi
-
                     echo "<hr><p><a href='files/${newFileName}-debug.apk'>${newFileName}-debug.apk</a>" >> ${newFileName}.html
-                    echo "<p><img src='data:image/png;base64,\${debugQrcode}'/>" >> ${newFileName}.html
+                    echo "<p><img src='data:image/png;base64,${debugQrcode}'/>" >> ${newFileName}.html
                 fi
                 
                 if [ "${config.android.buildRelease}" = "true" ]; then
                     echo "releaseDownloadUrl: ${releaseDownloadUrl}"
-
-                    if [ "${config.useK8sAgent}" = "true" ]; then
-                        qrencode --output qrcode.png "${releaseDownloadUrl}"
-                        if [ ! -f qrcode.png ]; then
-                            echo QR code is not generated!
-                            exit 1
-                        fi
-                        releaseQrcode="\$(cat qrcode.png | base64 )"
-                        rm -f qrcode.png
-                    else
-                        releaseQrcode=\$(python3 ${steps.WORKSPACE}/generate_qrcode.py "${releaseDownloadUrl}")
-                    fi
-                    
                     echo "<hr><p><a href='files/${newFileName}-release.apk'>${newFileName}-release.apk</a>" >> ${newFileName}.html
-                    echo "<p><img src='data:image/png;base64,\${releaseQrcode}'/>" >> ${newFileName}.html
+                    echo "<p><img src='data:image/png;base64,${releaseQrcode}'/>" >> ${newFileName}.html
                 fi
             """
         })

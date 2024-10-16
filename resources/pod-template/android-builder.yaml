@@ -47,16 +47,6 @@ spec:
           value: "/home/jenkins/agent/sonar"
         - name: "ANDROID_PREFS_ROOT"
           value: "/tmp"
-    - name: uploader
-      image: "docker.io/dwimberger/alpine-qr"
-      imagePullPolicy: IfNotPresent
-      command:
-        - sleep
-      args:
-        - <keepBuilderPodMaxMinutes>m
-      volumeMounts:
-        - mountPath: /home/jenkins/agent
-          name: workspace-volume
     - name: jnlp
       image: "<inboundAgentImage>"
       env:

@@ -3,7 +3,6 @@
 import sys
 import base64
 from io import BytesIO
-import subprocess
 import qrcode
 
 """

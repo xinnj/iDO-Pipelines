@@ -1,6 +1,15 @@
 package com.ido.pipeline
 
+@Grab('com.google.zxing:core:3.5.3')
+@Grab('com.google.zxing:javase:3.5.3')
+import com.google.zxing.*
+import com.google.zxing.qrcode.*
+import com.google.zxing.common.*
+import com.google.zxing.client.j2se.*
+
 import jenkins.model.*
+import javax.imageio.ImageIO
+import java.awt.image.BufferedImage
 import java.util.Date.*
 import java.util.TimeZone.*
 
@@ -284,5 +293,19 @@ plugins {
         }
 
         return true
+    }
+
+    static String genQrcodeToString(String barcodeText) {
+        QRCodeWriter barcodeWriter = new QRCodeWriter();
+        BitMatrix bitMatrix = barcodeWriter.encode(barcodeText, BarcodeFormat.QR_CODE, 300, 300);
+        BufferedImage img = MatrixToImageWriter.toBufferedImage(bitMatrix);
+
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        ImageIO.write(img, 'png', bos);
+        byte[] imageBytes = bos.toByteArray();
+        bos.close();
+
+        Base64.Encoder encoder = Base64.getEncoder();
+        return encoder.encodeToString(imageBytes);
     }
 }
