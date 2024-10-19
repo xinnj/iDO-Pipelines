@@ -126,16 +126,41 @@ EOF
         Map chart = steps.readYaml(file: "${config.helm.chartPath}/Chart.yaml")
         String chartName = chart.name
 
-        steps.withCredentials([steps.usernameColonPassword(credentialsId: config.helm.uploadCredentialId, variable: 'USERPASS')]) {
-            steps.container('helm') {
-                steps.sh """${config.debugSh}
-                    result=\$(curl -u "\${USERPASS}" "${config.helm.repo}" -v --upload-file "${chartName}-${config.helm.chartVersion}.tgz" --write-out '%{http_code}')
-                    prefix=\$(echo \$result | cut -c -1)
-                    if [ "\$prefix" != "2" ] && [ "\$prefix" != "3" ]; then
-                        echo "Upload Helm chart failed!"
-                        exit 1
-                    fi
-                """
+        steps.container('helm') {
+            if (config.helm.repo.startsWith('oci://')) {
+                String repoServer = config.helm.repo.substring(6)
+
+                if (config.aws.accessKeyCredentialId) {
+                    steps.withCredentials([steps.aws(credentialsId: config.aws.accessKeyCredentialId,
+                            accessKeyVariable: 'AWS_ACCESS_KEY_ID', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                        steps.withEnv(["AWS_REGION=${config.aws.region}"]) {
+                            steps.sh """${config.debugSh}
+                                aws ecr get-login-password --region \${AWS_REGION} | \
+                                    helm registry login --username AWS --password-stdin ${repoServer}
+                                helm push "${chartName}-${config.helm.chartVersion}.tgz" ${config.helm.repo}
+                            """
+                        }
+                    }
+                } else {
+                    steps.withCredentials([steps.usernamePassword(credentialsId: config.helm.uploadCredentialId,
+                            passwordVariable: 'passwordPush', usernameVariable: 'userNamePush')]) {
+                        steps.sh """${config.debugSh}
+                            helm registry login -u \${userNamePush} -p \${passwordPush} ${repoServer}
+                            helm push "${chartName}-${config.helm.chartVersion}.tgz" ${config.helm.repo}
+                        """
+                    }
+                }
+            } else {
+                steps.withCredentials([steps.usernameColonPassword(credentialsId: config.helm.uploadCredentialId, variable: 'USERPASS')]) {
+                    steps.sh """${config.debugSh}
+                        result=\$(curl -u "\${USERPASS}" "${config.helm.repo}" -v --upload-file "${chartName}-${config.helm.chartVersion}.tgz" --write-out '%{http_code}')
+                        prefix=\$(echo \$result | cut -c -1)
+                        if [ "\$prefix" != "2" ] && [ "\$prefix" != "3" ]; then
+                            echo "Upload Helm chart failed!"
+                            exit 1
+                        fi
+                    """
+                }
             }
         }
     }

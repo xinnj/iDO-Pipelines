@@ -115,6 +115,11 @@ registryPush:
   url: "nexus-docker-5001:5001"
   credentialsId: "uploader"
 
+# Credential of AWS
+aws:
+  accessKeyCredentialId: ""
+  region: "cn-north-1"
+
 ## Helm chart config
 helm:
   buildChart: true
@@ -127,10 +132,6 @@ helm:
     env: ""
     # Credential of kubeconfig file
     kubeconfigCredentialId: ""
-    # Credential of AWS if the cluster is EKS
-    aws:
-      accessKeyCredentialId: ""
-      region: "cn-north-1"
     # Secret used to pull images
     imagePullSecret:
       name: "image-pull"

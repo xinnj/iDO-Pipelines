@@ -82,27 +82,59 @@ class HelmDeployPipeline extends DeployPipeline {
 
     @Override
     def deploy() {
+        Boolean ociRepo
+        String repo, repoServer
+        if (config.helm.repo.startsWith('oci://')) {
+            ociRepo = true
+            repo = config.helm.repo
+            repoServer = repo.substring(6)
+        } else {
+            ociRepo = false
+            repo = 'devops'
+        }
+
         steps.container('helm') {
             Closure task = {
-                steps.withKubeConfig([credentialsId: config.helm.deploy.kubeconfigCredentialId]) {
+                steps.withKubeConfig([credentialsId: config.helm.deploy.kubeconfigCredentialId, restrictKubeConfigAccess: true]) {
                     if (config.helm.deploy.imagePullSecret.credentialId) {
                         def credentials = [steps.usernamePassword(credentialsId: config.helm.deploy.imagePullSecret.credentialId,
                                 passwordVariable: 'passwordPull', usernameVariable: 'userNamePull')]
                         steps.withCredentials(credentials) {
                             steps.sh """${config.debugSh}
-                            kubectl create namespace ${config.helm.deploy.namespace} --dry-run=client -o yaml | kubectl apply -f -
-                            kubectl delete -n ${config.helm.deploy.namespace} secret ${config.helm.deploy.imagePullSecret.name} --ignore-not-found=true
-                            kubectl create -n ${config.helm.deploy.namespace} secret docker-registry ${config.helm.deploy.imagePullSecret.name} \
-                            --docker-server=${config.helm.deploy.imagePullSecret.registry} \
-                            --docker-username=\${userNamePull} --docker-password=\${passwordPull}
-                        """
+                                kubectl create namespace ${config.helm.deploy.namespace} --dry-run=client -o yaml | kubectl apply -f -
+                                kubectl delete -n ${config.helm.deploy.namespace} secret ${config.helm.deploy.imagePullSecret.name} --ignore-not-found=true
+                                kubectl create -n ${config.helm.deploy.namespace} secret docker-registry ${config.helm.deploy.imagePullSecret.name} \
+                                --docker-server=${config.helm.deploy.imagePullSecret.registry} \
+                                --docker-username=\${userNamePull} --docker-password=\${passwordPull}
+                            """
                         }
                     }
 
-                    steps.sh """${config.debugSh}
-                    helm repo add devops ${config.helm.repo}
-                    helm repo update devops
-                """
+                    if (!ociRepo) {
+                        steps.sh """${config.debugSh}
+                            helm repo add ${repo} ${config.helm.repo}
+                            helm repo update ${repo}
+                        """
+                    } else {
+                        if (config.aws.accessKeyCredentialId) {
+                            steps.withCredentials([steps.aws(credentialsId: config.aws.accessKeyCredentialId,
+                                    accessKeyVariable: 'AWS_ACCESS_KEY_ID', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                                steps.withEnv(["AWS_REGION=${config.aws.region}"]) {
+                                    steps.sh """${config.debugSh}
+                                        aws ecr get-login-password --region \${AWS_REGION} | \
+                                            helm registry login --username AWS --password-stdin ${repoServer}
+                                    """
+                                }
+                            }
+                        } else {
+                            steps.withCredentials([steps.usernamePassword(credentialsId: config.helm.uploadCredentialId,
+                                    passwordVariable: 'passwordPush', usernameVariable: 'userNamePush')]) {
+                                steps.sh """${config.debugSh}
+                                    helm registry login -u \${userNamePush} -p \${passwordPush} ${repoServer}
+                                """
+                            }
+                        }
+                    }
 
                     def releases = config.helm.deploy.releases as List
                     def versions = [:]
@@ -122,7 +154,7 @@ class HelmDeployPipeline extends DeployPipeline {
                                 steps.error "Chart version can't be 'Latest Version' for prod env."
                             }
                             chartVersion = steps.sh(returnStdout: true, script: """${config.debugSh}
-helm search repo devops/${it.chart} | awk 'NR==2{printf \$2}'
+helm show chart ${repo}/${it.chart} | grep ^version: | awk '{printf \$2}'
 """)
                         }
 
@@ -169,7 +201,7 @@ helm search repo devops/${it.chart} | awk 'NR==2{printf \$2}'
                                 }
 
                                 steps.sh """${config.debugSh}
-                                helm upgrade ${releaseName} devops/${chartName} --install --wait \
+                                helm upgrade ${releaseName} ${repo}/${chartName} --install --wait \
                                     --namespace ${config.helm.deploy.namespace} --create-namespace \
                                     ${versionParam} ${valuesParam} ${setParam}
                             """
@@ -183,10 +215,10 @@ helm search repo devops/${it.chart} | awk 'NR==2{printf \$2}'
                 }
             }
 
-            if (config.helm.deploy.aws.accessKeyCredentialId) {
-                steps.withCredentials([steps.aws(credentialsId: config.helm.deploy.aws.accessKeyCredentialId,
+            if (config.aws.accessKeyCredentialId) {
+                steps.withCredentials([steps.aws(credentialsId: config.aws.accessKeyCredentialId,
                         accessKeyVariable: 'AWS_ACCESS_KEY_ID', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY')]) {
-                    steps.withEnv(["AWS_REGION=${config.helm.deploy.aws.region}"]) {
+                    steps.withEnv(["AWS_REGION=${config.aws.region}"]) {
                         task()
                     }
                 }
