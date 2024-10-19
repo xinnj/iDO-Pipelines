@@ -91,6 +91,10 @@ class IosAppPipeline extends XcodePipeline {
                 cmdXcconfig = "-xcconfig ${it.xcconfig}"
             }
 
+            if (!it.otherParameters) {
+                it.otherParameters = ""
+            }
+
             String buildType = "${it.scheme}:${it.configuration}:${it.signStyle}:${it.xcconfig}"
 
             // Archive if not executed
@@ -113,6 +117,7 @@ class IosAppPipeline extends XcodePipeline {
                           -archivePath ./build/${it.name}/${config.productName}.xcarchive \
                           -destination 'generic/platform=iOS' \
                           ${cmdXcconfig} \
+                          ${it.otherParameters} \
                           ${cmdAuth} -quiet
                     """
                 }
@@ -133,6 +138,7 @@ class IosAppPipeline extends XcodePipeline {
                        -exportOptionsPlist ${it.exportOptionsPlist} \
                        -exportPath ./build/${buildTypes.get(buildType)} \
                        ${cmdXcconfig} \
+                       ${it.otherParameters} \
                        ${cmdAuth} -quiet
                        
                      mv -f ./build/${buildTypes.get(buildType)}/*.ipa ido-cluster/outputs/files/${newFileName}-${it.name}.ipa

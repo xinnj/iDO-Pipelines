@@ -52,6 +52,10 @@ abstract class XcodePipeline extends MacosPipeline {
             cmdXcconfig = "-xcconfig ${config.context.ut.xcconfig}"
         }
 
+        if (!config.context.ut.otherParameters) {
+            config.context.ut.otherParameters = ""
+        }
+
         steps.withCredentials([steps.usernamePassword(credentialsId: config.macos.loginCredentialId, passwordVariable: 'password', usernameVariable: 'username'),
                                steps.file(credentialsId: config.xcode.authenticationKey.keyFileCredentialId, variable: 'authKeyPath')]) {
             steps.sh """${config.debugSh}
@@ -64,6 +68,7 @@ abstract class XcodePipeline extends MacosPipeline {
                   ${cmdBuildFile} \
                   -scheme ${config.context.ut.scheme} \
                   ${cmdXcconfig} \
+                  ${config.context.ut.otherParameters} \
                   ${cmdAuth} -quiet
            """
         }

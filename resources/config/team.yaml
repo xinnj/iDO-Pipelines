@@ -267,12 +267,16 @@ ios:
   #     signStyle: "<Automatic or Manual>"
   #     xcconfig: "<path to xcconfig file, relative path to srcRootPath>"
   #     exportOptionsPlist: "<path to exportOptionsPlist file, relative path to srcRootPath>"
+  #     sdk: "<iphoneos or iphonesimulator>"
+  #     otherParameters: ""
   #   - name: "appstore"
   #     scheme: "<scheme name>"
   #     configuration: "<Debug or Release>"
   #     signStyle: "<Automatic or Manual>"
   #     xcconfig: "<path to xcconfig file, relative path to srcRootPath>"
   #     exportOptionsPlist: "<path to exportOptionsPlist file, relative path to srcRootPath>"
+  #     sdk: "<iphoneos or iphonesimulator>"
+  #     otherParameters: ""
   buildOptions: []
   downloadDisplayImages:
     standard: "${IDO_FILE_DOWNLOAD_URL}/ios-install-images/Install.png"
@@ -285,6 +289,7 @@ ios:
     signStyle: "Automatic"
     # Path to xcconfig file, relative path to srcRootPath
     xcconfig: ""
+    otherParameters: ""
     # Code coverage is not supported yet
     lineCoverageThreshold: 0
   # execute code analysis

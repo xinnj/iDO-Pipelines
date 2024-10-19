@@ -323,7 +323,17 @@ class SdkDownloader {
         steps.unzip(quiet: true, zipFile: "sdk-tmp/${fileName}", dir: "sdk-tmp/${folderName}")
 
         for (onePath in installPath) {
-            steps.fileOperations([steps.fileCopyOperation(includes: "sdk-tmp/${folderName}/${onePath.from}", targetLocation: onePath.to, flattenFiles: true)])
+            if (steps.isUnix()) {
+                steps.sh """${config.debugSh}
+                    mkdir -p ${onePath.to}
+                    cp -af sdk-tmp/${folderName}/${onePath.from} ${onePath.to}
+                """
+            } else {
+                steps.pwsh """${config.debugPwsh}
+                    New-Item -ItemType Directory -Force -Path ${onePath.to}
+                    Copy-Item -Path sdk-tmp/${folderName}/${onePath.from} -Destination ${onePath.to} -Recurse -Force
+                """
+            }
             steps.echo "Installed from \"${onePath.from}\" to \"${onePath.to}\""
         }
     }
